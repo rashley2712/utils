@@ -11,10 +11,23 @@ import astropy.stats
 class observation:
 	def __init__(self, MJD): 
 		self.MJD = MJD
-		
-def getColumn(data, columName):
+	
+def getDates(data):
+	returnArray = []
 	for d in data:
-				
+		date = d['MJD']
+		returnArray.append( date )
+	
+	return returnArray
+		
+	
+def getColumn(data, columnName):
+	returnArray = []
+	for d in data:
+		value = d[columnName]
+		returnArray.append(value)
+	
+	return returnArray
 
 if __name__ == "__main__":
 
@@ -36,7 +49,6 @@ if __name__ == "__main__":
 	
 	mainHeaders = inputFile[0].header
 	print "File:", datafile	
-	
 	
 	for c in colours:
 		headers = inputFile[CCDs[c]].header
@@ -60,3 +72,13 @@ if __name__ == "__main__":
 	
 	redPoints = allPhotometry['r']
 	print len(redPoints)
+	
+	countsRed = getColumn(redPoints, 'Counts_1')
+	comparisonRed = getColumn(redPoints, 'Counts_2')
+	ratiosRed = numpy.array(countsRed) / numpy.array(comparisonRed)
+	MJDs = getDates(redPoints)
+	print countsRed
+	
+	matplotlib.pyplot.plot(MJDs, ratiosRed)
+	
+	matplotlib.pyplot.show()
