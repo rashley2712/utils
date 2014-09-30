@@ -78,7 +78,7 @@ if __name__ == "__main__":
 				g_x, g_y = o['meanPosition']['g'][0], o['meanPosition']['g'][1]
 				matplotlib.pyplot.plot(g_x, g_y, 'g.')
 				matplotlib.pyplot.plot([r_x, g_x], [r_y, g_y], lw=1, color='black')
-			matplotlib.pyplot.plot(r_x, r_y, 'r.')
+				matplotlib.pyplot.plot(r_x, r_y, 'r.')
 			
 	
 	
