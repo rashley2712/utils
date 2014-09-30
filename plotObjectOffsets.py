@@ -77,8 +77,9 @@ if __name__ == "__main__":
 			if o['colourID']['g']!=-1:
 				g_x, g_y = o['meanPosition']['g'][0], o['meanPosition']['g'][1]
 				matplotlib.pyplot.plot(g_x, g_y, 'g.')
-				matplotlib.pyplot.plot(r_x, r_y, 'r.')
 				matplotlib.pyplot.plot([r_x, g_x], [r_y, g_y], lw=1, color='black')
+			matplotlib.pyplot.plot(r_x, r_y, 'r.')
+			
 	
 	
 	figure2 = matplotlib.pyplot.figure(figsize=(12, 12))
@@ -96,7 +97,7 @@ if __name__ == "__main__":
 	matplotlib.pyplot.show()
 	
 	figure1.savefig('test1.eps',dpi=100, format='eps')
-	figure2.savefig('test1.eps',dpi=100, format='eps')
+	figure2.savefig('test2.eps',dpi=100, format='eps')
 	
 	"""
 	Now compare the offsets from colour to colour
