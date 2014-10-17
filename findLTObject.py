@@ -112,8 +112,8 @@ if __name__ == "__main__":
 		print "... reference coord is:", refCoords[0].to_string(unit=u.hour, sep=':'), refCoords[1].to_string(unit=u.degree, sep=':')
 	print "Loaded a total of ", len(wcsSolutions), " wcs solutions."
 	
-	#for i in range(len(objectList)):
-	for i in range(70,71):
+	for i in range(len(objectList)):
+	#for i in range(70,71):
 		target = objectList[i]
 		#print "Looking for a match for [%d]:"%i, target['name'], " { RA:", target['ra'], "DEC:", target['dec'], "}"
 		matches = []
@@ -136,18 +136,18 @@ if __name__ == "__main__":
 				distance = m['distance']
 				print "  Found a match in file: ", matchFilename
 				print "    Object with pixel coordinates of (%3.2f, %3.2f)"%(matchedObject['field_x'], matchedObject['field_y']),
-				print "is %3.2f arcseconds away"%(distance * 60 * 60)
+				print "is %3.3f arcseconds away"%(distance * 60 * 60)
 				field_ra = astropy.coordinates.angles.Angle(matchedObject['field_ra'], 'degree')
 				field_dec = astropy.coordinates.angles.Angle(matchedObject['field_dec'], 'degree')
 				index_ra = astropy.coordinates.angles.Angle(matchedObject['index_ra'], 'degree')
 				index_dec = astropy.coordinates.angles.Angle(matchedObject['index_dec'], 'degree')
 				print "    Position given in the csv file :", target['ra'].to_string(unit=u.hour, sep=':'), target['dec'].to_string(unit=u.degree, sep=':')
 				print "    Catalog position               :", index_ra.to_string(unit=u.hour, sep=':'), index_dec.to_string(unit=u.degree, sep=':')
-				print "    Astrometry coomputed position  :", field_ra.to_string(unit=u.hour, sep=':'), field_dec.to_string(unit=u.degree, sep=':')
+				print "    Astrometry computed position   :", field_ra.to_string(unit=u.hour, sep=':'), field_dec.to_string(unit=u.degree, sep=':')
 				c1 = astropy.coordinates.ICRS(index_ra.degree, index_dec.degree, unit=(u.degree, u.degree))
 				c2 = astropy.coordinates.ICRS(field_ra.degree, field_dec.degree, unit=(u.degree, u.degree))
 				separation = c1.separation(c2)
-				print "    Separation between catalog and astrometry computed position:", separation.arcsecond, " arcseconds"
+				print "    Separation between catalog and astrometry computed position: %3.3f"%separation.arcsecond, "arcseconds"
 				print 
 				
 			
