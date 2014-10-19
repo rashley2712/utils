@@ -158,23 +158,16 @@ if __name__ == "__main__":
 	rdlsData = rdlsFile[1].data
 	rdlsFile.close()
 	
-	for r in rdlsData:
-		pixelPosition = w.all_world2pix(r[0], r[1], 1)
-		x, y = pixelPosition[0], pixelPosition[1]
-		print r, w.all_world2pix(r[0], r[1], 1), x, y
-		
-
-	
 	enhancedImage = percentiles(imageData, 50, 98)
 	#enhancedImage = imageData
-	matplotlib.pyplot.figure(figsize=(10, 10))
-	matplotlib.pyplot.title("Original image")
-	image = matplotlib.pyplot.imshow(enhancedImage, cmap='gray', interpolation='none')
-	matplotlib.pyplot.show(block = False)
+	#matplotlib.pyplot.figure(figsize=(10, 10))
+	#matplotlib.pyplot.title("Original image")
+	#image = matplotlib.pyplot.imshow(enhancedImage, cmap='gray', interpolation='none')
+	#matplotlib.pyplot.show(block = False)
 	
 	matplotlib.pyplot.figure(figsize=(10, 10))
 	matplotlib.pyplot.title("Extracted sources")
-	image = matplotlib.pyplot.imshow(enhancedImage, cmap='gray', interpolation='none')
+	image = matplotlib.pyplot.imshow(enhancedImage, cmap='binary', interpolation='none')
 	for a in axyData:
 		x = a[0]
 		y = a[1]
@@ -183,12 +176,28 @@ if __name__ == "__main__":
 	
 	matplotlib.pyplot.figure(figsize=(10, 10))
 	matplotlib.pyplot.title("Solved positions")
-	image = matplotlib.pyplot.imshow(enhancedImage, cmap='gray', interpolation='none')
+	image = matplotlib.pyplot.imshow(enhancedImage, cmap='binary', interpolation='none')
 	
 	for r in rdlsData:
 		pixelPosition = w.all_world2pix(r[0], r[1], 1)
 		x, y = pixelPosition[0], pixelPosition[1]
 		matplotlib.pyplot.gca().add_artist(matplotlib.pyplot.Circle((x,y), 25, color='red', fill=False, linewidth=1.0))
+	matplotlib.pyplot.show(block = False)
+	
+	
+	matplotlib.pyplot.figure(figsize=(10, 10))
+	matplotlib.pyplot.title("All extracted objects")
+	image = matplotlib.pyplot.imshow(enhancedImage, cmap='binary', interpolation='none')
+	
+	for a in axyData:
+		x, y = a[0], a[1]
+		worldPosition = w.all_pix2world(x, y, 1)
+		ra = astropy.coordinates.angles.Angle(worldPosition[0], 'degree')
+		dec = astropy.coordinates.angles.Angle(worldPosition[1], 'degree')
+		positionString = ra.to_string(unit=u.hour, sep=':') + " " + dec.to_string(unit=u.degree, sep=':')
+		print x, y, positionString
+		matplotlib.pyplot.gca().add_artist(matplotlib.pyplot.Circle((x,y), 25, color='red', fill=False, linewidth=1.0))
+		matplotlib.pyplot.annotate(positionString, xy=(x, y), xytext=(x + 10, y + 10), bbox=dict(boxstyle="round", fc=(1.0, 0.7, 0.7), ec="none" ))
 	
 		
 	matplotlib.pyplot.show()

@@ -2,6 +2,7 @@
 import numpy, math
 import argparse
 import astropy.io.fits
+import astropy.wcs
 import csv
 import astropy.coordinates.angles
 import astropy.units as u
@@ -13,6 +14,11 @@ class wcssolution:
 		self.filename = filename[:-5]
 		self.catalogObjects = []
 		self.solvedObjects = []
+		self.extractedObjects = []
+		self.wcs = None
+		
+	def setWCS(self, w):
+		self.wcs = w
 		
 	def setCatalogObjects(self, objects):
 		self.catalogObjects = objects
@@ -20,19 +26,23 @@ class wcssolution:
 	def setSolvedObjects(self, objects):
 		self.solvedObjects = objects
 		
-	def getCatalogObjects(self):
-		return self.catalogObjects
+	def setExtractedObjects(self, objects):
+		self.extractedObjects = objects
 		
 	def __str__(self):
-		return self.filename + " containing " + str(len(self.solvedObjects)) + ' total objects, with ' + str(len(self.catalogObjects)) + ' found in the catalog.'
+		return self.filename + " containing " + str(len(self.extractedObjects)) + ' total objects, with ' + str(len(self.catalogObjects)) + ' found in the catalog.'
 		
 	def findNearestObject(self, targetRADEC):
 		lowestSeparation = 360
 		matchedObject = {}
 		
-		for index, i in enumerate(self.solvedObjects):
-			solvedRA, solvedDEC = i
-			c1 = astropy.coordinates.ICRS(solvedRA.degree, solvedDEC.degree, unit=(u.degree, u.degree))
+		for index, i in enumerate(self.extractedObjects):
+			w = self.wcs
+			(x, y) = i['x'], i['y']
+			world = w.all_pix2world(x, y, 1)
+			ra = world[0]
+			dec = world[1]
+			c1 = astropy.coordinates.ICRS(ra, dec, unit=(u.degree, u.degree))
 			c2 = astropy.coordinates.ICRS(targetRADEC[0].degree, targetRADEC[1].degree, unit=(u.degree, u.degree))
 			separation = c1.separation(c2)
 			if separation.degree>1:
@@ -42,11 +52,10 @@ class wcssolution:
 			if separation.degree<(lowestSeparation):
 				lowestSeparation = separation.degree
 				matchedObject = {}
-				matchedObject['fieldRA'] = solvedRA
-				matchedObject['fieldDEC']=  solvedDEC
-			print index, separation.arcsecond 
+				matchedObject['fieldRA'] = ra
+				matchedObject['fieldDEC']=  dec
+			#print index, separation.arcsecond 
 				
-		print matchedObject
 		return matchedObject, lowestSeparation
 
 def readCSVCatalog(filename):
@@ -75,8 +84,6 @@ def getRefCoords(filename):
 	
 	return (referenceCoord)		
 	
-def loadOriginalFITSheaders(filename):
-	inputFile = astropy.io.fits.open(filename)
 	
 def loadWCSsolution(filename):
 	solution = wcssolution(filename)
@@ -108,7 +115,31 @@ def loadWCSsolution(filename):
 		solvedDEC = astropy.coordinates.angles.Angle(dec, 'degree')
 		solvedObjects.append((solvedRA, solvedDEC))
 	solution.setSolvedObjects(solvedObjects)
+
+	# Also load the .wcs file in order to read the full WCS solution parameters
+	wcsFilename = filename[:-4] + "wcs"
+	wcsFile = astropy.io.fits.open(wcsFilename)
+	header = wcsFile[0].header
+	w = astropy.wcs.WCS(wcsFile[0].header)
+	wcsFile.close()
+	solution.setWCS(w)
 	
+	# Also load the .axy file in order to ensure we have *all* of the objects (not just the matched ones)
+	axyFilename = filename[:-4] + "axy"
+	axyFile = astropy.io.fits.open(axyFilename)
+	headers = axyFile[1].header
+	data = axyFile[1].data
+	columns = axyFile[1].columns
+	extractedObjects = []
+	for item in data:
+		extractedObject = {}
+		extractedObject['x'] =  item[columns.names.index('X')]
+		extractedObject['y'] =  item[columns.names.index('Y')]
+		extractedObject['flux'] =  item[columns.names.index('FLUX')]
+		extractedObject['background'] =  item[columns.names.index('BACKGROUND')]
+		extractedObjects.append(extractedObject)
+	solution.setExtractedObjects(extractedObjects)
+
 	print solution
 	
 	return solution
@@ -136,8 +167,8 @@ if __name__ == "__main__":
 		print "... reference coord is:", refCoords[0].to_string(unit=u.hour, sep=':'), refCoords[1].to_string(unit=u.degree, sep=':')
 	print "Loaded a total of ", len(wcsSolutions), " wcs solutions."
 	
-	#for i in range(len(objectList)):
-	for i in range(18,19):
+	for i in range(len(objectList)):
+	#for i in range(18,19):
 		target = objectList[i]
 		#print "Looking for a match for [%d]:"%i, target['name'], " { RA:", target['ra'], "DEC:", target['dec'], "}"
 		matches = []
@@ -145,10 +176,10 @@ if __name__ == "__main__":
 			fieldmatch, distance = w.findNearestObject((target['ra'], target['dec']))
 			if (fieldmatch==-1):
 				if (arg.nomatch==False):
-					print "No match to this field"
+					print "No match to this field [%s]"%w.filename[:-4]
 			elif distance<(0.16): 
 				match = {}
-				print "Found in field", distance, w.filename
+				#print "Found in field", distance, w.filename
 				match['object'] = fieldmatch
 				match['field'] = w
 				match['distance'] = distance
@@ -173,7 +204,7 @@ if __name__ == "__main__":
 				separation = c1.separation(c2)
 				print "    Separation between input csv file and astrometry computed position: %3.3f"%separation.arcsecond, "arcseconds"
 				
-				
+			print
 				#if matchedObject['catalogMatch'] == 1:
 				#	print "  Found in catalog"
 				#	catRA  = matchedObject['catRA']
