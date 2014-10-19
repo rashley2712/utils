@@ -2,11 +2,14 @@
 import numpy, math
 import argparse
 import astropy.io.fits
+import astropy.wcs
 import csv
 import astropy.coordinates.angles
 import astropy.units as u
 import subprocess
-import glob
+
+import matplotlib.pyplot
+import matplotlib.image
 
 class wcssolution:
 	def __init__(self, filename):
@@ -113,83 +116,80 @@ def loadWCSsolution(filename):
 	
 	return solution
 
+def percentiles(data, lo, hi):
+    """ Returns a normalised array where lo percent of the pixels are 0 and hi percent of the pixels are 255
+    """
+    max = data.max()
+    dataArray = data.flatten()
+    pHi = numpy.percentile(dataArray, hi)
+    pLo = numpy.percentile(dataArray, lo)
+    range = pHi - pLo
+    scale = range/255
+    data = numpy.clip(data, pLo, pHi)
+    data-= pLo
+    data/=scale
+    return data
+
+
 if __name__ == "__main__":
 
-	parser = argparse.ArgumentParser(description='Find LT object. Looks in a CSV catalog for an object and matches it to an object in an LT image.')
-	parser.add_argument('csvfile', type=str, help='Input catalog in CSV format')
-	parser.add_argument('-n', '--nomatch', action='store_true', help='Suppress reporting of non-matches')
+	parser = argparse.ArgumentParser(description='Loads a WCS solution and previews in matplotlib.')
+	parser.add_argument('coreFilename', type=str, help='Filename (without extension) of the Astrometry.net solution files')
 	
 	arg = parser.parse_args()
 	
-	objectList = readCSVCatalog(arg.csvfile)
+	# Open the image and display it in MATPLOTLIB
+	newFile = astropy.io.fits.open(arg.coreFilename + '.new')
+	header = newFile[0].header
 	
-	fileList = glob.glob("*.corr")
-	
-	wcsSolutions = []
-	for f in fileList:
-		print "Loading Astrometry.net solution file: ",  
-		wcs_solution = loadWCSsolution(f)
-		wcsSolutions.append(wcs_solution)
-		# Also load the WCS FITS headers to get a coord somewhere in the field
-		wcsFilename = f[:-4] + "wcs"
-		refCoords = getRefCoords(wcsFilename)
-		print "... reference coord is:", refCoords[0].to_string(unit=u.hour, sep=':'), refCoords[1].to_string(unit=u.degree, sep=':')
-	print "Loaded a total of ", len(wcsSolutions), " wcs solutions."
-	
-	#for i in range(len(objectList)):
-	for i in range(18,19):
-		target = objectList[i]
-		#print "Looking for a match for [%d]:"%i, target['name'], " { RA:", target['ra'], "DEC:", target['dec'], "}"
-		matches = []
-		for w in wcsSolutions:
-			fieldmatch, distance = w.findNearestObject((target['ra'], target['dec']))
-			if (fieldmatch==-1):
-				if (arg.nomatch==False):
-					print "No match to this field"
-			elif distance<(0.16): 
-				match = {}
-				print "Found in field", distance, w.filename
-				match['object'] = fieldmatch
-				match['field'] = w
-				match['distance'] = distance
-				matches.append(match)
+	imageData = newFile[0].data
+	w = astropy.wcs.WCS(newFile[0].header)
+	newFile.close()
 		
-		if len(matches)>0:
-			print "For:", target['name'], "[%d]"%i
-			
-			for m in matches:						
-				matchFilename = m['field'].filename
-				matchedObject = m['object']
-				distance = m['distance']
-				
-				print "  Found a match in file: ", matchFilename
-				
-				field_ra = astropy.coordinates.angles.Angle(matchedObject['fieldRA'], 'degree')
-				field_dec = astropy.coordinates.angles.Angle(matchedObject['fieldDEC'], 'degree')
-				print "    Position given in the csv file :", target['ra'].to_string(unit=u.hour, sep=':'), target['dec'].to_string(unit=u.degree, sep=':')
-				print "    Astrometry computed position   :", field_ra.to_string(unit=u.hour, sep=':'), field_dec.to_string(unit=u.degree, sep=':')
-				c1 = astropy.coordinates.ICRS(field_ra.degree, field_dec.degree, unit=(u.degree, u.degree))
-				c2 = astropy.coordinates.ICRS(target['ra'].degree, target['dec'].degree, unit=(u.degree, u.degree))
-				separation = c1.separation(c2)
-				print "    Separation between input csv file and astrometry computed position: %3.3f"%separation.arcsecond, "arcseconds"
-				
-				
-				#if matchedObject['catalogMatch'] == 1:
-				#	print "  Found in catalog"
-				#	catRA  = matchedObject['catRA']
-				#	catDEC = matchedObject['catDEC']
-				#	print "    Catalog position           :", catRA.to_string(unit=u.hour, sep=':'), catDEC.to_string(unit=u.degree, sep=':')
-				#else:
-				#	print "    Not found in Astrometry.net's source catalog"
-				#	print "    Object with pixel coordinates of (%3.2f, %3.2f)"%(matchedObject['pixel_x'], matchedObject['pixel_y']),
-				#print "is %3.3f arcseconds away"%(distance * 60 * 60)
-				#c1 = astropy.coordinates.ICRS(index_ra.degree, index_dec.degree, unit=(u.degree, u.degree))
-				#c2 = astropy.coordinates.ICRS(field_ra.degree, field_dec.degree, unit=(u.degree, u.degree))
-				#separation = c1.separation(c2)
-				#print "    Separation between catalog and astrometry computed position: %3.3f"%separation.arcsecond, "arcseconds"
-				#print 
-				
-			
-		
-				
+	# Open the extracted sources
+	axyFile = astropy.io.fits.open(arg.coreFilename + '.axy')
+	header = axyFile[0].header
+	axyData = axyFile[1].data
+	axyFile.close()
 	
+	# Open the solved WCS solutions
+	rdlsFile = astropy.io.fits.open(arg.coreFilename + '.rdls')
+	header = rdlsFile[0].header
+	rdlsData = rdlsFile[1].data
+	rdlsFile.close()
+	
+	for r in rdlsData:
+		pixelPosition = w.all_world2pix(r[0], r[1], 1)
+		x, y = pixelPosition[0], pixelPosition[1]
+		print r, w.all_world2pix(r[0], r[1], 1), x, y
+		
+
+	
+	enhancedImage = percentiles(imageData, 50, 98)
+	#enhancedImage = imageData
+	matplotlib.pyplot.figure(figsize=(10, 10))
+	matplotlib.pyplot.title("Original image")
+	image = matplotlib.pyplot.imshow(enhancedImage, cmap='gray', interpolation='none')
+	matplotlib.pyplot.show(block = False)
+	
+	matplotlib.pyplot.figure(figsize=(10, 10))
+	matplotlib.pyplot.title("Extracted sources")
+	image = matplotlib.pyplot.imshow(enhancedImage, cmap='gray', interpolation='none')
+	for a in axyData:
+		x = a[0]
+		y = a[1]
+		matplotlib.pyplot.gca().add_artist(matplotlib.pyplot.Circle((x,y), 25, color='red', fill=False, linewidth=1.0))
+	matplotlib.pyplot.show(block = False)
+	
+	matplotlib.pyplot.figure(figsize=(10, 10))
+	matplotlib.pyplot.title("Solved positions")
+	image = matplotlib.pyplot.imshow(enhancedImage, cmap='gray', interpolation='none')
+	
+	for r in rdlsData:
+		pixelPosition = w.all_world2pix(r[0], r[1], 1)
+		x, y = pixelPosition[0], pixelPosition[1]
+		matplotlib.pyplot.gca().add_artist(matplotlib.pyplot.Circle((x,y), 25, color='red', fill=False, linewidth=1.0))
+	
+		
+	matplotlib.pyplot.show()
+
