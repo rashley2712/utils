@@ -264,6 +264,7 @@ if __name__ == '__main__':
     parser.add_option('--upload', '-u', dest='upload', help='Upload a file')
     parser.add_option('--wait', '-w', dest='wait', action='store_true', help='After submitting, monitor job status')
     parser.add_option('--wcs', dest='wcs', help='Download resulting wcs.fits file, saving to given filename; implies --wait if --urlupload or --upload')
+    parser.add_option('--wcsfits', dest='wcsfits', help='Download new_wcs.fits file, saving to given filename; implies --wait if --urlupload or --upload')
     parser.add_option('--kmz', dest='kmz', help='Download resulting kmz file, saving to given filename; implies --wait if --urlupload or --upload')
     parser.add_option('--urlupload', '-U', dest='upload_url', help='Upload a file at specified url')
     parser.add_option('--scale-units', dest='scale_units',
@@ -398,6 +399,9 @@ if __name__ == '__main__':
             if stat.get('status','') in ['success']:
                 success = (stat['status'] == 'success')
                 break
+            if stat['status'] == "failure":
+				print "Oh no! We failed"
+				sys.exit(-1)
             time.sleep(5)
 
         if success:
@@ -418,6 +422,10 @@ if __name__ == '__main__':
                 # We don't need the API for this, just construct URL
                 url = opt.server.replace('/api/', '/wcs_file/%i' % opt.job_id)
                 retrieveurls.append((url, opt.wcs))
+            if opt.wcsfits:
+                # We don't need the API for this, just construct URL
+                url = opt.server.replace('/api/', '/new_fits_file/%i' % opt.job_id)
+                retrieveurls.append((url, opt.wcsfits))
             if opt.kmz:
                 url = opt.server.replace('/api/', '/kml_file/%i/' % opt.job_id)
                 retrieveurls.append((url, opt.kmz))
