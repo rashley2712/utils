@@ -74,7 +74,10 @@ if __name__ == "__main__":
 	parser.add_argument('--channels', nargs='+', default = ['r', 'g', 'b'], type=str, help='Channels to plot')
 	parser.add_argument('-m', action = 'store_true', help='Use magnitude scale')
 	parser.add_argument('--bin', type=int, default = 1, help='Binning factor')
+	parser.add_argument('--xb', action = 'store_true', help='Exclude blue')
+	parser.add_argument('--zero', action = 'store_true', help='Remove the mean value from the plots.... Centering around zero.')
 	
+		
 	arg = parser.parse_args()
 	print arg
 	
@@ -175,8 +178,13 @@ if __name__ == "__main__":
 	x_values = [x - MJDoffset for x in x_values]
 	
 	
-	matplotlib.pyplot.figure(figsize=(12, 12))
-	axes = matplotlib.pyplot.subplot(3, 1, 3)
+	if (not arg.xb):
+		matplotlib.pyplot.figure(figsize=(12, 12))
+		axes = matplotlib.pyplot.subplot(3, 1, 3)
+	else:
+		matplotlib.pyplot.figure(figsize=(12, 8))
+		axes = matplotlib.pyplot.subplot(2, 1, 2)
+		
 	matplotlib.pyplot.plot(x_values, y_values, 'r.', label = 'i')
 	matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
 	ylabel_str = "$"
@@ -215,7 +223,11 @@ if __name__ == "__main__":
 		
 	x_values = [x - MJDoffset for x in x_values]
 	
-	matplotlib.pyplot.subplot(3, 1, 2, sharex = axes)
+	if (not arg.xb):
+		axes = matplotlib.pyplot.subplot(3, 1, 2)
+	else:
+		axes = matplotlib.pyplot.subplot(2, 1, 1)
+		
 	matplotlib.pyplot.plot(x_values, y_values, 'g.', label = 'g')
 	matplotlib.pyplot.ylabel(r"Relative flux: $g$", size = 16)
 	if (arg.m == True): 
@@ -224,38 +236,39 @@ if __name__ == "__main__":
 	
 	blues = filterData(blues)
 	
-	x_values = []
-	y_values = []
-	for b in blues:
-		x_values.append(b[0])
-		if len(fitsColumns)>1:
-			if arg.m == True:
-				y_values.append(-2.5 * math.log10(b[1]/b[2]))
+	if (not arg.xb):
+		x_values = []
+		y_values = []
+		for b in blues:
+			x_values.append(b[0])
+			if len(fitsColumns)>1:
+				if arg.m == True:
+					y_values.append(-2.5 * math.log10(b[1]/b[2]))
+				else:
+					y_values.append(b[1]/b[2])
 			else:
-				y_values.append(b[1]/b[2])
-		else:
-			y_values.append(b[1])
+				y_values.append(b[1])
+			
+		#y_values = astropy.stats.funcs.sigma_clip(y_values, sig=2, iters=1)
+		if (arg.m == True):
+			mean = numpy.mean(y_values)
+			y_values = [y - mean for y in y_values]
 		
-	#y_values = astropy.stats.funcs.sigma_clip(y_values, sig=2, iters=1)
-	if (arg.m == True):
-		mean = numpy.mean(y_values)
-		y_values = [y - mean for y in y_values]
-	
-	if (arg.bin!=1):
-		x_values, y_values = binData(x_values, y_values, arg.bin)
+		if (arg.bin!=1):
+			x_values, y_values = binData(x_values, y_values, arg.bin)
+			
+		colourPlotData['b'] = y_values
+		colourPlotData['b_times'] = x_values
 		
-	colourPlotData['b'] = y_values
-	colourPlotData['b_times'] = x_values
-	
-	x_values = [x - MJDoffset for x in x_values]
-	
-	matplotlib.pyplot.subplot(3, 1, 1)
-	matplotlib.pyplot.plot(x_values, y_values, 'b.', label = 'u')
-	matplotlib.pyplot.ylabel(r"Relative flux: $u$", size = 16)
-	if (arg.m == True): 
-		matplotlib.pyplot.gca().invert_yaxis()
-		matplotlib.pyplot.ylabel(r"$u_{mag}$", size = 18)
-	
+		x_values = [x - MJDoffset for x in x_values]
+		
+		matplotlib.pyplot.subplot(3, 1, 1)
+		matplotlib.pyplot.plot(x_values, y_values, 'b.', label = 'u')
+		matplotlib.pyplot.ylabel(r"Relative flux: $u$", size = 16)
+		if (arg.m == True): 
+			matplotlib.pyplot.gca().invert_yaxis()
+			matplotlib.pyplot.ylabel(r"$u_{mag}$", size = 18)
+		
 	# Now check everything with the defaults:
 	fig = matplotlib.pyplot.gcf()
 	DPI = fig.get_dpi()
@@ -276,13 +289,25 @@ if __name__ == "__main__":
 	
 	r_values = colourPlotData['r']
 	g_values = colourPlotData['g']
-	b_values = colourPlotData['b']
-	b_times = colourPlotData['b_times']
+	
+	if (not arg.xb):
+		b_values = colourPlotData['b']
+		b_times = colourPlotData['b_times']
+		
 	col = zip(r_values, g_values)
 	y_values = [n[1] - n[0] for n in col]
 	
-	matplotlib.pyplot.figure(figsize=(12, 12))
-	axes = matplotlib.pyplot.subplot(2, 1, 2)
+	if (arg.zero):
+		mean = numpy.mean(y_values)
+		y_values = [y-mean for y in y_values]
+	
+	if (not arg.xb):
+		matplotlib.pyplot.figure(figsize=(12, 8))
+		axes = matplotlib.pyplot.subplot(2, 1, 2)
+	else:
+		matplotlib.pyplot.figure(figsize=(12, 5))
+		axes = matplotlib.pyplot.subplot(1, 1, 1)
+	
 	
 	matplotlib.pyplot.plot(x_values, y_values, 'k.', label = 'g-i')
 	matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
@@ -290,18 +315,22 @@ if __name__ == "__main__":
 	matplotlib.pyplot.ylabel(r"$(g-i)_{mag}$", size = 18)
 	
 	
-	axes = matplotlib.pyplot.subplot(2, 1, 1, sharex = axes)
+	if (not arg.xb):
+		axes = matplotlib.pyplot.subplot(2, 1, 1, sharex = axes)
+		
+		col = zip(g_values, b_values)
+		y_values = [n[1] - n[0] for n in col]
 	
-	col = zip(g_values, b_values)
-	y_values = [n[1] - n[0] for n in col]
-	
-	
-	x_values = [x - MJDoffset for x in b_times]
-	
-	matplotlib.pyplot.plot(x_values, y_values, 'k.', label = 'u-g')
-	matplotlib.pyplot.gca().invert_yaxis()
-	matplotlib.pyplot.ylabel(r"$(u-g)_{mag}$", size = 18)
-	
+		if (arg.zero):
+			mean = numpy.mean(y_values)
+			y_values = [y-mean for y in y_values]
+		
+		x_values = [x - MJDoffset for x in b_times]
+		
+		matplotlib.pyplot.plot(x_values, y_values, 'k.', label = 'u-g')
+		matplotlib.pyplot.gca().invert_yaxis()
+		matplotlib.pyplot.ylabel(r"$(u-g)_{mag}$", size = 18)
+		
 	fig = matplotlib.pyplot.gcf()
 	
 	matplotlib.pyplot.show()
