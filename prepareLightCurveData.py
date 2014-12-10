@@ -2,10 +2,10 @@
 import numpy, math
 import matplotlib.pyplot
 import matplotlib.image as mpimg
-import argparse
+import argparse, sys
 import astropy.io.fits
 import astropy.stats
-import loadingSavingUtils.py
+import loadingSavingUtils
 
 def findMatchingTime(data, target):
 	reading = (0, -1)
@@ -65,37 +65,80 @@ def calcStats(data):
 	np = numpy.array(data)
 	values = np[:, 1]
 	return (numpy.mean(values), numpy.std(values))
+	
+def appendPhotometry(existing, new):
+	print "Appending photometry"
+	colours = ['r', 'g', 'b']
+	for c in colours:
+		photometry = existing[c]
+		newPhotometry = new[c]
+		for n in newPhotometry:
+			photometry.append(n)
+			
+	for c in colours:
+		numDataPoints = len(existing[c])
+		print c, "now has", numDataPoints, "data points"
+
+	return existing
 		
 
 if __name__ == "__main__":
 
-	parser = argparse.ArgumentParser(description='Uses matplotlib to plot light curves from the UCam log (that has been converted to fits format with "ulog2fits").')
-	parser.add_argument('datafiles', nargs='+', type=str, help='Input data file(s)')
-	parser.add_argument('-c', nargs='+', default = ['Counts_1'], type=str, help='Columns to plot')
-	parser.add_argument('--channels', nargs='+', default = ['r', 'g', 'b'], type=str, help='Channels to plot')
-	parser.add_argument('-m', action = 'store_true', help='Use magnitude scale')
-	parser.add_argument('--bin', type=int, default = 1, help='Binning factor')
-	parser.add_argument('--xb', action = 'store_true', help='Exclude blue')
-	parser.add_argument('--zero', action = 'store_true', help='Remove the mean value from the plots.... Centering around zero.')
-	parser.add_argument('--errors', action = 'store_true', help='Load and plot the error bars.')
+	parser = argparse.ArgumentParser(description='Reads CSV and FITS files and turns them into standard JSON files for loading into my various plotting programs,')
+	parser.add_argument('datafile', nargs='+', type=str, help='Input data file(s)')
+	parser.add_argument('-o', '--outfile', type=str, default='default', help='Name of the output file.')
 	 
 	arg = parser.parse_args()
 	print arg
-	
-	if len(arg.c)==0:
-		fitsColumns = ["Counts_1"]
-	else:
-		fitsColumns = arg.c
-	
-	if (arg.errors):
-		errorColumns = ["Sigma_1", "Sigma_2"]
-		
 	colours = ['r', 'g', 'b']
-	CCDs = { 'r': 'CCD 1', 'g': 'CCD 2', 'b': 'CCD 3'}
-	offSet = 0.1
-	reds = []
-	greens = []
-	blues = []
+	
+	# Find last '.' in the filename and grab the file extension
+	filename = str(arg.datafile[0])
+	index = filename.rfind('.')
+	extension = filename[index+1:].lower()
+	filenameNoExtension = filename[:index]
+	filetype = "unknown"
+	if extension=="fits":
+		filetype = 'fits'
+	elif extension=="csv":
+		filetype = "csv"
+	
+	if filetype == 'unknown':
+		print "Sorry that filetype is unknown. Try CSV or FITS."
+		
+	
+	if filetype == 'fits':
+		print "Loading", filename
+		photometry = loadingSavingUtils.loadFITSFile(filename)
+		
+		if (len(arg.datafile)>1):
+			additionalFiles = arg.datafile[1:]
+			for newFilename in additionalFiles:
+				print "...also loading", newFilename
+				additionalPhotometry = loadingSavingUtils.loadFITSFile(newFilename)
+				
+				photometry = appendPhotometry(photometry, additionalPhotometry)
+	
+	
+	for c in colours:
+		photometry[c], numRemoved = loadingSavingUtils.removeNegativeValues(photometry[c])
+		if numRemoved>0: print "..removed %d negative values from %s."%(numRemoved, c)
+	
+	for c in colours:
+		photometry[c], numRemoved = loadingSavingUtils.removeZeroValues(photometry[c])
+		if numRemoved>0: print "..removed %d zero values from %s."%(numRemoved, c)
+	
+	
+	if arg.outfile == 'default':
+		outputFilename = filenameNoExtension + ".csv"
+	else:
+		outputFilename = arg.outfile
+	loadingSavingUtils.writeCSV(outputFilename, photometry)
+	
+	
+	
+	sys.exit()
+	
 	
 	for datafile in arg.datafiles:
 	
