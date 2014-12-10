@@ -76,8 +76,8 @@ if __name__ == "__main__":
 	parser.add_argument('--bin', type=int, default = 1, help='Binning factor')
 	parser.add_argument('--xb', action = 'store_true', help='Exclude blue')
 	parser.add_argument('--zero', action = 'store_true', help='Remove the mean value from the plots.... Centering around zero.')
-	
-		
+	parser.add_argument('--errors', action = 'store_true', help='Load and plot the error bars.')
+	 
 	arg = parser.parse_args()
 	print arg
 	
@@ -85,6 +85,9 @@ if __name__ == "__main__":
 		fitsColumns = ["Counts_1"]
 	else:
 		fitsColumns = arg.c
+	
+	if (arg.errors):
+		errorColumns = ["Sigma_1", "Sigma_2"]
 		
 	colours = ['r', 'g', 'b']
 	CCDs = { 'r': 'CCD 1', 'g': 'CCD 2', 'b': 'CCD 3'}
@@ -108,10 +111,16 @@ if __name__ == "__main__":
 			for col in fitsColumns:
 				value = item[columns.names.index(col)]
 				reading.append(value)
+			if (arg.errors):
+				for col in errorColumns:
+					value = item[columns.names.index(col)]
+					reading.append(value)
 			try: 
 				zeros = reading.index(0)
 			except ValueError:
 				reds.append(reading)
+				
+			
 		
 		c = colours[1]
 		headers = inputFile[CCDs[c]].header
@@ -146,6 +155,11 @@ if __name__ == "__main__":
 			
 		inputFile.close()
 	
+	
+	""" Data is now loaded 
+	"""
+	
+		
 	x_values = []
 	y_values = []
 	for r in reds:
@@ -157,8 +171,9 @@ if __name__ == "__main__":
 				y_values.append(r[1]/r[2])
 		else:
 			y_values.append(r[1])
+		if (arg.errors):
+			errorValues = r[3]
 		
-	#y_values = astropy.stats.funcs.sigma_clip(y_values, sig=2, iters=1)
 	
 	if (arg.bin!=1):
 		x_values, y_values = binData(x_values, y_values, arg.bin)
@@ -185,7 +200,8 @@ if __name__ == "__main__":
 		matplotlib.pyplot.figure(figsize=(12, 8))
 		axes = matplotlib.pyplot.subplot(2, 1, 2)
 		
-	matplotlib.pyplot.plot(x_values, y_values, 'r.', label = 'i')
+	#matplotlib.pyplot.plot(x_values, y_values, 'r.', label = 'i')
+	matplotlib.pyplot.errorbar(x_values, y_values, yerr=0.3)
 	matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
 	ylabel_str = "$"
 	if len(fitsColumns)==1: ylabel_str+= fitsColumns[0]
