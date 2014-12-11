@@ -15,6 +15,7 @@ def loadFITSFile(filename, *arguments, **keywords):
 			requestedColumns = keywords[kw]
 
 	CCDs = { 'r': 'CCD 1', 'g': 'CCD 2', 'b': 'CCD 3'}
+	#CCDs = { 'r': 'CCD 1', 'g': 'CCD 2'}
 	
 	
 	allPhotometry = {}
@@ -90,11 +91,58 @@ def loadCSV(filename):
 		channelPhotometry.append(record)
 		photometry[colour] = channelPhotometry
 		 
+	csvfile.close()
+		
 	for c in colours:
 		numDataPoints = len(photometry[c])
 		print c, "has", numDataPoints, "data points"
 		
 	return photometry
+	
+def writeSingleChannelCSV(filename, data):
+	outputfile = open(filename, "w")
+	headerString = ""
+	keys = []
+	for key, value in data[0].items():
+		headerString+= key + ", "
+		keys.append(key)
+	headerString = headerString[:-2]
+	outputfile.write(headerString)
+	outputfile.write('\n')
+	
+	for d in data:
+		lineString = ""
+		for key in keys:
+			lineString+= str(d[key]) + ', '
+		lineString = lineString[:-2]
+		outputfile.write(lineString)
+		outputfile.write('\n')
+	
+	outputfile.close()
+	
+def loadSingleChannelCSV(filename):
+	inputfile = open(filename, "r")
+	photometry = []
+	reader = csv.reader(inputfile, delimiter=',')
+	headings = reader.next()
+	print headings
+	columns = []
+	for h in headings:
+		columnName = h.strip()
+		columns.append(columnName)
+
+	for line in reader:
+		values = [v.strip() for v in line]
+		record = {}
+		for index, column in enumerate(columns):
+			record[column] = float(line[index])
+		print record
+		photometry.append(record)
+		 
+	inputfile.close()
+	
+	return photometry
+	
 	
 
 def writeCSV(filename, allData, **keywords):

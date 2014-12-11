@@ -31,3 +31,14 @@ def binDataWithErrors(x, y, yErrors, binFactor):
 		newErrors.append(yError)
 	
 	return newX, newY, newErrors
+	
+def findNearestTime(time, timeValues, yValues):
+	distance = 1000
+	closestIndex = 0
+	for index, t in enumerate(timeValues):
+		gap = abs(time - t)
+		if gap < distance:
+			distance = gap
+			closestIndex = index
+		
+	return closestIndex, distance

@@ -17,6 +17,7 @@ if __name__ == "__main__":
 	parser.add_argument('--channels', nargs='+', default = ['r', 'g', 'b'], type=str, help='Channels to plot')
 	parser.add_argument('-m', action = 'store_true', help='Use magnitude scale')
 	parser.add_argument('--bin', type=int, default = 1, help='Binning factor')
+	parser.add_argument('--outcsv', type=str, default = "temp", help='Output each channel to csv with this name.')
 	parser.add_argument('--zero', action = 'store_true', help='Remove the mean value from the plots.... Centering around zero.')
 	parser.add_argument('--errors', action = 'store_true', help='Load and plot the error bars.')
 	parser.add_argument('--colourplots', nargs='+', default = ['gr'], type=str, help='Colour plots requested')
@@ -124,6 +125,33 @@ if __name__ == "__main__":
 	matplotlib.pyplot.show()
 	fig.savefig('lightcurves.eps',dpi=100, format='eps')
 	fig.savefig('lightcurves.png',dpi=100, format='png')
+	
+	filename = arg.outcsv + "_r.csv"
+	data = []
+	times = plotData['rTime']
+	magnitudes = plotData['rMagnitudes']
+	magnitudeErrors = plotData['rMagnitudeErrors']
+	for index, time in enumerate(times):
+		record = {}
+		record['MJD'] = time
+		record['magnitude'] = magnitudes[index]
+		record['magnitudeError'] = magnitudeErrors[index]
+		data.append(record)
+	loadingSavingUtils.writeSingleChannelCSV(filename, data)
+	
+	filename = arg.outcsv + "_g.csv"
+	data = []
+	times = plotData['gTime']
+	magnitudes = plotData['gMagnitudes']
+	magnitudeErrors = plotData['gMagnitudeErrors']
+	for index, time in enumerate(times):
+		record = {}
+		record['MJD'] = time
+		record['magnitude'] = magnitudes[index]
+		record['magnitudeError'] = magnitudeErrors[index]
+		data.append(record)
+	loadingSavingUtils.writeSingleChannelCSV(filename, data)
+		
 		
 	""" Now do the colour plot(s)
 	"""
@@ -166,7 +194,7 @@ if __name__ == "__main__":
 			matplotlib.pyplot.errorbar(x_values, gMinusrValues, color='k', yerr=gMinusrErrors, fmt = '.', ecolor='k')
 			matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
 		
-			matplotlib.pyplot.ylabel(r"$(g-r)_{mag}$", size = 18)
+			matplotlib.pyplot.ylabel(r"$(g-i)_{mag}$", size = 18)
 			
 			
 		if colourPlotRequested=='ug':
@@ -181,22 +209,20 @@ if __name__ == "__main__":
 			uMinusgValues = []
 			uMinusgErrors = []
 			x_values = []
-			for index, g in enumerate(gx_values):
+			for index, b in enumerate(bx_values):
 				
-				time = g
-				try:
-					bIndex = bx_values.index(time)
-				except ValueError:
-					print "Couldn't find a corresponding data point in 'b' for the 'g' data at", time
-					continue
+				time = b
+				gIndex, distance = statsUtils.findNearestTime(time, gx_values, g_values)
+				print "Closest g-time", gx_values[gIndex], "to b-time", time, distance
 					
-				b_value = b_values[bIndex]
-				uMinusg = b_value - g_values[index]
-				uMinusgError = math.sqrt( b_errors[bIndex]**2 + g_errors[index]**2 )
+				g_value = g_values[gIndex]
+				b_value = b_values[index]
+				uMinusg = b_value - g_value
+				uMinusgError = math.sqrt( b_errors[index]**2 + g_errors[gIndex]**2 )
 				x_values.append(time)
 				uMinusgValues.append(uMinusg)
 				uMinusgErrors.append(uMinusgError)
-				print bx_values[bIndex], b_value, time, g_values[index] 
+				#print bx_values[bIndex], b_value, time, g_values[index] 
 				
 			
 			matplotlib.pyplot.gca().invert_yaxis()

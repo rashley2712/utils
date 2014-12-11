@@ -5,7 +5,6 @@ import matplotlib.image as mpimg
 import argparse
 import astropy.io.fits
 import astropy.stats
-import loadingSavingUtils.py
 
 def findMatchingTime(data, target):
 	reading = (0, -1)
@@ -201,8 +200,8 @@ if __name__ == "__main__":
 		matplotlib.pyplot.figure(figsize=(12, 8))
 		axes = matplotlib.pyplot.subplot(2, 1, 2)
 		
-	#matplotlib.pyplot.plot(x_values, y_values, 'r.', label = 'i')
-	matplotlib.pyplot.errorbar(x_values, y_values, yerr=0.3)
+	matplotlib.pyplot.plot(x_values, y_values, 'r.', label = 'i')
+	#matplotlib.pyplot.errorbar(x_values, y_values, yerr=0.3)
 	matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
 	ylabel_str = "$"
 	if len(fitsColumns)==1: ylabel_str+= fitsColumns[0]
@@ -335,7 +334,10 @@ if __name__ == "__main__":
 	if (not arg.xb):
 		axes = matplotlib.pyplot.subplot(2, 1, 1, sharex = axes)
 		
+		print "length g", len(g_values), "length b", len(b_values)
 		col = zip(g_values, b_values)
+		print col
+		print "Final length", len(col)
 		y_values = [n[1] - n[0] for n in col]
 	
 		if (arg.zero):
