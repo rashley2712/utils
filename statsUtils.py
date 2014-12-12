@@ -42,3 +42,4 @@ def findNearestTime(time, timeValues, yValues):
 			closestIndex = index
 		
 	return closestIndex, distance
+

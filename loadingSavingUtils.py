@@ -73,7 +73,6 @@ def loadCSV(filename):
 	csvfile = open(filename, 'r')
 	reader = csv.reader(csvfile, delimiter=',')
 	headings = reader.next()
-	print headings
 	columns = []
 	for h in headings:
 		columnName = h.strip()
@@ -81,12 +80,10 @@ def loadCSV(filename):
 		
 	for line in reader:
 		values = [v.strip() for v in line]
-		print values
 		colour = values[0]
 		record = {}
 		for index in range(len(columns)-1):
 			record[columns[index+1]] = float(line[index+1])
-		print record
 		channelPhotometry = photometry[colour]
 		channelPhotometry.append(record)
 		photometry[colour] = channelPhotometry
@@ -143,6 +140,92 @@ def loadSingleChannelCSV(filename):
 	
 	return photometry
 	
+	
+def reformatPhotometry(data, **keywords):
+	allPhotometry = {}
+	colourNames = {'r': 'red', 'g':'green', 'b':'blue'}
+	colours = ['r','g','b']
+	for kw in keywords.keys(): 
+		if kw=='colours':
+			colours = keywords[kw]
+	
+	for c in colours:
+		channelPhotometry = []
+		for d in data:
+			record = {}
+			record['MJD'] = d['MJD']
+			record['Counts_1'] = d[colourNames[c]]
+			record['Sigma_1'] = 1
+			channelPhotometry.append(record)
+		allPhotometry[c] = channelPhotometry
+		
+	return allPhotometry
+		
+def mergeComparisonPhotometry(variable, comparison, **keywords):
+
+	colourNames = {'r': 'red', 'g':'green', 'b':'blue'}
+	colours = ['r','g','b']
+	for kw in keywords.keys(): 
+		if kw=='colours':
+			colours = keywords[kw]
+
+	for c in colours:
+		Variable = variable[c]
+		Comparison = comparison[c]
+		for v in Variable:
+			timeToMatch = v['MJD']
+			distance = 1000
+			bestTimeMatch = -1
+			comparisonRecord = {}
+			for t in Comparison:
+				time = t['MJD']
+				gap = abs(time - timeToMatch)
+				if gap<distance:
+					v['Counts_2'] = t['Counts_1']
+					v['Sigma_2'] = t['Sigma_1']
+					bestTimeMatch = time
+					distance = gap
+			#print timeToMatch, bestTimeMatch
+			#print v
+	
+	return variable
+			
+		
+		
+
+def loadWebFile(filename, **keywords):
+	colours = ['r', 'g', 'b']
+	
+	for kw in keywords.keys(): 
+		if kw=='colours':
+			colours = keywords[kw]
+		if kw=='columns':
+			requestedColumns = keywords[kw]
+	
+	inputfile = open(filename, 'r')
+	photometry = []
+	reader = csv.reader(inputfile, delimiter=',')
+	headings = reader.next()
+	print headings
+	columns = []
+	for h in headings:
+		columnName = h.strip()
+		columns.append(columnName)
+
+	for line in reader:
+		values = [v.strip() for v in line]
+		record = {}
+		for index, column in enumerate(columns):
+			try:
+				record[column] = float(line[index])
+			except ValueError:
+				record[column] = 0
+		print record
+		photometry.append(record)
+		 
+	inputfile.close()
+	
+	return photometry
 	
 
 def writeCSV(filename, allData, **keywords):

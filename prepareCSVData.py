@@ -6,7 +6,6 @@ import argparse, sys
 import astropy.io.fits
 import astropy.stats
 import loadingSavingUtils
-import statsUtils
 
 	
 def appendPhotometry(existing, new):
@@ -63,20 +62,6 @@ if __name__ == "__main__":
 				
 				photometry = appendPhotometry(photometry, additionalPhotometry)
 	
-	if filetype == 'csv':
-		print "Loading", filename
-		photometry = loadingSavingUtils.loadWebFile(filename, colours = colours)
-		photometry = loadingSavingUtils.reformatPhotometry(photometry)
-		
-		if (len(arg.datafile)>1):
-			additionalFiles = arg.datafile[1:]
-			for newFilename in additionalFiles:
-				print "...also loading", newFilename
-				additionalPhotometry = loadingSavingUtils.loadWebFile(newFilename, colours = colours)
-				additionalPhotometry = loadingSavingUtils.reformatPhotometry(additionalPhotometry)
-				
-				photometry = loadingSavingUtils.mergeComparisonPhotometry(photometry, additionalPhotometry)
-	
 	
 	for c in colours:
 		photometry[c], numRemoved = loadingSavingUtils.removeNegativeValues(photometry[c])
@@ -89,9 +74,6 @@ if __name__ == "__main__":
 	
 	if arg.outfile == 'default':
 		outputFilename = filenameNoExtension + ".csv"
-		if extension == 'csv':
-			outputFilename = filenameNoExtension + "_converted.csv"
-			
 	else:
 		outputFilename = arg.outfile
 	loadingSavingUtils.writeCSV(outputFilename, photometry, colours = colours)
