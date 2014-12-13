@@ -81,22 +81,24 @@ if __name__ == "__main__":
 		axes = matplotlib.pyplot.subplot(4, 1, 4)
 		matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
 			
-		matplotlib.pyplot.errorbar(x_values, y_values, color=c, yerr=y_errors, fmt = '.', ecolor=c)
+		matplotlib.pyplot.errorbar(x_values, y_values, color=c, yerr=y_errors, fmt = '.', ecolor=c, capsize=0)
 		
 		axes = matplotlib.pyplot.subplot(4, 1, 3)
-		matplotlib.pyplot.errorbar(x_values, comparisony_values, color=c, yerr=comparisony_errors, fmt = '.', ecolor=c)
+		matplotlib.pyplot.errorbar(x_values, comparisony_values, color=c, yerr=comparisony_errors, fmt = '.', ecolor=c, capsize=0)
 		
 		axes = matplotlib.pyplot.subplot(4, 1, 2)
-		matplotlib.pyplot.errorbar(x_values, fluxRatioValues, color=c, yerr=fluxRatioErrors, fmt = '.', ecolor=c)
+		matplotlib.pyplot.errorbar(x_values, fluxRatioValues, color=c, yerr=fluxRatioErrors, fmt = '.', ecolor=c, capsize=0)
 		
 		axes = matplotlib.pyplot.subplot(4, 1, 1)
 		matplotlib.pyplot.gca().invert_yaxis()
-		matplotlib.pyplot.errorbar(x_values, magnitudeValues, color=c, yerr=magnitudeErrors, fmt = '.', ecolor=c)
+		matplotlib.pyplot.errorbar(x_values, magnitudeValues, color=c, yerr=magnitudeErrors, fmt = '.', ecolor=c, capsize=0)
 		
 		# Store the data for later plots
 		plotData[c + 'Time'] = x_values
 		plotData[c + 'Magnitudes'] = magnitudeValues
 		plotData[c + 'MagnitudeErrors'] = magnitudeErrors
+		plotData[c + 'FluxRatios'] = fluxRatioValues
+		plotData[c + 'FluxRatioErrors'] = fluxRatioErrors
 		
 		matplotlib.pyplot.show()
 		
@@ -115,7 +117,7 @@ if __name__ == "__main__":
 		y_errors = plotData[c + 'MagnitudeErrors']
 		
 		matplotlib.pyplot.gca().invert_yaxis()
-		matplotlib.pyplot.errorbar(x_values, y_values, color=c, yerr=y_errors, fmt = '.', ecolor=c)
+		matplotlib.pyplot.errorbar(x_values, y_values, color=c, yerr=y_errors, fmt = '.', ecolor=c, capsize=0)
 		matplotlib.pyplot.ylabel(r"$%s_{mag}$"%filters[c], size = 18)
 	
 
@@ -129,26 +131,39 @@ if __name__ == "__main__":
 	filename = arg.outcsv + "_r.csv"
 	data = []
 	times = plotData['rTime']
-	magnitudes = plotData['rMagnitudes']
-	magnitudeErrors = plotData['rMagnitudeErrors']
+	fluxRatioValues = plotData['rFluxRatios']
+	fluxRatioErrors = plotData['rFluxRatioErrors']
 	for index, time in enumerate(times):
 		record = {}
 		record['MJD'] = time
-		record['magnitude'] = magnitudes[index]
-		record['magnitudeError'] = magnitudeErrors[index]
+		record['fluxRatio'] = fluxRatioValues[index]
+		record['fluxRatioError'] = fluxRatioErrors[index]
 		data.append(record)
 	loadingSavingUtils.writeSingleChannelCSV(filename, data)
 	
 	filename = arg.outcsv + "_g.csv"
 	data = []
 	times = plotData['gTime']
-	magnitudes = plotData['gMagnitudes']
-	magnitudeErrors = plotData['gMagnitudeErrors']
+	fluxRatioValues = plotData['gFluxRatios']
+	fluxRatioErrors = plotData['gFluxRatioErrors']
 	for index, time in enumerate(times):
 		record = {}
 		record['MJD'] = time
-		record['magnitude'] = magnitudes[index]
-		record['magnitudeError'] = magnitudeErrors[index]
+		record['fluxRatio'] = fluxRatioValues[index]
+		record['fluxRatioError'] = fluxRatioErrors[index]
+		data.append(record)
+	loadingSavingUtils.writeSingleChannelCSV(filename, data)
+	
+	filename = arg.outcsv + "_b.csv"
+	data = []
+	times = plotData['bTime']
+	fluxRatioValues = plotData['bFluxRatios']
+	fluxRatioErrors = plotData['bFluxRatioErrors']
+	for index, time in enumerate(times):
+		record = {}
+		record['MJD'] = time
+		record['fluxRatio'] = fluxRatioValues[index]
+		record['fluxRatioError'] = fluxRatioErrors[index]
 		data.append(record)
 	loadingSavingUtils.writeSingleChannelCSV(filename, data)
 		
@@ -191,7 +206,7 @@ if __name__ == "__main__":
 				
 			
 			matplotlib.pyplot.gca().invert_yaxis()
-			matplotlib.pyplot.errorbar(x_values, gMinusrValues, color='k', yerr=gMinusrErrors, fmt = '.', ecolor='k')
+			matplotlib.pyplot.errorbar(x_values, gMinusrValues, color='k', yerr=gMinusrErrors, fmt = '.', ecolor='k', capsize=0)
 			matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
 		
 			matplotlib.pyplot.ylabel(r"$(g-i)_{mag}$", size = 18)
@@ -226,7 +241,7 @@ if __name__ == "__main__":
 				
 			
 			matplotlib.pyplot.gca().invert_yaxis()
-			matplotlib.pyplot.errorbar(x_values, uMinusgValues, color='k', yerr=uMinusgErrors, fmt = '.', ecolor='k')
+			matplotlib.pyplot.errorbar(x_values, uMinusgValues, color='k', yerr=uMinusgErrors, fmt = '.', ecolor='k', capsize=0)
 			matplotlib.pyplot.ylabel(r"$(u-g)_{mag}$", size = 18)
 	
 			
