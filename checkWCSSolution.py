@@ -139,7 +139,7 @@ if __name__ == "__main__":
 	arg = parser.parse_args()
 	
 	# Open the image and display it in MATPLOTLIB
-	newFile = astropy.io.fits.open(arg.coreFilename + '.new')
+	newFile = astropy.io.fits.open(arg.coreFilename + '.wcs')
 	header = newFile[0].header
 	
 	imageData = newFile[0].data

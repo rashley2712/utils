@@ -83,10 +83,10 @@ if __name__ == "__main__":
 	matplotlib.pyplot.figure(figsize=(12, 12))
 	axes = matplotlib.pyplot.subplot(3, 1, 3)
 	
-	
+	ratioValues = [r - 1 for r in ratioValues]
 	matplotlib.pyplot.plot(x_values, ratioValues, 'r.', label = 'r')
 	if (arg.m == True): matplotlib.pyplot.gca().invert_yaxis()
-	matplotlib.pyplot.ylabel(r"Auto F / Trad F", size = 14)
+	matplotlib.pyplot.ylabel(r"$\frac{F\ auto}{F\ trad} -1$", size = 20)
 	matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
 	
 
@@ -123,9 +123,10 @@ if __name__ == "__main__":
 	axes = matplotlib.pyplot.subplot(3, 1, 2)
 	
 	
+	ratioValues = [r - 1 for r in ratioValues]
 	matplotlib.pyplot.plot(x_values, ratioValues, 'g.', label = 'g')
 	if (arg.m == True): matplotlib.pyplot.gca().invert_yaxis()
-	matplotlib.pyplot.ylabel(r"Auto F / Trad F", size = 14)
+	matplotlib.pyplot.ylabel(r"$\frac{F\ auto}{F\ trad} - 1$", size = 20)
 
 
 	autoPhotometry = loadingSavingUtils.loadSingleChannelCSV(arg.datafiles[4])
@@ -160,10 +161,10 @@ if __name__ == "__main__":
 	
 	axes = matplotlib.pyplot.subplot(3, 1, 1)
 	
-	
-	matplotlib.pyplot.plot(x_values, ratioValues, 'b.', label = 'b')
+	ratioValues = [r - 1 for r in ratioValues]
+	matplotlib.pyplot.plot(x_values, differenceValues, 'b.', label = 'b')
 	if (arg.m == True): matplotlib.pyplot.gca().invert_yaxis()
-	matplotlib.pyplot.ylabel(r"Auto F / Trad F", size = 14)
+	matplotlib.pyplot.ylabel(r"$\frac{F\ auto}{F\ trad} - 1$", size = 20)
 
 	
 	matplotlib.pyplot.show()
