@@ -19,7 +19,6 @@ def loadFITSFile(filename, *arguments, **keywords):
 	
 	
 	allPhotometry = {}
-	
 	for c in colours:
 		headers = inputFile[CCDs[c]].header
 		data = inputFile[CCDs[c]].data
