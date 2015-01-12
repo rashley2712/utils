@@ -5,13 +5,14 @@ import datetime
 import datetime
 import sys
 import urllib2
-
+import os
 
 if __name__ == "__main__":
 	days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 	baseURL = "http://www.devicecloud.co.uk/crosswords/"
 	#baseURL = "http://static.guim.co.uk/crosswords/pdfs/"
-	dropboxPath = "/Users/rashley/Dropbox/Crosswords/"
+	homeDIR = os.getenv("HOME")
+	dropboxPath = homeDIR + "/Dropbox/Crosswords/"
 	namePrefix = "gdn.quick."
 	nameSuffix = ".pdf"
 
