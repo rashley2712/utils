@@ -9,8 +9,8 @@ import os
 
 if __name__ == "__main__":
 	days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-	baseURL = "http://www.devicecloud.co.uk/crosswords/"
-	#baseURL = "http://static.guim.co.uk/crosswords/pdfs/"
+	testBaseURL = "http://www.devicecloud.co.uk/crosswords/"
+	baseURL = "http://static.guim.co.uk/crosswords/pdfs/"
 	homeDIR = os.getenv("HOME")
 	dropboxPath = homeDIR + "/Dropbox/Crosswords/"
 	namePrefix = "gdn.quick."
@@ -18,9 +18,12 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Downloads the Guardian Quick crosswords and saves (and archives) them to a Dropbox folder.')
 	parser.add_argument('--date', default = 'today', type=str, help='Date for the crossword (default: today)')
-	 
+	parser.add_argument('--test', action='store_true', help='Use the test URL instead of the real Guardian URL.')
+ 
 	arg = parser.parse_args()
 	print arg
+	if arg.test:
+		baseURL = testBaseURL
 
 	todaysDate = datetime.datetime.now()
 	requestedDate = todaysDate
@@ -96,3 +99,5 @@ if __name__ == "__main__":
 	outputFile.write(pdfData)
 
 	outputFile.close()
+
+	print "Written the file to:", outputFilename
