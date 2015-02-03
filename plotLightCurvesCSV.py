@@ -21,7 +21,7 @@ if __name__ == "__main__":
 	parser.add_argument('--zero', action = 'store_true', help='Remove the mean value from the plots.... Centering around zero.')
 	parser.add_argument('--errors', action = 'store_true', help='Load and plot the error bars.')
 	parser.add_argument('--colourplots', nargs='+', default = ['gr'], type=str, help='Colour plots requested')
-	
+	parser.add_argument('--phaseplot', action = 'store_true', help = 'Do a phased plot')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -39,6 +39,7 @@ if __name__ == "__main__":
 		x_values = []
 		y_values = []
 		y_errors = []
+		epoch_values = []
 		comparisony_values = []
 		comparisony_errors = []
 		fluxRatioValues = []
@@ -47,7 +48,12 @@ if __name__ == "__main__":
 		magnitudeErrors = []
 		data = photometry[c]
 		for d in data:
-			x_values.append(d['MJD'])
+			if (arg.phaseplot):
+				x_values.append(d['Phase'])
+				epoch_values.append(d['Epoch'])
+			else:
+				x_values.append(d['MJD'])
+				
 			y_values.append(d['Counts_1'])
 			y_errors.append(d['Sigma_1'])
 			comparisony_values.append(d['Counts_2'])
@@ -56,13 +62,10 @@ if __name__ == "__main__":
 			fluxRatioError = fluxRatio * math.sqrt( (d['Sigma_1']/d['Counts_1'])**2 + (d['Sigma_2']/d['Counts_2'])**2 )
 			fluxRatioValues.append(fluxRatio)
 			fluxRatioErrors.append(fluxRatioError)
-			print fluxRatio, fluxRatioError
 			magnitude = -2.5 * math.log10(fluxRatio)
 			magnitudeError = -2.5 * fluxRatioError / math.log(10) / fluxRatio
 			magnitudeValues.append(magnitude)
 			magnitudeErrors.append(magnitudeError)
-			print fluxRatio, fluxRatioError, magnitude, magnitudeError
-			
 		
 		if (arg.bin!=1):
 			x_temp, y_values, y_errors = statsUtils.binDataWithErrors(x_values, y_values, y_errors, arg.bin)
@@ -73,13 +76,17 @@ if __name__ == "__main__":
 		magnitudeMean = numpy.mean(magnitudeValues)
 		magnitudeValues = [m - magnitudeMean for m in magnitudeValues]
 		
-		MJDoffset = int(min(x_values))
-		print "MJD offset:",MJDoffset
-		x_values = [x - MJDoffset for x in x_values]
+		if (not arg.phaseplot):
+			MJDoffset = int(min(x_values))
+			print "MJD offset:",MJDoffset
+			x_values = [x - MJDoffset for x in x_values]
 		
 		matplotlib.pyplot.figure(figsize=(12, 16))
 		axes = matplotlib.pyplot.subplot(4, 1, 4)
-		matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
+		if (not arg.phaseplot):
+			matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
+		else:
+			matplotlib.pyplot.xlabel('Phase' , size = 14)
 			
 		matplotlib.pyplot.errorbar(x_values, y_values, color=c, yerr=y_errors, fmt = '.', ecolor=c, capsize=0)
 		
@@ -113,63 +120,55 @@ if __name__ == "__main__":
 		axes = matplotlib.pyplot.subplot(len(colours), 1, len(colours) - index)
 		
 		x_values = plotData[c + 'Time']
-		y_values = plotData[c + 'Magnitudes']
-		y_errors = plotData[c + 'MagnitudeErrors']
+		if arg.m:
+			y_values = plotData[c + 'Magnitudes']
+			y_errors = plotData[c + 'MagnitudeErrors']
+		else: 
+			y_values = plotData[c + 'FluxRatios']
+			y_errors = plotData[c + 'FluxRatioErrors']
+			
 		
-		matplotlib.pyplot.gca().invert_yaxis()
+		if arg.m: 
+			matplotlib.pyplot.gca().invert_yaxis()
+			matplotlib.pyplot.ylabel(r"$%s_{mag}$"%filters[c], size = 18)
+		else:
+			matplotlib.pyplot.ylabel(r"$%s_{flux}$"%filters[c], size = 18)
+			 
 		matplotlib.pyplot.errorbar(x_values, y_values, color=c, yerr=y_errors, fmt = '.', ecolor=c, capsize=0)
-		matplotlib.pyplot.ylabel(r"$%s_{mag}$"%filters[c], size = 18)
-	
+		
 
-		if index==0: matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
+		if index==0: 
+			if (not arg.phaseplot):
+				matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
+			else:
+				matplotlib.pyplot.xlabel('Phase' , size = 14)
 
 	fig = matplotlib.pyplot.gcf()
 	matplotlib.pyplot.show()
 	fig.savefig('lightcurves.eps',dpi=100, format='eps')
 	fig.savefig('lightcurves.png',dpi=100, format='png')
-	
-	filename = arg.outcsv + "_r.csv"
-	data = []
-	times = plotData['rTime']
-	fluxRatioValues = plotData['rFluxRatios']
-	fluxRatioErrors = plotData['rFluxRatioErrors']
-	for index, time in enumerate(times):
-		record = {}
-		record['MJD'] = time
-		record['fluxRatio'] = fluxRatioValues[index]
-		record['fluxRatioError'] = fluxRatioErrors[index]
-		data.append(record)
-	loadingSavingUtils.writeSingleChannelCSV(filename, data)
-	
-	filename = arg.outcsv + "_g.csv"
-	data = []
-	times = plotData['gTime']
-	fluxRatioValues = plotData['gFluxRatios']
-	fluxRatioErrors = plotData['gFluxRatioErrors']
-	for index, time in enumerate(times):
-		record = {}
-		record['MJD'] = time
-		record['fluxRatio'] = fluxRatioValues[index]
-		record['fluxRatioError'] = fluxRatioErrors[index]
-		data.append(record)
-	loadingSavingUtils.writeSingleChannelCSV(filename, data)
-	
-	filename = arg.outcsv + "_b.csv"
-	data = []
-	times = plotData['bTime']
-	fluxRatioValues = plotData['bFluxRatios']
-	fluxRatioErrors = plotData['bFluxRatioErrors']
-	for index, time in enumerate(times):
-		record = {}
-		record['MJD'] = time
-		record['fluxRatio'] = fluxRatioValues[index]
-		record['fluxRatioError'] = fluxRatioErrors[index]
-		data.append(record)
-	loadingSavingUtils.writeSingleChannelCSV(filename, data)
+
+	for c in colours:
+
+		filename = arg.outcsv + "_" + c + ".csv"
+		data = []
+		times = plotData[c + 'Time']
+		fluxRatioValues = plotData[c + 'FluxRatios']
+		fluxRatioErrors = plotData[c + 'FluxRatioErrors']
+		for index, time in enumerate(times):
+			record = {}
+			record['MJD'] = time
+			record['fluxRatio'] = fluxRatioValues[index]
+			record['fluxRatioError'] = fluxRatioErrors[index]
+			data.append(record)
+		loadingSavingUtils.writeSingleChannelCSV(filename, data)
 		
 		
 	""" Now do the colour plot(s)
 	"""
+	if len(arg.channels)==1:
+		sys.exit()
+	
 	numPlots = len(arg.colourplots)
 	
 	matplotlib.pyplot.figure(figsize=(12, numPlots*4 + 1))

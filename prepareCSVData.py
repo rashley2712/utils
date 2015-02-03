@@ -8,9 +8,13 @@ import astropy.stats
 import loadingSavingUtils
 
 	
-def appendPhotometry(existing, new):
+def appendPhotometry(existing, new,  **keywords):
 	print "Appending photometry"
 	colours = ['r', 'g', 'b']
+	for kw in keywords.keys(): 
+		if kw=='colours':
+			colours = keywords[kw]
+	
 	for c in colours:
 		photometry = existing[c]
 		newPhotometry = new[c]
@@ -33,7 +37,7 @@ if __name__ == "__main__":
 	 
 	arg = parser.parse_args()
 	print arg
-	colours = arg.channels
+	coloursRequested = arg.channels
 		
 	# Find last '.' in the filename and grab the file extension
 	filename = str(arg.datafile[0])
@@ -49,25 +53,24 @@ if __name__ == "__main__":
 	if filetype == 'unknown':
 		print "Sorry that filetype is unknown. Try CSV or FITS."
 		
-	
 	if filetype == 'fits':
 		print "Loading", filename
-		photometry = loadingSavingUtils.loadFITSFile(filename, colours = colours)
+		photometry = loadingSavingUtils.loadFITSFile(filename, colours = coloursRequested)
 		
 		if (len(arg.datafile)>1):
 			additionalFiles = arg.datafile[1:]
 			for newFilename in additionalFiles:
 				print "...also loading", newFilename
-				additionalPhotometry = loadingSavingUtils.loadFITSFile(newFilename)
+				additionalPhotometry = loadingSavingUtils.loadFITSFile(newFilename, colours = coloursRequested)
 				
-				photometry = appendPhotometry(photometry, additionalPhotometry)
+				photometry = appendPhotometry(photometry, additionalPhotometry, colours = coloursRequested)
 	
 	
-	for c in colours:
+	for c in coloursRequested:
 		photometry[c], numRemoved = loadingSavingUtils.removeNegativeValues(photometry[c])
 		if numRemoved>0: print "..removed %d negative values from %s."%(numRemoved, c)
 	
-	for c in colours:
+	for c in coloursRequested:
 		photometry[c], numRemoved = loadingSavingUtils.removeZeroValues(photometry[c])
 		if numRemoved>0: print "..removed %d zero values from %s."%(numRemoved, c)
 	
@@ -76,7 +79,7 @@ if __name__ == "__main__":
 		outputFilename = filenameNoExtension + ".csv"
 	else:
 		outputFilename = arg.outfile
-	loadingSavingUtils.writeCSV(outputFilename, photometry, colours = colours)
+	loadingSavingUtils.writeCSV(outputFilename, photometry, colours = coloursRequested)
 	
 	
 	
