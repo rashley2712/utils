@@ -37,7 +37,8 @@ set mean = `grep Mean zzz_istat.tmp`
 set mean = $mean[3]
 
 icdiv mflatfit $mean mflatnorm
-idiv mflatnorm mflatnorm unit
+isub mflatnorm mflatnorm zero
+icadd zero 1 unit
 idiv unit mflatnorm balance
 
 rm zzz_istat.tmp

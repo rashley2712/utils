@@ -10,7 +10,6 @@ kappa >& /dev/null
 figaro >& /dev/null
 pamela >& /dev/null
 
-shift
 
 if ( ! -e fitsfiles ) mkdir fitsfiles
 if ( ! -e data ) mkdir data
