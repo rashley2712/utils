@@ -5,8 +5,10 @@ import matplotlib.image as mpimg
 import argparse, sys
 import astropy.io.fits
 import astropy.stats
+import astropy.time
 import timeClasses
-
+import helcorr
+import photometryClasses
 
 def findMatchingTime(data, target):
 	reading = (0, -1)
@@ -106,7 +108,6 @@ if __name__ == "__main__":
 	
 	CCD = "CCD 1"
 	
-	sys.exit()
 	
 	for datafile in arg.datafiles:
 	
@@ -129,15 +130,44 @@ if __name__ == "__main__":
 				zeros = reading.index(0)
 			except ValueError:
 				reds.append(reading)
-				
-			
-		
+	
+		times = [ r[0] for r in reds]
+		timeDescription = "MJD"
+		values = [ r[1]/r[2] for r in reds]
+		valueDescription = "Counts_1/Counts_2"
+		slot = photometryClasses.slotObject()
 			
 		inputFile.close()
 	
 	
 	""" Data is now loaded 
 	"""
+	
+	if hasEphemeris:
+		for reading in reds:
+			MJD = reading[0]
+			JD = MJD + 2400000.5
+			obsLong = -98.48
+			obsLat = 18.57
+			obsAlt = 2457.
+			
+			#location = (-1.0 * obsLong, obsLat, obsAlt)
+			#aTime = astropy.time.Time(MJD,  format='mjd', scale='utc', location = location)
+			#print MJD, aTime.jd, aTime.iso
+			ra = ephemeris.ra /15.
+			dec = ephemeris.dec
+			#print "Input ra", ra, "dec", dec
+			print "MJD:", MJD, "JD:", JD, "Obs:(", obsLat, obsLong, ")"	,
+			result = helcorr.helcorr(obsLong, obsLat, obsAlt, ra, dec, JD, False)
+			HJD = result[1]
+			#HJD =JD
+			print "HJD:", HJD
+			reading[0] = float(HJD)
+	
+			phase = ephemeris.getPhase(HJD)
+			reading[0] = phase
+			
+	
 	
 		
 	x_values = []
@@ -158,21 +188,28 @@ if __name__ == "__main__":
 	if (arg.bin!=1):
 		x_values, y_values = binData(x_values, y_values, arg.bin)
 	
-	
-	MJDoffset = int(min(x_values))
-	print "MJD offset:",MJDoffset
+	if not hasEphemeris:
+		MJDoffset = int(min(x_values))
+		print "MJD offset:",MJDoffset
 	
 	if (arg.m == True):
 		mean = numpy.mean(y_values)
 		y_values = [y - mean for y in y_values]
 	
-	x_values = [x - MJDoffset for x in x_values]
+	if not hasEphemeris:
+		x_values = [x - MJDoffset for x in x_values]
 	
 	
-	matplotlib.pyplot.figure(figsize=(12, 8))
+	matplotlib.pyplot.figure(figsize=(22, 8))
 		
 	matplotlib.pyplot.plot(x_values, y_values, 'r.')
-	matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
+	if not hasEphemeris:
+		matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
+	else:
+		matplotlib.pyplot.xlabel('Phase', size = 14)
+		matplotlib.pyplot.xlim(xmin = -0.5, xmax = 0.5)
+		
+		
 	ylabel_str = "$"
 	if len(fitsColumns)==1: ylabel_str+= fitsColumns[0]
 	else: ylabel_str+= fitsColumns[0] + " / " + fitsColumns[1]
@@ -197,6 +234,7 @@ if __name__ == "__main__":
 	fig.savefig('lightcurves.eps',dpi=100, format='eps')
 	fig.savefig('lightcurves.png',dpi=100, format='png')
 	
+	sys.exit()
 	# Now try a two-colour plot....
 	x_values = colourPlotData['times']
 	x_values = [x - MJDoffset for x in x_values]

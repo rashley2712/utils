@@ -1,6 +1,32 @@
 import numpy
 import json
-import generalUtils
+
+class slotObject:
+	""" A class containing time-series photometry for an object... similar in concept to Tom Marsh's slot in his Molly software
+	"""
+	def __init__(self):
+		self.channels = []   # A list of channel descriptions (eg 'red', 'green', 'blue')
+		self.target = "None" # Name of the target object
+		self.object = None   # An object of class targetObject containing meta-data about the target
+		self.photometry = {}
+		
+	def addPhotometry(self, photometry, channel):
+		self.photometry['channel'] = photometry
+		self.channels.append(channel)
+		
+class photometryObject:
+	def __init__(self):
+		self.times = []
+		self.values = []
+		self.timeDescription = "Unknown"
+		self.valueDescription = "Unknown"
+		
+	def setPhotometry(self, times, values, timeDescription, valueDescription):
+		self.times = times
+		self.values = values
+		self.timeDescription = timeDescription
+		self.valueDescription = valueDescription
+		
 
 class ephemerisObject:
 	def __init__(self):
@@ -20,7 +46,6 @@ class ephemerisObject:
 		HJD_difference = HJD - self.T0
 		#norbits = int( HJD_difference / self.Period)
 		phase = (HJD_difference % self.Period) / self.Period
-		if phase>0.5: phase = phase - 1.0
 		return phase
 		
 	def getOrbits(self, HJD):
