@@ -7,8 +7,9 @@ import astropy.io.fits
 import astropy.stats
 import astropy.time
 import timeClasses
-import helcorr
+#import helcorr
 import photometryClasses
+import trm.sla
 
 def findMatchingTime(data, target):
 	reading = (0, -1)
@@ -147,7 +148,8 @@ if __name__ == "__main__":
 		for reading in reds:
 			MJD = reading[0]
 			JD = MJD + 2400000.5
-			obsLong = -98.48
+			JDOffset = 2400000.5
+			obsLong = 98.48
 			obsLat = 18.57
 			obsAlt = 2457.
 			
@@ -156,69 +158,119 @@ if __name__ == "__main__":
 			#print MJD, aTime.jd, aTime.iso
 			ra = ephemeris.ra /15.
 			dec = ephemeris.dec
-			#print "Input ra", ra, "dec", dec
-			print "MJD:", MJD, "JD:", JD, "Obs:(", obsLat, obsLong, ")"	,
-			result = helcorr.helcorr(obsLong, obsLat, obsAlt, ra, dec, JD, False)
-			HJD = result[1]
+			#print "Input ra", ra, "dec", dec, 
+			#print "MJD:", MJD, "JD:", JD, "Obs:(", obsLat, obsLong, ")"	
+			
+			result = trm.sla.utc2tdb(MJD, obsLong, obsLat, obsAlt, ra, dec)
+			#HJD = result[1]
+			hutc = result[3]
+			HJD = hutc + JDOffset
 			#HJD =JD
-			print "HJD:", HJD
+			#print "HJD:", HJD
 			reading[0] = float(HJD)
 	
 			phase = ephemeris.getPhase(HJD)
 			reading[0] = phase
-			
+			norbits = ephemeris.getOffsetOrbits(HJD)
+			print norbits
+			reading.append(norbits)
 	
 	
-		
+	
+	dataSet = []	
 	x_values = []
 	y_values = []
+	error_values = []
+	orbit_number = reds[0][-1]
 	for r in reds:
+		print r, orbit_number - r[-1]
+		if r[-1] != orbit_number:
+			data = {}
+			data['x_values'] = x_values
+			data['y_values'] = y_values
+			data['errors'] = error_values
+			dataSet.append(data)
+			x_values = []
+			y_values = []
+			error_values = []
+			orbit_number = r[-1]
 		x_values.append(r[0])
 		if len(fitsColumns)>1:
 			if arg.m == True:
 				y_values.append(-2.5 * math.log10(r[1]/r[2]))
 			else:
-				y_values.append(r[1]/r[2])
+				relativeFlux = r[1]/r[2]
+				y_values.append(relativeFlux)
+				if (arg.errors):
+					error = relativeFlux * math.sqrt( (r[3]/r[1])**2 + (r[4]/r[2])**2 ) 
+					error_values.append(error)
+		
 		else:
 			y_values.append(r[1])
-		if (arg.errors):
-			errorValues = r[3]
+	data = {}
+	data['x_values'] = x_values
+	data['y_values'] = y_values
+	data['errors'] = error_values
+	dataSet.append(data)
+
 		
+	print "Separate orbits:", len(dataSet)
 	
-	if (arg.bin!=1):
-		x_values, y_values = binData(x_values, y_values, arg.bin)
-	
-	if not hasEphemeris:
-		MJDoffset = int(min(x_values))
-		print "MJD offset:",MJDoffset
-	
-	if (arg.m == True):
-		mean = numpy.mean(y_values)
-		y_values = [y - mean for y in y_values]
-	
-	if not hasEphemeris:
-		x_values = [x - MJDoffset for x in x_values]
-	
-	
-	matplotlib.pyplot.figure(figsize=(22, 8))
+	#################################################
+	# Start the plot
+	#################################################
+	matplotlib.pyplot.figure(figsize=(18, 14))
 		
-	matplotlib.pyplot.plot(x_values, y_values, 'r.')
-	if not hasEphemeris:
-		matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
-	else:
-		matplotlib.pyplot.xlabel('Phase', size = 14)
-		matplotlib.pyplot.xlim(xmin = -0.5, xmax = 0.5)
+	colours = ['r', 'g', 'k', 'b', 'y']
+	colourIndex = 0
+	colour = colours[colourIndex]
+	offSet = 2
+	yOffSet = 0
+	for d in dataSet:
+		x_values = d['x_values']
+		y_values = d['y_values']
+		y_values = [y + yOffSet for y in y_values]
+		yOffSet += offSet
+		error_values = d['errors']
+		if (arg.bin!=1):
+			x_values, y_values = binData(x_values, y_values, arg.bin)
 		
+		if not hasEphemeris:
+			MJDoffset = int(min(x_values))
+			print "MJD offset:",MJDoffset
 		
-	ylabel_str = "$"
-	if len(fitsColumns)==1: ylabel_str+= fitsColumns[0]
-	else: ylabel_str+= fitsColumns[0] + " / " + fitsColumns[1]
-	ylabel_str+= "$"
-	matplotlib.pyplot.ylabel(ylabel_str, size = 16)
-	if (arg.m == True): 
-		matplotlib.pyplot.gca().invert_yaxis()
-		matplotlib.pyplot.ylabel(r"$i_{mag}$", size = 18)
-	
+		if (arg.m == True):
+			mean = numpy.mean(y_values)
+			y_values = [y - mean for y in y_values]
+		
+		if not hasEphemeris:
+			x_values = [x - MJDoffset for x in x_values]
+		
+			
+		if (not arg.errors):
+			matplotlib.pyplot.plot(x_values, y_values, 'r.')
+		else:
+			matplotlib.pyplot.errorbar(x_values, y_values, color=colour, yerr=error_values, fmt = '.', ecolor=colour, capsize=0)
+		if not hasEphemeris:
+			matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
+		else:
+			matplotlib.pyplot.xlabel('Phase', size = 14)
+			matplotlib.pyplot.xlim(xmin = -0.5, xmax = 0.5)
+			
+			
+		ylabel_str = "$"
+		if len(fitsColumns)==1: ylabel_str+= fitsColumns[0]
+		else: ylabel_str+= fitsColumns[0] + " / " + fitsColumns[1]
+		ylabel_str+= "$"
+		matplotlib.pyplot.ylabel(ylabel_str, size = 16)
+		if (arg.m == True): 
+			matplotlib.pyplot.gca().invert_yaxis()
+			matplotlib.pyplot.ylabel(r"$i_{mag}$", size = 18)
+		
+		colourIndex+= 1
+		colourIndex = colourIndex % len(colours)
+		colour = colours[colourIndex]
+		
 
 	# Now check everything with the defaults:
 	fig = matplotlib.pyplot.gcf()

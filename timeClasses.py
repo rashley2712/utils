@@ -28,6 +28,11 @@ class ephemerisObject:
 		norbits = int( HJD_difference / self.Period)
 		return norbits
 		
+	def getOffsetOrbits(self, HJD):
+		HJD_difference = HJD - self.T0 - self.Period/2.0
+		norbits = int( HJD_difference / self.Period)
+		return norbits
+		
 	def loadFromFile(self, filename):
 		file = open(filename, 'r')
 		for line in file:
