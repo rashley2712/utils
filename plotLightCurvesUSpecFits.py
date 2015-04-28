@@ -215,6 +215,8 @@ if __name__ == "__main__":
 
 		
 	print "Separate orbits:", len(dataSet)
+	print "Testing PyCharm"
+
 	
 	#################################################
 	# Start the plot
@@ -341,6 +343,6 @@ if __name__ == "__main__":
 	fig = matplotlib.pyplot.gcf()
 	
 	matplotlib.pyplot.show()
-	fig.savefig('colourcurves.eps',dpi=100, format='eps')
-	fig.savefig('colourcurves.png',dpi=100, format='png')
+	fig.savefig('colourcurves.eps', dpi=100, format='eps')
+	fig.savefig('colourcurves.png', dpi=100, format='png')
 	
