@@ -215,6 +215,8 @@ if __name__ == "__main__":
 
 		
 	print "Separate orbits:", len(dataSet)
+	print "Testing PyCharm"
+
 	
 	#################################################
 	# Start the plot
