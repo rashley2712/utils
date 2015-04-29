@@ -1,38 +1,63 @@
 #!/usr/bin/env python
 import sys
-import cmd
 import commandModule
 import astropy.io.fits
 import argparse
 
 def loadFromFITSFile(filename):
-	print "Loading:", filename
 	
 	inputFile = astropy.io.fits.open(filename)
 	
 	fileInfo = inputFile.info()
 	
-	colours = ['r', 'g', 'b']
-	CCDs = { 'r': 'CCD 1', 'g': 'CCD 2', 'b': 'CCD 3'}
+	print fileInfo
 	
-	c = colours[0]
+	CCD = 'CCD 1'
+	fitsColumns = ["Counts_1"]
 	
-	headers = inputFile[CCDs[c]].header
-	data = inputFile[CCDs[c]].data
-	columns = inputFile[CCDs[c]].columns
-		
+	headers = inputFile[CCD].header
+	
+	data = inputFile[CCD].data
+	columns = inputFile[CCD].columns
+	
+	allData = []
+	
+	for index, item in enumerate(data):
+		reading = {}
+		reading['frame'] = index
+		for col in columns.names:
+			value = item[columns.names.index(col)]
+			reading[col] = (value)
+		allData.append(reading)
+	
 	inputFile.close()
 
+	rows = len(allData)
+	print "Read %d lines with the following columns, %s"%(rows, str(columns.names))			
+	
+	
+	
 
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='General purpose tools for loading, manipulating and plotting UCAM photometry data.')
-	parser.add_argument('-s', '--script', type=str, help='The name of a script file containing commands to execute.')
+	parser = argparse.ArgumentParser(description='General purpose tools for loading, manipulating and plotting ULTRACAM and ULTRASPEC photometry data.')
+	parser.add_argument('script', type=str, nargs='?', help='The name of a script file containing commands to execute.')
 	arg = parser.parse_args()
 	print arg
 	
 	commands = commandModule.photCommands
+	
+	if arg.script != None:
+		input = open(arg.script, 'rt')
+		print "Running the commands found in :", arg.script
+		try:
+			commands(stdin=input).cmdloop()
+		finally:
+			input.close()
+	
+	commands.prompt = 'photmanto> '
+	commands.use_rawinput = True
 	commands().cmdloop()
 
 	sys.exit()
