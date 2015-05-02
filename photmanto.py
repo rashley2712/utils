@@ -29,11 +29,14 @@ def loadFromFITSFile(filename):
 			value = item[columns.names.index(col)]
 			reading[col] = (value)
 		allData.append(reading)
+		sys.stdout.write("\rReading line %d"%index)
+		sys.stdout.flush()
 	
 	inputFile.close()
 
 	rows = len(allData)
-	print "Read %d lines with the following columns, %s"%(rows, str(columns.names))			
+	sys.stdout.write("\rRead %d lines with the following columns, %s\n"%(rows, str(columns.names)))
+	sys.stdout.flush()
 	
 	
 	
