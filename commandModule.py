@@ -1,4 +1,4 @@
-import cmd
+import cmd, sys
 import photmanto
 
 class photCommands(cmd.Cmd):
@@ -24,14 +24,26 @@ class photCommands(cmd.Cmd):
 			print "Please specify a filename..."
 			return
 		photmanto.loadFromFITSFile(filename)
+		return
 	
 	def do_NOP(self, line):
 		return 
+		
+	def do_test(self, line):
+		print "Performing the test command [%s]"%line
+		return
+		
+	def do_show(self, line):
+		""" list [slot numbers]
+		Show info about what's in the slots """
+		photmanto.listAllSlots(line)
+		return
 	
 	def do_quit(self, line):
 		""" quit 
 		Leave photmanto and exit to the shell """
 		print "Leaving photmanto. Goodbye."
+		sys.exit()
 		return True
 	
 	def do_EOF(self, line):

@@ -1,6 +1,23 @@
 import numpy
 import json
 
+
+class slotCollection:
+	def __init__(self):
+		self.slotList = []
+		
+	def addSlot(self, slot):
+		self.slotList.append(slot)
+		return len(self.slotList)
+		
+	def getSlotInfo(self):
+		retString = "Slot info...\n"
+		for index, s in enumerate(self.slotList):
+			retString+= "%d : %s"%(index, s.target) + "\n"
+		return retString
+			
+		
+
 class slotObject:
 	""" A class containing time-series photometry for an object... similar in concept to Tom Marsh's slot in his Molly software
 	"""
@@ -19,13 +36,20 @@ class photometryObject:
 		self.times = []
 		self.values = []
 		self.timeDescription = "Unknown"
-		self.valueDescription = "Unknown"
+		self.valueDescriptions = []
+		
+	def addValueDescription(self, description):
+		self.valueDescriptions.append(description)
+		return len(self.valueDescriptions)
 		
 	def setPhotometry(self, times, values, timeDescription, valueDescription):
 		self.times = times
 		self.values = values
 		self.timeDescription = timeDescription
 		self.valueDescription = valueDescription
+		
+	def addData(self, data):
+		self.values.append(data)
 		
 
 class ephemerisObject:
