@@ -4,20 +4,24 @@ import commandModule
 import astropy.io.fits
 import argparse
 import photometryClasses
+import generalUtils
+import photmantoPlotting
 
 slots = photometryClasses.slotCollection()
 
 def loadFromFITSFile(filename):
 	
 	inputFile = astropy.io.fits.open(filename)
-	
-	fileInfo = inputFile.info()
-	
-	print fileInfo
+	#fileInfo = inputFile.info()
 	
 	CCD = 'CCD 1'
 	
-	print inputFile[0].header
+	headerBlock = str(inputFile[0].header)
+	
+	# Get some header info
+	targetName = generalUtils.getKeyValueFromFITSHeader('target', headerBlock)
+	filterName = generalUtils.getKeyValueFromFITSHeader('filter', headerBlock)
+	runName = generalUtils.getKeyValueFromFITSHeader('Data file name', headerBlock, terminator=' ')
 	headers = inputFile[CCD].header
 	
 	data = inputFile[CCD].data
@@ -27,14 +31,14 @@ def loadFromFITSFile(filename):
 	
 	for index, item in enumerate(data):
 		allData.append(item)
-		sys.stdout.write("\rReading line %d"%index)
-		sys.stdout.flush()
+		# sys.stdout.write("\rReading line %d"%index)
+		# sys.stdout.flush()
 		# if index>100: break
 	
 	inputFile.close()
 	rows = len(allData)
-	sys.stdout.write("\rRead %d lines with the following columns, %s\n"%(rows, str(columns.names)))
-	sys.stdout.flush()
+	# sys.stdout.write("\rRead %d lines with the following columns, %s\n"%(rows, str(columns.names)))
+	# sys.stdout.flush()
 	
 	# Count the number of apertures in this data (using this method, the max is 9!)
 	maxApertureIndex = 0
@@ -45,14 +49,14 @@ def loadFromFITSFile(filename):
 			apertureIndex = 0
 		if apertureIndex > maxApertureIndex:
 			maxApertureIndex = apertureIndex
-	print "This data file has %d apertures."%(maxApertureIndex)
+	# print "This data file has %d apertures."%(maxApertureIndex)
 	
 	MJDIndex = columns.names.index('MJD')
 	MJD = [ data[MJDIndex] for data in allData]
 	for aperture in range(1, maxApertureIndex+1):
 		print "Processing aperture data:", aperture
 		photometry = photometryClasses.photometryObject()
-		photometry.time = MJD
+		photometry.times = MJD
 		photometry.timeDescription = 'MJD'
 		photometry.addValueDescription('MJD')
 		exposureIndex = columns.names.index('Expose')
@@ -80,10 +84,15 @@ def loadFromFITSFile(filename):
 		photometry.addData(measurementArray)
 		slot = photometryClasses.slotObject()
 		slot.channels = ['ULTRASPEC']
-		slot.target = "Test"
+		slot.target = targetName
+		slot.filter = filterName
+		slot.aperture = aperture
+		slot.headers = headerBlock
+		slot.runName = runName
+		slot.photometry = photometry
 		numSlots = slots.addSlot(slot)
-		print photometry.valueDescriptions, measurementArray[0:3]
-		print "Added the data to a new slot. Total number of slots is now: %d"%(numSlots)
+		# print "Added the data to a new slot. Total number of slots is now: %d"%(numSlots)
+		print slot
 		
 	return
 
@@ -91,6 +100,11 @@ def listAllSlots(options):
 	slotInfo = slots.getSlotInfo()
 	print slotInfo
 	return
+	
+def plot(slotnumber):
+	slot = slots.getSlot(slotnumber)
+	photmantoPlotting.pgplot(slot)
+	return 
 	
 		
 if __name__ == '__main__':

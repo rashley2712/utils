@@ -23,4 +23,17 @@ def convertMJDtoHJD(MJD, coords):
 	ra = coords[0]
 	dec = coords[1]
 	
+def getKeyValueFromFITSHeader(key, headerBlock, terminator='/'):
+	""" Get the value from a 'key' = 'value' comment in a FITS header. Returns 'Unknown' if not found"""
+	
+	valueIndex = headerBlock.find(key)
+	if valueIndex != -1:
+		valueIndex = headerBlock.find('=', valueIndex) + 2
+		endIndex = headerBlock.find(terminator, valueIndex)
+		value = headerBlock[valueIndex:endIndex]
+		value = value.rstrip()
+	else:
+		value = "Unknown"
+		
+	return value
 	

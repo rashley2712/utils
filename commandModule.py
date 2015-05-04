@@ -25,6 +25,12 @@ class photCommands(cmd.Cmd):
 			return
 		photmanto.loadFromFITSFile(filename)
 		return
+		
+	def do_plot(self, line):
+		""" plot [slot_number]
+		Plot the contents of the slot """
+		photmanto.plot(0)
+		return
 	
 	def do_NOP(self, line):
 		return 

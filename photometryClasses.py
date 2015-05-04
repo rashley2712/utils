@@ -13,10 +13,12 @@ class slotCollection:
 	def getSlotInfo(self):
 		retString = "Slot info...\n"
 		for index, s in enumerate(self.slotList):
-			retString+= "%d : %s"%(index, s.target) + "\n"
+			retString+= "%d: %s"%(index, str(s)) + "\n"
 		return retString
-			
 		
+	def getSlot(self, number):
+		return self.slotList[number]
+			
 
 class slotObject:
 	""" A class containing time-series photometry for an object... similar in concept to Tom Marsh's slot in his Molly software
@@ -25,11 +27,22 @@ class slotObject:
 		self.channels = []   # A list of channel descriptions (eg 'red', 'green', 'blue')
 		self.target = "None" # Name of the target object
 		self.object = None   # An object of class targetObject containing meta-data about the target
-		self.photometry = {}
+		self.photometry = []
+		self.headers = "No header information loaded."
+		self.filter = "n/a"
+		self.aperture = 0
+		self.runName = ""	
 		
-	def addPhotometry(self, photometry, channel):
-		self.photometry['channel'] = photometry
-		self.channels.append(channel)
+	def getColumn(self, columnName):
+		valueDescriptions = self.photometry.valueDescriptions
+		index = valueDescriptions.index(columnName)
+		print columnName, " is found at ", index
+		data = [v[index] for v in self.photometry.values]
+		return data
+		
+	def __str__(self):
+		retStr = "Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d"%(self.runName, self.target, self.filter, self.aperture, self.photometry.dataLength)
+		return retStr
 		
 class photometryObject:
 	def __init__(self):
@@ -37,6 +50,7 @@ class photometryObject:
 		self.values = []
 		self.timeDescription = "Unknown"
 		self.valueDescriptions = []
+		self.dataLength = 0
 		
 	def addValueDescription(self, description):
 		self.valueDescriptions.append(description)
@@ -49,7 +63,9 @@ class photometryObject:
 		self.valueDescription = valueDescription
 		
 	def addData(self, data):
-		self.values.append(data)
+		self.values+= data
+		self.dataLength = len(self.values)
+		return self.dataLength
 		
 
 class ephemerisObject:
