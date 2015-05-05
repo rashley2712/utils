@@ -1,6 +1,6 @@
 import numpy
 import json
-
+		
 
 class slotCollection:
 	def __init__(self):

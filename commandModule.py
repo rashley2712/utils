@@ -1,5 +1,6 @@
 import cmd, sys, os
 import photmanto
+import readline
 
 class photCommands(cmd.Cmd):
 	"""Simple command processor example."""
@@ -17,14 +18,41 @@ class photCommands(cmd.Cmd):
 			return "NOP"
 		return line
 		
-	def do_load(self, filename):
-		""" load [filename]
-		Load a file of photometry data """
+	def do_load(self, line):
+		""" load [filename] [maxrows]
+		Load a file of photometry data.
+		Specify maxrows if you want to load less than the full data set. """
+		params = line.split(' ')
+		filename = params[0]
+		if len(params)>1:
+			try:
+				maxRows = int(params[1])
+			except ValueError:
+				maxRows = 0
+		else:
+			maxRows = 0
 		if filename == '':
 			print "Please specify a filename..."
 			return
-		photmanto.loadFromFITSFile(filename)
+		photmanto.loadFromFITSFile(filename, maxRows)
 		return
+		
+	def do_set(self, line):
+		""" set [variable] [state]
+		Set a state variable to a specific value  (eg "set plot pgplot"). """
+		params = line.split(' ')
+		if len(params)<2: return
+		variable = params[0]
+		value = params[1]
+		photmanto.setState(variable, value)
+		return 
+		
+	def do_env(self, line):
+		""" env
+		List the current environment variables. """
+		photmanto.showState()
+		return
+		
 		
 	def do_plot(self, line):
 		""" plot [slot_number]
@@ -60,7 +88,9 @@ class photCommands(cmd.Cmd):
 		print output
 		self.last_output = output
 		
-	def empty
+	def emptyline(self):
+		print "Null command"
+		return True
 	
 	def do_EOF(self, line):
 		return True

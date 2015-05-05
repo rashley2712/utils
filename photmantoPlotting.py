@@ -1,18 +1,22 @@
 import matplotlib.pyplot
 import ppgplot, numpy 
 
-def matplotlibplot(slot):
+def matplot(slot):
 	print "We are about to plot: %s"%(slot)
-	
-	figure = matplotlib.pyplot.figure(figsize=(12, 8))
+	if plotterHandle!=None:
+		figure = plotterHandle
+		matplotlib.pyplot.figure(figure)
+	else:
+		figure = matplotlib.pyplot.figure(figsize=(12, 8))
 	
 	xValues = slot.photometry.times
 	yValues = slot.getColumn("Counts")
 	
 	matplotlib.pyplot.plot(xValues, yValues, 'r.')
-	
-	matplotlib.pyplot.show()
-	return
+	matplotlib.pyplot.ioff()
+	matplotlib.pyplot.draw()
+	matplotlib.pyplot.show(block=False)
+	return figure
 	
 def pgplot(slot):
 	print "We are about to plot: %s"%(slot)
