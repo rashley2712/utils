@@ -1,4 +1,4 @@
-import cmd, sys
+import cmd, sys, os
 import photmanto
 
 class photCommands(cmd.Cmd):
@@ -52,6 +52,15 @@ class photCommands(cmd.Cmd):
 		print "Leaving photmanto. Goodbye."
 		sys.exit()
 		return True
+	
+	def do_shell(self, line):
+		"Run a shell command"
+		print "running shell command:", line
+		output = os.popen(line).read()
+		print output
+		self.last_output = output
+		
+	def empty
 	
 	def do_EOF(self, line):
 		return True
