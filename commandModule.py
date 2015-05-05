@@ -29,7 +29,8 @@ class photCommands(cmd.Cmd):
 	def do_plot(self, line):
 		""" plot [slot_number]
 		Plot the contents of the slot """
-		photmanto.plot(0)
+		slotNumber = int(line)
+		photmanto.plot(slotNumber)
 		return
 	
 	def do_NOP(self, line):

@@ -1,5 +1,5 @@
 import matplotlib.pyplot
-import ppgplot
+import ppgplot, numpy 
 
 def matplotlibplot(slot):
 	print "We are about to plot: %s"%(slot)
@@ -20,6 +20,7 @@ def pgplot(slot):
 	lightcurveView = ppgplot.pgopen('/xs')
 	
 	xValues = slot.photometry.times
+	xValues = numpy.arange(0, len(xValues))
 	yValues = slot.getColumn("Counts")
 	
 	ppgplot.pgenv(min(xValues), max(xValues), min(yValues), max(yValues), 0, 0)
