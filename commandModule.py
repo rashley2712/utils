@@ -18,6 +18,13 @@ class photCommands(cmd.Cmd):
 			return "NOP"
 		return line
 		
+	def do_save(self, line):
+		""" save [filename]
+		Save the entire session. If no filename is specified then a filename is generated, using format 'YYYY-MM-DD-HH-MM_photmanto.json'."""
+		filename = line.split(' ')[0]
+		photmanto.saveSession(filename)
+		return
+		
 	def do_load(self, line):
 		""" load [filename] [maxrows]
 		Load a file of photometry data.
@@ -34,6 +41,11 @@ class photCommands(cmd.Cmd):
 		if filename == '':
 			print "Please specify a filename..."
 			return
+			
+		if not os.path.exists(filename):
+			print "Could not find %s. Try '!ls' to list local files."%filename
+			return
+			
 		photmanto.loadFromFITSFile(filename, maxRows)
 		return
 		
@@ -62,21 +74,25 @@ class photCommands(cmd.Cmd):
 		return
 	
 	def do_NOP(self, line):
+		"""NOP
+		Do nothing."""
 		return 
 		
 	def do_test(self, line):
+		""" test
+		Used for debugging. """
 		print "Performing the test command [%s]"%line
 		return
 		
 	def do_show(self, line):
 		""" list [slot numbers]
-		Show info about what's in the slots """
+		Show info about what's in the slots. """
 		photmanto.listAllSlots(line)
 		return
 	
 	def do_quit(self, line):
 		""" quit 
-		Leave photmanto and exit to the shell """
+		Leave photmanto and exit to the shell. """
 		print "Leaving photmanto. Goodbye."
 		sys.exit()
 		return True
@@ -89,8 +105,7 @@ class photCommands(cmd.Cmd):
 		self.last_output = output
 		
 	def emptyline(self):
-		print "Null command"
-		return True
+		return
 	
 	def do_EOF(self, line):
 		return True

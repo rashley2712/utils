@@ -36,14 +36,26 @@ class slotObject:
 	def getColumn(self, columnName):
 		valueDescriptions = self.photometry.valueDescriptions
 		index = valueDescriptions.index(columnName)
-		print columnName, " is found at ", index
 		data = [v[index] for v in self.photometry.values]
 		return data
 		
+	def toJSON(self):
+		me = {}
+		me['target'] = self.target
+		# me['headers'] = self.headers
+		me['filter'] = self.filter
+		me['aperture'] = self.aperture
+		me['runName'] = self.runName
+		me['columns'] = self.photometry.valueDescriptions
+		print self.photometry.values
+		me['data'] = json.dumps(self.photometry.values)
+		return json.dumps(me)	
+	
 	def __str__(self):
-		retStr = "Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d"%(self.runName, self.target, self.filter, self.aperture, self.photometry.dataLength)
+		retStr = "Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d"%(self.runName, self.target, self.filter, self.aperture, len(self.photometry['MJD']))
 		return retStr
-		
+
+	
 class photometryObject:
 	def __init__(self):
 		self.times = []
