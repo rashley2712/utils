@@ -29,7 +29,7 @@ class photCommands(cmd.Cmd):
 		""" restore [prefix]
 		Restore the session and data from a previously saved session. All current session information will be lost. If specified, a prefix will be added to *.session.ptm and *.data.ptm."""
 		fileprefix = line.split(' ')[0]
-		photmanto.loadSession(fileprefix)
+		photmanto.restoreSession(fileprefix)
 		return
 		
 	def do_load(self, line):
@@ -58,12 +58,26 @@ class photCommands(cmd.Cmd):
 		
 	def do_set(self, line):
 		""" set [variable] [state]
-		Set a state variable to a specific value  (eg "set plot pgplot"). """
+		Set a state variable to a specific value  (eg "set plotter pgplot"). To set values for a specific slot, use 'set slot [slotID] [variable] [value]'"""
 		params = line.split(' ')
 		if len(params)<2: return
 		variable = params[0]
 		value = params[1]
-		photmanto.setState(variable, value)
+		if variable=='slot':
+			print "Setting slot value:", params[1:]
+			if len(params)<4: 
+				print "Too few parameters specified. 'set slot [slotID] [variable] [value]'."
+				return
+			try:
+				slotID = int(params[1])
+			except ValueError:
+				print "Invalid slot id"
+				return
+			parameter = params[2]
+			value = params[3]
+			photmanto.setSlotProperty(slotID, parameter, value)
+		else: 
+			photmanto.setState(variable, value)
 		return 
 		
 	def do_env(self, line):
@@ -91,10 +105,28 @@ class photCommands(cmd.Cmd):
 		print "Performing the test command [%s]"%line
 		return
 		
-	def do_show(self, line):
-		""" list [slot numbers]
+	def do_ls(self, line):
+		""" ls
 		Show info about what's in the slots. """
+		
 		photmanto.listAllSlots(line)
+		
+		self.do_show(line)
+		return
+		
+	def do_show(self, line):
+		""" show [columns] [slotid]
+		Show info about a slot (eg list columns available). """
+		params = line.split(' ')
+		if len(params)<2: return
+		parameter = params[0]
+		if parameter == 'columns':
+			slotID = int(params[1])
+			photmanto.showColumns(slotID)
+		if parameter == 'header':
+			slotID = int(params[1])
+			photmanto.showHeader(slotID)
+		
 		return
 	
 	def do_quit(self, line):

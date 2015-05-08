@@ -16,10 +16,19 @@ def matplot(slot, state):
 		matplotlib.pyplot.clf() 		# Clear the current plot
 	
 	xValues = slot.times
-	yValues = slot.getPhotometryColumn("counts")
+	xLabel = slot.timeColumn
+	if slot.yColumn == "":
+		yColumn = "counts"
+	else:
+		yColumn = slot.yColumn
+		
+	yValues = slot.getPhotometryColumn(yColumn)
+	yLabel = yColumn
 	
 	plotSymbols = state['plotcolour'] + '.'
 	matplotlib.pyplot.plot(xValues, yValues, plotSymbols)
+	matplotlib.pyplot.xlabel(xLabel)
+	matplotlib.pyplot.ylabel(yLabel)
 	matplotlib.pyplot.draw()
 	matplotlib.pyplot.show(block=False)
 	return state

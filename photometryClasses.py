@@ -12,18 +12,52 @@ class slotCollection:
 		
 	def getSlotInfo(self):
 		retString = "Slot info...\n"
-		for index, s in enumerate(self.slotList):
-			retString+= "%d: %s"%(index, str(s)) + "\n"
+		#idList = [s['id'] for s in self.slotList]
+		#print "IDs"
+		orderedSlotList = sorted(self.slotList, key=lambda object: object.id)
+		for index, s in enumerate(orderedSlotList):
+			retString+= "%s"%str(s) + "\n"
 		return retString
 		
 	def getSlot(self, number):
 		return self.slotList[number]
+		
+	def getSlotByID(self, slotID):
+		slotIDList = [s.id for s in self.slotList]
+		try:
+			index = slotIDList.index(slotID)
+			return self.slotList[index]
+		except ValueError:
+			return False
+		
+	def exists(self, number):
+		""" Checks to see if the slotID already exists """
+		slotIDList = [s.id for s in self.slotList]
+		try:
+			index = slotIDList.index(number)
+			print number," id exists in slot index:", index
+			return True
+		except ValueError:
+			return False
+		return False
+		
+	def replace(self, slot):
+		slotIDList = [s.id for s in self.slotList]
+		index = slotIDList.index(slot.id)
+		self.slotList[index] = slot	
+		
+	def getNextSlotID(self):
+		if len(self.slotList)==0: return 0
+		slotIDList = [s.id for s in self.slotList]
+		nextID = max(slotIDList) + 1
+		return nextID
 			
 
 class slotObject:
 	""" A class containing time-series photometry for an object... similar in concept to Tom Marsh's slot in his Molly software
 	"""
-	def __init__(self):
+	def __init__(self, id):
+		self.id = id
 		self.channels = []   # A list of channel descriptions (eg 'red', 'green', 'blue')
 		self.target = "None" # Name of the target object
 		self.object = None   # An object of class targetObject containing meta-data about the target
@@ -33,7 +67,28 @@ class slotObject:
 		self.aperture = 0
 		self.runName = ""	
 		self.photometryColumns = []
+		self.timeColumn = ""
+		self.yColumn = ""
+		self.yError = ""
 		self.times = []
+		
+	def initFromJSON(self, jsonObject):
+		self.target = jsonObject['target']
+		self.headers = jsonObject['headers']
+		self.filter = jsonObject['filter']
+		self.aperture = jsonObject['aperture']
+		self.runName = jsonObject['runName'] 
+		self.columns = jsonObject['columns']
+		self.timeColumn = jsonObject['timecolumn']
+		try:
+			self.yColumn = jsonObject['ycolumn']
+		except:
+			self.yColumn = ""
+		try:
+			self.yError = jsonObject['yerror']
+		except:
+			self.yError = ""
+			
 		
 	def getColumn(self, columnName):
 		valueDescriptions = self.photometry.valueDescriptions
@@ -43,13 +98,14 @@ class slotObject:
 		
 	def setPhotometry(self, photometry):
 		self.photometry = photometry
-		self.getPhotometryColumnList
+		self.getPhotometryColumnList()
 		
 	def getPhotometryColumn(self, columnName):
 		return self.photometry[columnName]
 		
 	def setTimeColumn(self, columnName):
 		self.times = self.photometry[columnName]
+		self.timeColumn = columnName
 		return True
 		
 	def getPhotometryColumnList(self):
@@ -68,20 +124,25 @@ class slotObject:
 		
 	def toJSON(self):
 		me = {}
+		me['id'] = self.id
 		me['target'] = self.target
-		# me['headers'] = self.headers
+		me['headers'] = self.headers
 		me['filter'] = self.filter
 		me['aperture'] = self.aperture
 		me['runName'] = self.runName
 		self.getPhotometryColumnList()
 		me['columns'] = self.photometryColumns
+		me['timecolumn'] = self.timeColumn
+		me['ycolumn'] = self.yColumn
+		me['yerrorcolumn'] = self.yError
+		
 		
 		for c in self.photometryColumns:
 			me[c] = self.photometry[c].tolist()
 		return json.dumps(me)	
 	
 	def __str__(self):
-		retStr = "Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d"%(self.runName, self.target, self.filter, self.aperture, len(self.photometry['MJD']))
+		retStr = "ID: %d Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d"%(self.id, self.runName, self.target, self.filter, self.aperture, len(self.photometry['MJD']))
 		return retStr
 
 	

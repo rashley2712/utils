@@ -57,34 +57,7 @@ def loadFromFITSFile(filename, maxRows=0):
 	
 	MJDIndex = columns.names.index('MJD')
 	for aperture in range(1, maxApertureIndex+1):
-		print "Processing aperture data:", aperture
-		"""photometry = photometryClasses.photometryObject()
-		photometry.times = MJD
-		photometry.timeDescription = 'MJD'
-		photometry.addValueDescription('MJD')
-		exposureIndex = columns.names.index('Expose')
-		photometry.addValueDescription('Expose')
-		FWHMIndex = columns.names.index('FWHM')
-		photometry.addValueDescription('FWHM')
-		betaIndex = columns.names.index('beta')
-		photometry.addValueDescription('beta')
-		xIndex = columns.names.index('X_'+str(aperture))
-		photometry.addValueDescription('X')
-		yIndex = columns.names.index('Y_'+str(aperture))
-		photometry.addValueDescription('Y')
-		countsIndex = columns.names.index('Counts_' + str(aperture))
-		photometry.addValueDescription('Counts')
-		countsErrorIndex = columns.names.index('Sigma_' + str(aperture))
-		photometry.addValueDescription('Sigma')
-		skyCountsIndex = columns.names.index('Sky_' + str(aperture))
-		photometry.addValueDescription('Sky')
-		errorFlagIndex = columns.names.index('Eflag_' + str(aperture))
-		photometry.addValueDescription('ErrorFlag')
-		
-		measurementArray = [(data[MJDIndex], data[exposureIndex], data[FWHMIndex], data[betaIndex], \
-		                     data[xIndex], data[yIndex], data[countsIndex], data[countsErrorIndex],  \
-							 data[skyCountsIndex], int(data[errorFlagIndex])) for data in allData]
-		"""
+		print "Loading data for aperture #", aperture
 		
 		""" Try a different approach to loading this stuff """
 		photometry = {}
@@ -100,7 +73,9 @@ def loadFromFITSFile(filename, maxRows=0):
 		photometry['sigma'] = 		data.field('Sigma_' + str(aperture))
 		photometry['error'] = 		data.field('Eflag_' + str(aperture))
 		
-		slot = photometryClasses.slotObject()
+		id = slots.getNextSlotID()
+		print "new ID:", id
+		slot = photometryClasses.slotObject(id)
 		slot.channels = ['ULTRASPEC']
 		slot.target = targetName
 		slot.filter = filterName
@@ -120,10 +95,10 @@ def listAllSlots(options):
 	print slotInfo
 	return
 	
-def plot(slotnumber):
+def plot(slotID):
 	global state, slot
 	
-	slot = slots.getSlot(slotnumber)
+	slot = slots.getSlotByID(slotID)
 	if (state['plotter'] == 'pgplot'):
 		state = photmantoPlotting.pgplot(slot, plotterHandle)
 	else:
@@ -132,7 +107,8 @@ def plot(slotnumber):
 	
 def showState():
 	print "Current state variables:"
-	print state
+	for key in state.keys():
+		print "%s \t: \t%s \t\t\t[%s]"%(key, state[key], type(state[key]).__name__)
 	return
 	
 def setState(variable, value):
@@ -169,7 +145,8 @@ def saveSession(filename):
 	
 	return
 
-def saveSession(filename):
+def restoreSession(filename):
+	global state
 	if filename==None or filename=="":
 		sessionFilename = 'session.ptm'
 		dataFilename = 'data.ptm'
@@ -177,24 +154,65 @@ def saveSession(filename):
 		sessionFilename+= '.session.ptm'
 		dataFilename+= '.data.ptm'
 		
-	print "Saving session to file:", sessionFilename
-	outputfile = open(sessionFilename, "w")
-	json.dump(state, outputfile)
-	outputfile.close()
+	print "Loading session from file:", sessionFilename
+	inputfile = open(sessionFilename, "r")
+	stateObject = json.load(inputfile)
+	for key in stateObject.keys():
+		keyString = str(key)
+		value = stateObject[key]
+		if type(value) is unicode: 
+			value = str(value)
+		state[keyString] = value
+	inputfile.close()
+	state['plotterhandle'] = None
+	showState()
 	
-	print "Saving slots to file:", dataFilename
-	outputfile = open(dataFilename, "w")
+	print "Loading slots from file:", dataFilename
+	inputfile = open(dataFilename, "r")
 	
 	slotData = []
-	for s in slots.slotList:
-		dataObject =  s.toJSON()
-		slotData.append(dataObject)
-	json.dump(slotData, outputfile)
-	outputfile.close()
+	allData = json.load(inputfile)
+	for index, s in enumerate(allData):
+		loadedSlot = json.loads(s)
+		loadedSlotID = loadedSlot["id"]
+		newSlot = photometryClasses.slotObject(loadedSlotID)
+		newSlot.initFromJSON(loadedSlot)
+		photometry = {}
+		photometryColumns = loadedSlot['columns']
+		for c in photometryColumns:
+			photometry[str(c)] = numpy.asarray(loadedSlot[c])
+		newSlot.setPhotometry(photometry)
+		newSlot.setTimeColumn('MJD')
+		if (slots.exists(loadedSlotID)): 
+			print "Warning: We are about to replace the slot with slot ID:%d"%loadedSlotID
+			slots.replace(newSlot)
+		else:
+			print "New slot created: %d - for: %s"%(loadedSlotID, newSlot)
+			slots.addSlot(newSlot)
+	inputfile.close()
 	
 	return
 	
+def showColumns(slotID):
+	slot = slots.getSlot(slotID)
+	columns = slot.getPhotometryColumnList()
+	print "Available columns:", columns
+	print "Time column:", slot.timeColumn,
+	if slot.yColumn!="": print "y-axis:", slot.yColumn,
+	if slot.yError!="": print "y-errors", slot.yError,
+	print 
+	return
 
+def showHeader(slotID):
+	slot = slots.getSlot(slotID)
+	header = slot.headers
+	print header	
+	return
+	
+def setSlotProperty(slotID, property, value):
+	slot = slots.getSlot(slotID)
+	setattr(slot, property, value)
+	return
 
 		
 if __name__ == '__main__':
