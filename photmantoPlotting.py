@@ -15,8 +15,8 @@ def matplot(slot, state):
 	if not state['overplot']:
 		matplotlib.pyplot.clf() 		# Clear the current plot
 	
-	xValues = slot.photometry.times
-	yValues = slot.getColumn("Counts")
+	xValues = slot.times
+	yValues = slot.getPhotometryColumn("counts")
 	
 	plotSymbols = state['plotcolour'] + '.'
 	matplotlib.pyplot.plot(xValues, yValues, plotSymbols)

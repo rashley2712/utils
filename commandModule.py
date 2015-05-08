@@ -19,10 +19,17 @@ class photCommands(cmd.Cmd):
 		return line
 		
 	def do_save(self, line):
-		""" save [filename]
-		Save the entire session. If no filename is specified then a filename is generated, using format 'YYYY-MM-DD-HH-MM_photmanto.json'."""
-		filename = line.split(' ')[0]
-		photmanto.saveSession(filename)
+		""" save [prefix]
+		Save the current session and data. If specified, a prefix will be added to *.session.ptm and *.data.ptm."""
+		fileprefix = line.split(' ')[0]
+		photmanto.saveSession(fileprefix)
+		return
+		
+	def do_restore(self, line):
+		""" restore [prefix]
+		Restore the session and data from a previously saved session. All current session information will be lost. If specified, a prefix will be added to *.session.ptm and *.data.ptm."""
+		fileprefix = line.split(' ')[0]
+		photmanto.loadSession(fileprefix)
 		return
 		
 	def do_load(self, line):

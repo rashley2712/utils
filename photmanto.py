@@ -56,10 +56,9 @@ def loadFromFITSFile(filename, maxRows=0):
 	# print "This data file has %d apertures."%(maxApertureIndex)
 	
 	MJDIndex = columns.names.index('MJD')
-	MJD = [ data[MJDIndex] for data in allData]
 	for aperture in range(1, maxApertureIndex+1):
 		print "Processing aperture data:", aperture
-		photometry = photometryClasses.photometryObject()
+		"""photometry = photometryClasses.photometryObject()
 		photometry.times = MJD
 		photometry.timeDescription = 'MJD'
 		photometry.addValueDescription('MJD')
@@ -85,23 +84,22 @@ def loadFromFITSFile(filename, maxRows=0):
 		measurementArray = [(data[MJDIndex], data[exposureIndex], data[FWHMIndex], data[betaIndex], \
 		                     data[xIndex], data[yIndex], data[countsIndex], data[countsErrorIndex],  \
 							 data[skyCountsIndex], int(data[errorFlagIndex])) for data in allData]
-		
+		"""
 		
 		""" Try a different approach to loading this stuff """
-		photometry2 = {}
-		photometry2['MJD'] = 		data.field('MJD')
-		photometry2['exposure'] = 	data.field('Expose')
-		photometry2['FWHM'] = 		data.field('FWHM')
-		photometry2['beta'] = 		data.field('beta')
-		photometry2['x'] = 			data.field('X_' + str(aperture))
-		photometry2['y'] = 			data.field('Y_' + str(aperture))
-		photometry2['counts'] = 	data.field('Counts_' + str(aperture))
-		photometry2['sigma'] = 		data.field('Sigma_' + str(aperture))
-		photometry2['sky'] = 		data.field('Sky_' + str(aperture))
-		photometry2['sigma'] = 		data.field('Sigma_' + str(aperture))
-		photometry2['error'] = 		data.field('Eflag_' + str(aperture))
+		photometry = {}
+		photometry['MJD'] = 		data.field('MJD')
+		photometry['exposure'] = 	data.field('Expose')
+		photometry['FWHM'] = 		data.field('FWHM')
+		photometry['beta'] = 		data.field('beta')
+		photometry['x'] = 			data.field('X_' + str(aperture))
+		photometry['y'] = 			data.field('Y_' + str(aperture))
+		photometry['counts'] = 	data.field('Counts_' + str(aperture))
+		photometry['sigma'] = 		data.field('Sigma_' + str(aperture))
+		photometry['sky'] = 		data.field('Sky_' + str(aperture))
+		photometry['sigma'] = 		data.field('Sigma_' + str(aperture))
+		photometry['error'] = 		data.field('Eflag_' + str(aperture))
 		
-		photometry.addData(measurementArray)
 		slot = photometryClasses.slotObject()
 		slot.channels = ['ULTRASPEC']
 		slot.target = targetName
@@ -109,7 +107,8 @@ def loadFromFITSFile(filename, maxRows=0):
 		slot.aperture = aperture
 		slot.headers = headerBlock
 		slot.runName = runName
-		slot.photometry = photometry2
+		slot.setPhotometry(photometry)
+		slot.setTimeColumn('MJD')
 		numSlots = slots.addSlot(slot)
 		# print "Added the data to a new slot. Total number of slots is now: %d"%(numSlots)
 		print slot
@@ -147,20 +146,55 @@ def setState(variable, value):
 	
 def saveSession(filename):
 	if filename==None or filename=="":
-		filename = 'session.ptm.json'
-	print "Saving session to file:", filename
-	
-	outputfile = open(filename, "w")
-	
+		sessionFilename = 'session.ptm'
+		dataFilename = 'data.ptm'
+	else:
+		sessionFilename+= '.session.ptm'
+		dataFilename+= '.data.ptm'
+		
+	print "Saving session to file:", sessionFilename
+	outputfile = open(sessionFilename, "w")
 	json.dump(state, outputfile)
+	outputfile.close()
+	
+	print "Saving slots to file:", dataFilename
+	outputfile = open(dataFilename, "w")
+	
+	slotData = []
 	for s in slots.slotList:
-		print s
-		testString = s.toJSON()
-		print testString
-
+		dataObject =  s.toJSON()
+		slotData.append(dataObject)
+	json.dump(slotData, outputfile)
 	outputfile.close()
 	
 	return
+
+def saveSession(filename):
+	if filename==None or filename=="":
+		sessionFilename = 'session.ptm'
+		dataFilename = 'data.ptm'
+	else:
+		sessionFilename+= '.session.ptm'
+		dataFilename+= '.data.ptm'
+		
+	print "Saving session to file:", sessionFilename
+	outputfile = open(sessionFilename, "w")
+	json.dump(state, outputfile)
+	outputfile.close()
+	
+	print "Saving slots to file:", dataFilename
+	outputfile = open(dataFilename, "w")
+	
+	slotData = []
+	for s in slots.slotList:
+		dataObject =  s.toJSON()
+		slotData.append(dataObject)
+	json.dump(slotData, outputfile)
+	outputfile.close()
+	
+	return
+	
+
 
 		
 if __name__ == '__main__':

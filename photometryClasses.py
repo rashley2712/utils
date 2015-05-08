@@ -27,17 +27,44 @@ class slotObject:
 		self.channels = []   # A list of channel descriptions (eg 'red', 'green', 'blue')
 		self.target = "None" # Name of the target object
 		self.object = None   # An object of class targetObject containing meta-data about the target
-		self.photometry = []
+		self.photometry = {}
 		self.headers = "No header information loaded."
 		self.filter = "n/a"
 		self.aperture = 0
 		self.runName = ""	
+		self.photometryColumns = []
+		self.times = []
 		
 	def getColumn(self, columnName):
 		valueDescriptions = self.photometry.valueDescriptions
 		index = valueDescriptions.index(columnName)
 		data = [v[index] for v in self.photometry.values]
 		return data
+		
+	def setPhotometry(self, photometry):
+		self.photometry = photometry
+		self.getPhotometryColumnList
+		
+	def getPhotometryColumn(self, columnName):
+		return self.photometry[columnName]
+		
+	def setTimeColumn(self, columnName):
+		self.times = self.photometry[columnName]
+		return True
+		
+	def getPhotometryColumnList(self):
+		columns = []
+		for key in self.photometry.keys():
+			columns.append(key)
+		self.photometryColumns = columns
+		return columns
+		
+	def getColumnLengths(self):
+		columnLengths = {}
+		for c in self.photometryColumns:
+			length = len(self.photometry[c])
+			columnLengths[c] = length
+		return columnLengths
 		
 	def toJSON(self):
 		me = {}
@@ -46,9 +73,11 @@ class slotObject:
 		me['filter'] = self.filter
 		me['aperture'] = self.aperture
 		me['runName'] = self.runName
-		me['columns'] = self.photometry.valueDescriptions
-		print self.photometry.values
-		me['data'] = json.dumps(self.photometry.values)
+		self.getPhotometryColumnList()
+		me['columns'] = self.photometryColumns
+		
+		for c in self.photometryColumns:
+			me[c] = self.photometry[c].tolist()
 		return json.dumps(me)	
 	
 	def __str__(self):
