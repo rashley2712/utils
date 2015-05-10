@@ -9,7 +9,7 @@ import astropy.time
 import timeClasses
 #import helcorr
 import photometryClasses
-import trm.sla
+# import trm.sla
 
 def findMatchingTime(data, target):
 	reading = (0, -1)
@@ -136,7 +136,7 @@ if __name__ == "__main__":
 		timeDescription = "MJD"
 		values = [ r[1]/r[2] for r in reds]
 		valueDescription = "Counts_1/Counts_2"
-		slot = photometryClasses.slotObject()
+		# slot = photometryClasses.slotObject()
 			
 		inputFile.close()
 	

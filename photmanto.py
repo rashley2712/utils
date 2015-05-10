@@ -7,10 +7,12 @@ import photometryClasses
 import generalUtils
 import photmantoPlotting
 import json, numpy
+import copy
 
 slots = photometryClasses.slotCollection()
 state = {	'plotter'	: 'matplot', \
 			'overplot'	: False, \
+			'yerrors'	: False, \
 			'plotlimits': 'auto', \
 			'plotcolour': 'r', \
 		 	'plotterhandle': None}
@@ -67,7 +69,7 @@ def loadFromFITSFile(filename, maxRows=0):
 		photometry['beta'] = 		data.field('beta')
 		photometry['x'] = 			data.field('X_' + str(aperture))
 		photometry['y'] = 			data.field('Y_' + str(aperture))
-		photometry['counts'] = 	data.field('Counts_' + str(aperture))
+		photometry['counts'] = 		data.field('Counts_' + str(aperture))
 		photometry['sigma'] = 		data.field('Sigma_' + str(aperture))
 		photometry['sky'] = 		data.field('Sky_' + str(aperture))
 		photometry['sigma'] = 		data.field('Sigma_' + str(aperture))
@@ -91,7 +93,13 @@ def loadFromFITSFile(filename, maxRows=0):
 	return
 
 def listAllSlots(options):
-	slotInfo = slots.getSlotInfo()
+	if slots.getNumSlots()==0: 
+		print "No slots"
+		return
+	if options=="-l":
+		slotInfo = slots.getSlotInfo(long = True)
+	else:
+		slotInfo = slots.getSlotInfo()
 	print slotInfo
 	return
 	
@@ -182,7 +190,6 @@ def restoreSession(filename):
 		for c in photometryColumns:
 			photometry[str(c)] = numpy.asarray(loadedSlot[c])
 		newSlot.setPhotometry(photometry)
-		newSlot.setTimeColumn('MJD')
 		if (slots.exists(loadedSlotID)): 
 			print "Warning: We are about to replace the slot with slot ID:%d"%loadedSlotID
 			slots.replace(newSlot)
@@ -194,13 +201,31 @@ def restoreSession(filename):
 	return
 	
 def showColumns(slotID):
-	slot = slots.getSlot(slotID)
+	slot = slots.getSlotByID(slotID)
 	columns = slot.getPhotometryColumnList()
 	print "Available columns:", columns
-	print "Time column:", slot.timeColumn,
-	if slot.yColumn!="": print "y-axis:", slot.yColumn,
-	if slot.yError!="": print "y-errors", slot.yError,
+	print "Time [%s]"%slot.timeColumn,
+	if slot.yColumn!="": print " y-axis [%s]"%slot.yColumn,
+	if slot.yError!="": print " y-errors [%s]"%slot.yError,
 	print 
+	return
+
+def showTimes(slotID):
+	slot = slots.getSlotByID(slotID)
+	times = slot.times
+	print times
+	return
+	
+def calculateMinutes(slotID):
+	slot = slots.getSlotByID(slotID)
+	times = slot.times
+	beginTime = min(times)
+	minutesArray = []
+	for t in times:
+		minutes = (t - beginTime)*24*60
+		print t, "converted to", minutes
+		minutesArray.append(minutes)
+	slot.addColumn('minutes', minutesArray)
 	return
 
 def showHeader(slotID):
@@ -210,11 +235,26 @@ def showHeader(slotID):
 	return
 	
 def setSlotProperty(slotID, property, value):
-	slot = slots.getSlot(slotID)
+	slot = slots.getSlotByID(slotID)
+	if property=='xaxis':
+		slot.setTimeColumn(value)
+		print "setting xaxis"
 	setattr(slot, property, value)
 	return
+	
+def copySlot(fromID, toID):
+	if (not slots.exists(fromID)):
+		print "Aborting opteration: No slot known with source ID: %d"%fromID
+		return
+	if (slots.exists(toID)):
+		print "Aborting opteration: A slot already exists with destination ID: %d"%toID
+		return
+	oldSlot = slots.getSlot(fromID)
+	newSlot = copy.copy(oldSlot)
+	newSlot.id = toID
+	slots.addSlot(newSlot)
+	return
 
-		
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='General purpose tools for loading, manipulating and plotting ULTRACAM and ULTRASPEC photometry data.')
 	parser.add_argument('script', type=str, nargs='?', help='The name of a script file containing commands to execute.')

@@ -3,6 +3,7 @@ import ppgplot, numpy
 
 def matplot(slot, state):
 	print "We are about to plot, %s using matplotlib"%(slot)
+	errorPlot = state['yerrors']
 	
 	if state['plotterhandle']!=None:
 		figNumber = state['plotterhandle']
@@ -15,18 +16,30 @@ def matplot(slot, state):
 	if not state['overplot']:
 		matplotlib.pyplot.clf() 		# Clear the current plot
 	
-	xValues = slot.times
+	xValues = slot.getPhotometryColumn(slot.timeColumn)
 	xLabel = slot.timeColumn
 	if slot.yColumn == "":
 		yColumn = "counts"
 	else:
 		yColumn = slot.yColumn
+	
+	if errorPlot:
+		yErrorsColumn = slot.yError
+		if yErrorsColumn =="":
+			errorPlot = False
+		else:
+			yErrors = slot.getPhotometryColumn(yErrorsColumn)
 		
 	yValues = slot.getPhotometryColumn(yColumn)
 	yLabel = yColumn
 	
-	plotSymbols = state['plotcolour'] + '.'
-	matplotlib.pyplot.plot(xValues, yValues, plotSymbols)
+	
+	if not errorPlot:
+		plotSymbols = state['plotcolour'] + '.'
+		matplotlib.pyplot.plot(xValues, yValues, plotSymbols)
+	else:
+		matplotlib.pyplot.errorbar(xValues, yValues, color=state['plotcolour'], yerr=yErrors, fmt = '.', ecolor=state['plotcolour'], capsize=0)
+
 	matplotlib.pyplot.xlabel(xLabel)
 	matplotlib.pyplot.ylabel(yLabel)
 	matplotlib.pyplot.draw()

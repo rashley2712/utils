@@ -6,17 +6,20 @@ class slotCollection:
 	def __init__(self):
 		self.slotList = []
 		
+	def getNumSlots(self):
+		return len(self.slotList)
+		
 	def addSlot(self, slot):
 		self.slotList.append(slot)
 		return len(self.slotList)
 		
-	def getSlotInfo(self):
+	def getSlotInfo(self, long = False):
 		retString = "Slot info...\n"
-		#idList = [s['id'] for s in self.slotList]
-		#print "IDs"
 		orderedSlotList = sorted(self.slotList, key=lambda object: object.id)
 		for index, s in enumerate(orderedSlotList):
-			retString+= "%s"%str(s) + "\n"
+			if long: retString+= s.longString()
+			else: retString+= "%s"%str(s) + "\n"
+			
 		return retString
 		
 	def getSlot(self, number):
@@ -35,7 +38,6 @@ class slotCollection:
 		slotIDList = [s.id for s in self.slotList]
 		try:
 			index = slotIDList.index(number)
-			print number," id exists in slot index:", index
 			return True
 		except ValueError:
 			return False
@@ -66,7 +68,7 @@ class slotObject:
 		self.filter = "n/a"
 		self.aperture = 0
 		self.runName = ""	
-		self.photometryColumns = []
+		self.columnNames = []
 		self.timeColumn = ""
 		self.yColumn = ""
 		self.yError = ""
@@ -78,7 +80,7 @@ class slotObject:
 		self.filter = jsonObject['filter']
 		self.aperture = jsonObject['aperture']
 		self.runName = jsonObject['runName'] 
-		self.columns = jsonObject['columns']
+		self.columnNames = jsonObject['columns']
 		self.timeColumn = jsonObject['timecolumn']
 		try:
 			self.yColumn = jsonObject['ycolumn']
@@ -88,36 +90,39 @@ class slotObject:
 			self.yError = jsonObject['yerror']
 		except:
 			self.yError = ""
-			
-		
-	def getColumn(self, columnName):
-		valueDescriptions = self.photometry.valueDescriptions
-		index = valueDescriptions.index(columnName)
-		data = [v[index] for v in self.photometry.values]
-		return data
-		
+				
 	def setPhotometry(self, photometry):
 		self.photometry = photometry
-		self.getPhotometryColumnList()
+		self.updatePhotometryColumnNames()
+		
+	def addColumn(self, name, values):
+		self.columnNames.append(name)
+		self.photometry[name] = numpy.array(values)
+		print "Column Names are now:", self.columnNames
+		return
 		
 	def getPhotometryColumn(self, columnName):
-		return self.photometry[columnName]
+		try:
+			data = self.photometry[columnName]
+		except ValueError, KeyError:
+			return []
+		return data	
 		
 	def setTimeColumn(self, columnName):
 		self.times = self.photometry[columnName]
 		self.timeColumn = columnName
 		return True
 		
-	def getPhotometryColumnList(self):
+	def updatePhotometryColumnNames(self):
 		columns = []
 		for key in self.photometry.keys():
 			columns.append(key)
-		self.photometryColumns = columns
+		self.columnNames = columns
 		return columns
 		
 	def getColumnLengths(self):
 		columnLengths = {}
-		for c in self.photometryColumns:
+		for c in self.columnNames:
 			length = len(self.photometry[c])
 			columnLengths[c] = length
 		return columnLengths
@@ -130,19 +135,31 @@ class slotObject:
 		me['filter'] = self.filter
 		me['aperture'] = self.aperture
 		me['runName'] = self.runName
-		self.getPhotometryColumnList()
-		me['columns'] = self.photometryColumns
+		me['columns'] = self.columnNames
 		me['timecolumn'] = self.timeColumn
 		me['ycolumn'] = self.yColumn
-		me['yerrorcolumn'] = self.yError
+		me['yerror'] = self.yError
 		
 		
-		for c in self.photometryColumns:
+		for c in self.columnNames:
 			me[c] = self.photometry[c].tolist()
 		return json.dumps(me)	
 	
 	def __str__(self):
 		retStr = "ID: %d Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d"%(self.id, self.runName, self.target, self.filter, self.aperture, len(self.photometry['MJD']))
+		return retStr
+		
+	def longString(self):
+		retStr = "========================================================================================================\n"
+		retStr+= "ID: %d Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d\n"%(self.id, self.runName, self.target, self.filter, self.aperture, len(self.photometry['MJD']))
+		retStr+= "Available columns: "
+		retStr+= str(self.columnNames) + "\n"
+		if self.timeColumn!="": retStr+= "X-axis: '%s'  "%self.timeColumn
+		if self.yColumn!="":    retStr+= "Y-axis: '%s'  "%self.yColumn
+		if self.yError!="":     retStr+= "Y-errors: '%s'  "%self.yError 
+		retStr+= "\n"
+		retStr+= "========================================================================================================\n"
+		retStr+= "\n"
 		return retStr
 
 	

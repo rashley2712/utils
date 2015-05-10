@@ -80,18 +80,61 @@ class photCommands(cmd.Cmd):
 			photmanto.setState(variable, value)
 		return 
 		
+	def do_copy(self, line):
+		""" copy [from] [to]
+		Copy a slot with id:from to id:to. """
+		params = line.split(' ')
+		if len(params)<2:
+			print "Please specifiy a source and a destination."
+			return
+		try:
+			fromSlot = int(params[0])
+			toSlot = int(params[1])
+		except ValueError:
+			print "Could not recognise source and/or destination. Make sure you use a number for the IDs."
+			return
+		photmanto.copySlot(fromSlot, toSlot)
+		return
+		
 	def do_env(self, line):
 		""" env
 		List the current environment variables. """
 		photmanto.showState()
 		return
 		
+	def do_minutes(self, line):
+		params = line.split(' ')
+		print "params:", params
+		if params[0]=='': 
+			print "Please specify a slot ID."
+			return
+		try: 
+			slotID = int(params[0])
+		except ValueError:
+			print "Did not understand the slot ID:", params[0]
+			return
+		photmanto.calculateMinutes(slotID)
+		return
 		
 	def do_plot(self, line):
 		""" plot [slot_number]
 		Plot the contents of the slot """
 		slotNumber = int(line)
 		photmanto.plot(slotNumber)
+		return
+		
+	def do_times(self, line):
+		params = line.split(' ')
+		print "params:", params
+		if params[0]=='': 
+			print "Please specify a slot ID."
+			return
+		try: 
+			slotID = int(params[0])
+		except ValueError:
+			print "Did not understand the slot ID:", params[0]
+			return
+		photmanto.showTimes(slotID)
 		return
 	
 	def do_NOP(self, line):
@@ -108,6 +151,7 @@ class photCommands(cmd.Cmd):
 	def do_ls(self, line):
 		""" ls
 		Show info about what's in the slots. """
+		
 		
 		photmanto.listAllSlots(line)
 		
