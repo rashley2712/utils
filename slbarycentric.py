@@ -53,13 +53,14 @@ class Time(time.Time):
             try:
                 iers_a_file = download_file(IERS_A_URL, cache=True)
                 iers_a = IERS_A.open(iers_a_file)
+                print "Trying to download...", iers_a_file
                 self.delta_ut1_utc = self.get_delta_ut1_utc(iers_a)
                 ut1 = self.ut1
             except:
                 # fall back to UTC with degraded accuracy
                 warnings.warn('Cannot calculate UT1: using UTC with degraded accuracy') 
                 ut1 = self.utc
-
+                
         # Gets x,y coords of Celestial Intermediate Pole (CIP) and CIO locator s
         # CIO = Celestial Intermediate Origin
         # Both in GCRS

@@ -227,8 +227,10 @@ def calculateBMJD(slotID):
 	print "Target position: %s, %s (%f, %f)"%(targetRASex, targetDecSex, ra, dec)
 	targetCoords = astropy.coordinates.SkyCoord(ra, dec, unit='deg')
 	BMJD = []
+	t = times[0]
+	observationTime = slbarycentric.Time(t, format='mjd', location = obsLocation)
 	for index, t in enumerate(times):
-		observationTime = slbarycentric.Time(t, format='mjd', location = obsLocation)
+		observationTime.__init__(t, format='mjd', location = obsLocation)
 		delta, bcor = observationTime.bcor(targetCoords)
 		bmjd = float(bcor.mjd)
 		BMJD.append(bmjd)
