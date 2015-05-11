@@ -8,6 +8,8 @@ import generalUtils
 import photmantoPlotting
 import json, numpy
 import copy
+import slbarycentric
+# import astropy.coordinates.EarthLocation
 
 slots = photometryClasses.slotCollection()
 state = {	'plotter'	: 'matplot', \
@@ -210,15 +212,56 @@ def showColumns(slotID):
 	print 
 	return
 
-def showTimes(slotID):
+def calculateBMJD(slotID):
 	slot = slots.getSlotByID(slotID)
-	times = slot.times
-	print times
+	times = slot.getPhotometryColumn('MJD')
+	obsLong = 98.48
+	obsLat = 18.57
+	obsAlt = 2457.
+	obsLocation = astropy.coordinates.EarthLocation(lon = obsLong, lat = obsLat, height=obsAlt)
+	targetRASex = "07 11 26"
+	targetDecSex = "+44 04 05"
+	ra, dec = generalUtils.fromSexagesimal(targetRASex, targetDecSex)
+	print "Calculating barycentric MJD or BMJD"
+	print "Observatory location: Lat: %f [deg] Long: %f [deg] Height: %f [m]"%(obsLat, obsLong, obsAlt)
+	print "Target position: %s, %s (%f, %f)"%(targetRASex, targetDecSex, ra, dec)
+	targetCoords = astropy.coordinates.SkyCoord(ra, dec, unit='deg')
+	BMJD = []
+	for index, t in enumerate(times):
+		observationTime = slbarycentric.Time(t, format='mjd', location = obsLocation)
+		dt, bcor = observationTime.bcor(targetCoords)
+		delta = float(dt.seconds)
+		bmjd = float(bcor.mjd)
+		BMJD.append(bmjd)
+		sys.stdout.write("\r[%d/%d]  MJD %5.8f ---> BMJD %5.8f  = %f seconds"%(index, len(times)-1, t, bmjd, delta))
+		sys.stdout.flush()
+	print
+	slot.addColumn("BMJD", numpy.array(BMJD))
+	return
+	
+def writeCSV(filename, slotID):
+	slot = slots.getSlotByID(slotID)
+	outputfile = open(filename, 'w')
+	timeLabel = slot.timeColumn
+	yLabel = slot.yColumn
+	errorLabel = slot.yError
+	print timeLabel, yLabel, errorLabel
+	outputfile.write("%s, %s, %s\n"%(timeLabel, yLabel, errorLabel))
+	xValues = slot.getPhotometryColumn(timeLabel)
+	yValues = slot.getPhotometryColumn(yLabel)
+	errorValues = slot.getPhotometryColumn(errorLabel)
+	
+	csvValues = zip(xValues, yValues, errorValues)
+	for c in csvValues:
+		outputfile.write("%5.8f, %s, %s\n"%(c[0], str(c[1]), str(c[2])))
+	
+	outputfile.close()
+	
 	return
 	
 def calculateMinutes(slotID):
 	slot = slots.getSlotByID(slotID)
-	times = slot.times
+	times = slot.getPhotometryColumn(slot.timeColumn)
 	beginTime = min(times)
 	minutesArray = []
 	for t in times:
@@ -239,6 +282,9 @@ def setSlotProperty(slotID, property, value):
 	if property=='xaxis':
 		slot.setTimeColumn(value)
 		print "setting xaxis"
+	if property=='yaxis':
+		if (slot.setYColumn(value)): print "setting yaxis to " + value
+		else: print value, " not found."
 	setattr(slot, property, value)
 	return
 	

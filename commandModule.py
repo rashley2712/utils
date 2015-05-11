@@ -101,6 +101,27 @@ class photCommands(cmd.Cmd):
 		List the current environment variables. """
 		photmanto.showState()
 		return
+	
+	def do_calc(self, line):
+		""" calc [slotID] [operation]
+		Calculate and create a new column in the slot specified by slotID. [operation] can be: 
+		- 'bmjd' : Calculates the barycentric MJD from the MJD. Needs an observatory and target location defined. Creates a new column in the slot, called 'BMJD'."""
+		params = line.split(' ')
+		print "params:", params
+		if len(params)<2: 
+			print "Specify a slotID and an operation."
+			return
+		if params[0]=='': 
+			print "Please specify a slot ID."
+			return
+		try: 
+			slotID = int(params[0])
+		except ValueError:
+			print "Did not understand the slot ID:", params[0]
+			return
+		operation = params[1]
+		if operation == 'bmjd': photmanto.calculateBMJD(slotID)
+		return
 		
 	def do_minutes(self, line):
 		params = line.split(' ')
@@ -115,6 +136,27 @@ class photCommands(cmd.Cmd):
 			return
 		photmanto.calculateMinutes(slotID)
 		return
+		
+	def do_csv(self, line):
+		""" csv [slotID] [filename]
+		Write the 3 key columns (xaxis, yaxis, yerrors) to a CSV file."""
+		params = line.split(' ')
+		print "params:", params
+		if len(params)<2: 
+			print "Specify a slotID and a filename."
+			return
+		if params[0]=='': 
+			print "Please specify a slot ID."
+			return
+		try: 
+			slotID = int(params[0])
+		except ValueError:
+			print "Did not understand the slot ID:", params[0]
+			return
+		filename = params[1]
+		photmanto.writeCSV(filename, slotID)
+		return
+		
 		
 	def do_plot(self, line):
 		""" plot [slot_number]

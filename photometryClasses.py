@@ -107,6 +107,14 @@ class slotObject:
 		except ValueError, KeyError:
 			return []
 		return data	
+	
+	def setYColumn(self, columnName):
+		try:
+			index = self.columnNames.index(columnName)
+		except ValueError:
+			return False
+		self.yColumn = columnName
+		return True
 		
 	def setTimeColumn(self, columnName):
 		self.times = self.photometry[columnName]
