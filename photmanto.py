@@ -229,8 +229,7 @@ def calculateBMJD(slotID):
 	BMJD = []
 	for index, t in enumerate(times):
 		observationTime = slbarycentric.Time(t, format='mjd', location = obsLocation)
-		dt, bcor = observationTime.bcor(targetCoords)
-		delta = float(dt.seconds)
+		delta, bcor = observationTime.bcor(targetCoords)
 		bmjd = float(bcor.mjd)
 		BMJD.append(bmjd)
 		sys.stdout.write("\r[%d/%d]  MJD %5.8f ---> BMJD %5.8f  = %f seconds"%(index, len(times)-1, t, bmjd, delta))

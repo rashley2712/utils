@@ -175,8 +175,8 @@ class Time(time.Time):
         h_pos,h_vel,b_pos,b_vel = self._obs_pos()
 
         # heliocentric light travel time, s
-        tcor_hel = const.au.value * np.array([np.dot(spos,hpos) for hpos in h_pos]) / const.c.value
-        #print 'Correction to add to get time at heliocentre = %.7f s' % tcor_hel
+        # tcor_hel = const.au.value * np.array([np.dot(spos,hpos) for hpos in h_pos]) / const.c.value
+        print 'Correction to add to get time at heliocentre = %.7f s' % tcor_hel
         dt = time.TimeDelta(tcor_hel, format='sec', scale='tdb')
         return self.utc + dt
 
@@ -187,7 +187,7 @@ class Time(time.Time):
 
         # barycentric light travel time, s
         tcor_bar = const.au.value *  np.array([np.dot(spos,bpos) for bpos in b_pos]) / const.c.value
-        #print 'Correction to add to get time at barycentre  = %.7f s' % tcor_bar
+        # print 'Correction to add to get time at barycentre  = %.7f s' % tcor_bar
         dt = time.TimeDelta(tcor_bar, format='sec', scale='tdb')
-        return dt, self.tdb + dt
+        return tcor_bar, self.tdb + dt
 		
