@@ -145,25 +145,28 @@ if __name__ == "__main__":
 	"""
 	
 	if hasEphemeris:
+		outfile = open("conversions.csv", 'w')
 		for reading in reds:
 			MJD = reading[0]
 			JD = MJD + 2400000.5
 			JDOffset = 2400000.5
 			obsLong = 98.48
 			obsLat = 18.57
-			obsAlt = 2457.
+			obsAlt = 2457.2
 			
 			#location = (-1.0 * obsLong, obsLat, obsAlt)
 			#aTime = astropy.time.Time(MJD,  format='mjd', scale='utc', location = location)
 			#print MJD, aTime.jd, aTime.iso
 			ra = ephemeris.ra /15.
 			dec = ephemeris.dec
-			#print "Input ra", ra, "dec", dec, 
+			print "Input ra", ra, "dec", dec, 
 			#print "MJD:", MJD, "JD:", JD, "Obs:(", obsLat, obsLong, ")"	
 			
 			result = trm.sla.utc2tdb(MJD, obsLong, obsLat, obsAlt, ra, dec)
 			#HJD = result[1]
 			hutc = result[3]
+			outfile.write("input: %5.8f  conversion: "%MJD + str(result) + "\n")
+			print result
 			HJD = hutc + JDOffset
 			#HJD =JD
 			#print "HJD:", HJD
@@ -174,7 +177,7 @@ if __name__ == "__main__":
 			norbits = ephemeris.getOffsetOrbits(HJD)
 			print norbits
 			reading.append(norbits)
-	
+		outfile.close()
 	
 	
 	dataSet = []	
@@ -239,7 +242,6 @@ if __name__ == "__main__":
 		
 		if not hasEphemeris:
 			MJDoffset = int(min(x_values))
-			print "MJD offset:",MJDoffset
 		
 		if (arg.m == True):
 			mean = numpy.mean(y_values)
