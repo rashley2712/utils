@@ -13,10 +13,13 @@ import slbarycentric
 
 slots = photometryClasses.slotCollection()
 state = {	'plotter'	: 'matplot', \
-			'overplot'	: False, \
-			'yerrors'	: False, \
+			'overplot'	: False,  \
+			'yerrors'	: False,  \
 			'plotlimits': 'auto', \
-			'plotcolour': 'r', \
+			'plotcolour': 'r',    \
+			'xlabel'	: 'auto', \
+			'ylabel'	: 'auto', \
+			'ps'		: False,  \
 		 	'plotterhandle': None}
 
 def loadFromFITSFile(filename, maxRows=0):
@@ -63,7 +66,6 @@ def loadFromFITSFile(filename, maxRows=0):
 	for aperture in range(1, maxApertureIndex+1):
 		print "Loading data for aperture #", aperture
 		
-		""" Try a different approach to loading this stuff """
 		photometry = {}
 		photometry['MJD'] = 		data.field('MJD')
 		photometry['exposure'] = 	data.field('Expose')
@@ -88,31 +90,40 @@ def loadFromFITSFile(filename, maxRows=0):
 		slot.runName = runName
 		slot.setPhotometry(photometry)
 		slot.setTimeColumn('MJD')
+		slot.setYColumn('counts')
+		slot.setYError('sigma')
 		numSlots = slots.addSlot(slot)
 		# print "Added the data to a new slot. Total number of slots is now: %d"%(numSlots)
 		print slot
 		
 	return
 
-def listAllSlots(options):
+def listSlots(slotIDs, long=False):
+	for s in slotIDs:
+		slot = slots.getSlotByID(s)
+		if slot:
+			if long: print slot.longString() 
+			else: print str(slot)
+	return
+
+def listAllSlots(long=False):
 	if slots.getNumSlots()==0: 
 		print "No slots"
 		return
-	if options=="-l":
-		slotInfo = slots.getSlotInfo(long = True)
-	else:
-		slotInfo = slots.getSlotInfo()
+	slotInfo = slots.getSlotInfo(long)
 	print slotInfo
 	return
 	
-def plot(slotID):
+def plot(slotIDs):
 	global state, slot
 	
-	slot = slots.getSlotByID(slotID)
-	if (state['plotter'] == 'pgplot'):
-		state = photmantoPlotting.pgplot(slot, plotterHandle)
-	else:
-		state = photmantoPlotting.matplot(slot, state)
+	for s in slotIDs:
+		slot = slots.getSlotByID(s)
+		if slot:
+			if (state['plotter'] == 'pgplot'):
+				state = photmantoPlotting.pgplot(slot, plotterHandle)
+			else:
+				state = photmantoPlotting.matplot(slot, state)
 	return 
 	
 def showState():
@@ -234,12 +245,27 @@ def calculateBMJD(slotID):
 		delta, bcor = observationTime.bcor(targetCoords)
 		bmjd = float(bcor.mjd)
 		BMJD.append(bmjd)
-		sys.stdout.write("\r[%d/%d]  MJD %5.8f ---> BMJD %5.8f  = %f seconds"%(index, len(times)-1, t, bmjd, delta))
+		sys.stdout.write("\r[%d/%d]  MJD %5.8f ---> BMJD %5.8f  = %f seconds   "%(index, len(times)-1, t, bmjd, delta))
 		sys.stdout.flush()
 	print
-	slot.addColumn("BMJD", numpy.array(BMJD))
+	slot.addColumn("BMJD", numpy.array(BMJD), clobber=True)
 	return
 	
+def divide(slotAID, slotBID, slotDID):
+	slotA = slots.getSlotByID(slotA)
+	slotB = slots.getSlotByID(slotB)
+	slotD = slots.getSlotByID(slotD)
+	if not slotA: 
+		print "No slot found with slotID:", slotA
+		return	
+	if not slotB: 
+		print "No slot found with slotID:", slotB
+		return
+	if not slotD: 
+		print "No slot found with slotID:", slotD	
+		return
+	print "Time axis for slot A (%d) is: %s"%(slotA, )
+
 def writeCSV(filename, slotID):
 	slot = slots.getSlotByID(slotID)
 	outputfile = open(filename, 'w')
@@ -281,11 +307,14 @@ def showHeader(slotID):
 def setSlotProperty(slotID, property, value):
 	slot = slots.getSlotByID(slotID)
 	if property=='xaxis':
-		slot.setTimeColumn(value)
-		print "setting xaxis"
+		if (slot.setTimeColumn(value)): print "setting xaxis to " + value
+		else: print value, "is not a valid column in slot ", slotID
 	if property=='yaxis':
 		if (slot.setYColumn(value)): print "setting yaxis to " + value
-		else: print value, " not found."
+		else: print value, "is not a valid column in slot ", slotID
+	if property=='yerrors':
+		if (slot.setYErrors(value)): print "setting yerrors to " + value
+		else: print value, "is not a valid column in slot ", slotID
 	setattr(slot, property, value)
 	return
 	
@@ -303,7 +332,7 @@ def copySlot(fromID, toID):
 	return
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='General purpose tools for loading, manipulating and plotting ULTRACAM and ULTRASPEC photometry data.')
+	parser = argparse.ArgumentParser(description='General purpose tool for loading, manipulating and plotting ULTRACAM and ULTRASPEC photometry data.')
 	parser.add_argument('script', type=str, nargs='?', help='The name of a script file containing commands to execute.')
 	arg = parser.parse_args()
 	# print arg
@@ -311,12 +340,15 @@ if __name__ == '__main__':
 	commands = commandModule.photCommands
 	
 	if arg.script != None:
-		input = open(arg.script, 'rt')
-		print "Running the commands found in :", arg.script
-		try:
-			commands(stdin=input).cmdloop()
-		finally:
-			input.close()
+		if arg.script=="restore":
+			commands().do_restore("")
+		else: 
+			input = open(arg.script, 'rt')
+			print "Running the commands found in :", arg.script
+			try:
+				commands(stdin=input).cmdloop()
+			finally:
+				input.close()
 	
 	commands.prompt = 'photmanto> '
 	commands.use_rawinput = True

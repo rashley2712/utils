@@ -95,8 +95,22 @@ class slotObject:
 		self.photometry = photometry
 		self.updatePhotometryColumnNames()
 		
-	def addColumn(self, name, values):
-		self.columnNames.append(name)
+	def addColumn(self, name, values, clobber=False):
+		try:
+			index = self.columnNames.index(name)
+		except ValueError:
+			index = -1
+		
+		if index!= -1:
+			print "A column called %s already exists. "%name
+			if not clobber: 
+				print "... not overwriting existing column."
+				return
+			else: 
+				print "... overwriting it."
+		else:
+			self.columnNames.append(name)
+	
 		self.photometry[name] = numpy.array(values)
 		print "Column Names are now:", self.columnNames
 		return
@@ -115,9 +129,20 @@ class slotObject:
 			return False
 		self.yColumn = columnName
 		return True
+	
+	def setYError(self, columnName):
+		try:
+			index = self.columnNames.index(columnName)
+		except ValueError:
+			return False
+		self.yError = columnName
+		return True
 		
 	def setTimeColumn(self, columnName):
-		self.times = self.photometry[columnName]
+		try:
+			index = self.columnNames.index(columnName)
+		except ValueError:
+			return False
 		self.timeColumn = columnName
 		return True
 		
