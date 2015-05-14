@@ -1,5 +1,6 @@
 import cmd
 import photmanto
+import os
 
 class photCommands(cmd.Cmd):
 	"""Simple command processor example."""
@@ -39,3 +40,10 @@ class photCommands(cmd.Cmd):
 	
 	def postloop(self):
 		return True
+
+	def do_shell(self, line):
+		"Run a shell command"
+		print "running shell command:", line
+		output = os.popen(line).read()
+		print output
+		self.last_output = output
