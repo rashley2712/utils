@@ -172,8 +172,26 @@ class photCommands(cmd.Cmd):
 		except ValueError:
 			print "Could not understand at least one of the slots given. You need to give me 3 slotIDs which are integers."
 			return
-		
+		photmanto.divide(slotA, slotB, slotD)
 		return
+
+	def do_sigmaclip(self, line):
+		""" sigmaclip [slot ID] sigma factor [optional step size]
+		Performs a sigma-clip of the column in yColumn and creates a mask in the slot. """
+		params = line.split(' ')
+		try:
+			slotID = int(params[0])
+		except ValueError:
+			print "Could not understand slot ID."
+			return
+		try:
+			stepSize = int(params[1])
+		except IndexError:
+			stepSize = 1
+		
+		photmanto.sigmaclip(slotID, stepSize)
+		return
+		
 		
 	def do_plot(self, line):
 		""" plot [slot_number]

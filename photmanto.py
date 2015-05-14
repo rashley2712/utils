@@ -9,6 +9,8 @@ import photmantoPlotting
 import json, numpy
 import copy
 import slbarycentric
+import math
+
 # import astropy.coordinates.EarthLocation
 
 slots = photometryClasses.slotCollection()
@@ -251,21 +253,109 @@ def calculateBMJD(slotID):
 	slot.addColumn("BMJD", numpy.array(BMJD), clobber=True)
 	return
 	
-def divide(slotAID, slotBID, slotDID):
-	slotA = slots.getSlotByID(slotA)
-	slotB = slots.getSlotByID(slotB)
-	slotD = slots.getSlotByID(slotD)
+def divide(slotA_ID, slotB_ID, slotD_ID):
+	slotA = slots.getSlotByID(slotA_ID)
+	slotB = slots.getSlotByID(slotB_ID)
+	slotD = slots.getSlotByID(slotD_ID)
 	if not slotA: 
-		print "No slot found with slotID:", slotA
+		print "No slot found with slotID:", slotA_ID
 		return	
 	if not slotB: 
-		print "No slot found with slotID:", slotB
+		print "No slot found with slotID:", slotB_ID
 		return
-	if not slotD: 
-		print "No slot found with slotID:", slotD	
+	if slotD: 
+		print "Destination slot ID: %d is not empty. Aborting."%slotD_ID	
 		return
-	print "Time axis for slot A (%d) is: %s"%(slotA, )
-
+	timesA = slotA.getPhotometryColumn(slotA.timeColumn)
+	timesB = slotB.getPhotometryColumn(slotB.timeColumn)
+	print "Time axis for slot A (%d) is: %s with a length of %d data points."%(slotA_ID, slotA.timeColumn, len(timesA))
+	print "Time axis for slot B (%d) is: %s with a length of %d data points."%(slotB_ID, slotB.timeColumn, len(timesB))
+	if len(timesA) != len(timesB):
+		print "Lengths don't match. Aborting."
+		return
+	valuesA = slotA.getPhotometryColumn(slotA.yColumn)
+	valuesB = slotB.getPhotometryColumn(slotB.yColumn)
+	errorsA = slotA.getPhotometryColumn(slotA.yError)
+	errorsB = slotB.getPhotometryColumn(slotB.yError)
+	if len(valuesA) != len(valuesB):
+		print "Y values are different lengths. Aborting."
+		return
+	if len(errorsA) != len(errorsB):
+		print "Y values are different lengths. Aborting."
+		return
+	timesD = timesA
+	valuesD = []
+	errorsD = []
+	for (A, B, aA, bB) in zip(valuesA, valuesB, errorsA, errorsB):
+		D = A/B
+		dD = D * math.sqrt((aA/A)**2 + (bB/B)**2)
+		print "A: %f [%f], B: %f [%f] = D: %f [%f]"%(A, aA, B, bB, D, dD)
+		valuesD.append(D)
+		errorsD.append(dD)
+	valuesD = numpy.array(valuesD)
+	errorsD = numpy.array(errorsD) 
+	
+	copySlot(slotA_ID, slotD_ID)
+	destinationSlot = slots.getSlotByID(slotD_ID)
+	print destinationSlot
+	destinationSlot.addColumn(slotA.timeColumn, timesD, clobber=True)
+	destinationSlot.addColumn(slotA.yColumn, valuesD, clobber=True)
+	destinationSlot.addColumn(slotA.yError, errorsD, clobber=True)
+	return
+	
+def sigmaclip(slotID, sampleSize):
+	slot = slots.getSlotByID(slotID)
+	if not slot:
+		print "No slot found with slot ID:", slotID
+		return
+	values = numpy.array(slot.getPhotometryColumn(slot.yColumn))
+	values = numpy.ma.masked_array(values)
+	errorFlags = slot.getPhotometryColumn("error")
+	for index, e in enumerate(errorFlags):
+		if e!=0: 
+			print "Error flag at:%d, %d"%(index, e)
+			values[index] = numpy.ma.masked
+	
+	valuesCopy = values[:]
+	if sampleSize!=1:
+		for index in range(sampleSize/2):
+			leftIndex = 0
+			rightIndex = sampleSize
+			subSet = values[leftIndex:rightIndex+1]
+			print "index: %d  range [%d-%d] -> %s"%(index, leftIndex, rightIndex, str(subSet))
+			mean = numpy.mean(subSet)
+			sigma = numpy.std(subSet)
+			print "Mean:", mean
+		
+		for index in range(sampleSize/2, len(values)-(sampleSize/2)):
+			leftIndex = index-sampleSize/2
+			rightIndex = index+sampleSize/2
+			subSet = values[leftIndex:rightIndex+1]
+			print "index: %d  range [%d-%d] -> %s"%(index, leftIndex, rightIndex, str(subSet))
+			mean = numpy.mean(subSet)
+			print "Mean:", mean
+	
+		for index in range(len(values)-(sampleSize/2), len(values)):
+			leftIndex = len(values)-sampleSize/2
+			rightIndex = len(values)
+			subSet = values[leftIndex:rightIndex+1]
+			print "index: %d  range [%d-%d] -> %s"%(index, leftIndex, rightIndex, str(subSet))
+			mean = numpy.mean(subSet)
+			print "Mean:", mean
+		
+	
+	return
+	for index in range(len(values)):
+		subSet = values[index:index+sampleSize]
+		print "range [%d-%d] -> %s"%(index, index+sampleSize, str(subSet))
+	cleanValues = values.compressed()
+	print "filtered down to:", len(cleanValues)		
+	mean = numpy.mean(values)
+	median = numpy.median(values)
+	stddev = numpy.std(values)
+	print "mean: %f  median: %f  sigma: %f"%(mean, median, stddev)
+	return
+	
 def writeCSV(filename, slotID):
 	slot = slots.getSlotByID(slotID)
 	outputfile = open(filename, 'w')
