@@ -298,9 +298,9 @@ def divide(slotA_ID, slotB_ID, slotD_ID):
 	copySlot(slotA_ID, slotD_ID)
 	destinationSlot = slots.getSlotByID(slotD_ID)
 	print destinationSlot
-	destinationSlot.addColumn(slotA.timeColumn, timesD, clobber=True)
-	destinationSlot.addColumn(slotA.yColumn, valuesD, clobber=True)
-	destinationSlot.addColumn(slotA.yError, errorsD, clobber=True)
+	destinationSlot.addColumn(destinationSlot.timeColumn, timesD, clobber=True)
+	destinationSlot.addColumn(destinationSlot.yColumn, valuesD, clobber=True)
+	destinationSlot.addColumn(destinationSlot.yError, errorsD, clobber=True)
 	return
 	
 def sigmaclip(slotID, sampleSize):
@@ -416,7 +416,7 @@ def copySlot(fromID, toID):
 		print "Aborting opteration: A slot already exists with destination ID: %d"%toID
 		return
 	oldSlot = slots.getSlot(fromID)
-	newSlot = copy.copy(oldSlot)
+	newSlot = copy.deepcopy(oldSlot)
 	newSlot.id = toID
 	slots.addSlot(newSlot)
 	return
