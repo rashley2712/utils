@@ -89,6 +89,8 @@ if __name__ == "__main__":
 			frames = range(1, len(xValues)+1)
 		matplotlib.pyplot.clf()
 		matplotlib.pyplot.subplot(2, 1, 1)
+		matplotlib.pyplot.xlabel("Frame number", size = 14)
+		matplotlib.pyplot.ylabel("X (pixels)", size = 14)
 		matplotlib.pyplot.xlim(frames[0], frames[-1])
 		matplotlib.pyplot.scatter(frames, xValues, color = 'r')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX+sigmaX, meanX+sigmaX], color='k', linestyle='dashed')
@@ -96,6 +98,8 @@ if __name__ == "__main__":
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX-sigmaX, meanX-sigmaX], color='k', linestyle='dashed')
 		
 		matplotlib.pyplot.subplot(2, 1, 2)
+		matplotlib.pyplot.xlabel("Frame number", size = 14)
+		matplotlib.pyplot.ylabel("Y (pixels)", size = 14)
 		matplotlib.pyplot.xlim(frames[0], frames[-1])
 		matplotlib.pyplot.scatter(frames, yValues, color = 'g')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY+sigmaY, meanY+sigmaY], color='k', linestyle='dashed')
