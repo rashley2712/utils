@@ -14,6 +14,7 @@ if __name__ == "__main__":
 	parser.add_argument('-e','--end', type=int, default = 50, help='End frame for calculating target position. Defaults to 50.')
 	parser.add_argument('-t','--sleep', type=int, default = 50, help='Sleep time to wait between checking the log file for new data. Defaults to 5 seconds.')
 	parser.add_argument('--scale', type=float, default = 0.3, help='Field scale in arcseconds per pixel. Defaults to 0.3 (WHT).')
+	parser.add_argument('--plotlast', type=int, default = 200, help='How many of the points to plot in the graph. Defaults to 200.')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -35,12 +36,11 @@ if __name__ == "__main__":
 	sleep = arg.sleep	
 	xIndex = 14*(desiredAperture-1) + 8
 	yIndex = 14*(desiredAperture-1) + 9
-	print xIndex, yIndex	
+	pointsBack = arg.plotlast	
+	
 	stop = False
 	while not stop:
 		inputFile = open(arg.logfile,'r')
-		
-		
 		
 		xValues = []
 		yValues = []
@@ -59,11 +59,12 @@ if __name__ == "__main__":
 		meanY = numpy.mean(yValues)
 		sigmaX = numpy.std(xValues)
 		sigmaY = numpy.std(yValues)
-		print "Total frames read:", len(xValues)
+		numPoints = len(xValues)
+		print "Total frames read:", numPoints
 		print "Mean position (%f, %f)"%(meanX, meanY)	
 		print "Standard dev  (%f, %f)"%(sigmaX, sigmaY)	
 		print "Last position was: (%f, %f)"%(xValues[-1], yValues[-1])
-		if len(xValues) > endFrame-1:
+		if numPoints > endFrame-1:
 			staticX = numpy.mean(xValues[startFrame-1:endFrame-1])
 			staticY = numpy.mean(yValues[startFrame-1:endFrame-1])
 			print "Target position based on frames %d to %d is (%f, %f)."%(startFrame, endFrame, staticX, staticY)
@@ -78,21 +79,30 @@ if __name__ == "__main__":
 			
 		print "------------------------------------------------------------------------------------"
 
-		frames = range(1, len(xValues)+1)
+		if numPoints>pointsBack:
+			frames = range( numPoints - pointsBack +1, numPoints +1)
+			xValues = xValues[ numPoints - pointsBack : numPoints] 
+			yValues = yValues[ numPoints - pointsBack : numPoints] 
+		else:
+			frames = range(1, len(xValues)+1)
+		print frames
+		print xValues
 		matplotlib.pyplot.subplot(2, 1, 1)
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX+sigmaX, meanX+sigmaX], color='r', linestyle='dashed')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX, meanX], color='r', linestyle='-')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX-sigmaX, meanX-sigmaX], color='r', linestyle='dashed')
-		matplotlib.pyplot.plot(frames, xValues, color = 'r')
+		matplotlib.pyplot.xlim(frames[0], frames[-1])
+		matplotlib.pyplot.scatter(frames, xValues, color = 'r')
 		
 		matplotlib.pyplot.subplot(2, 1, 2)
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY+sigmaY, meanY+sigmaY], color='g', linestyle='dashed')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY, meanY], color='g', linestyle='-')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY-sigmaY, meanY-sigmaY], color='g', linestyle='dashed')
-		matplotlib.pyplot.plot(frames, yValues, color = 'g')
+		matplotlib.pyplot.xlim(frames[0], frames[-1])
+		matplotlib.pyplot.scatter(frames, yValues, color = 'g')
 		
 		matplotlib.pyplot.show(block = False)
 		
-		time.sleep(5)
+		time.sleep(sleep)
 		
 	sys.exit()
