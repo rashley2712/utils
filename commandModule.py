@@ -56,7 +56,11 @@ class photCommands(cmd.Cmd):
 			print "Could not find %s. Try '!ls' to list local files."%filename
 			return
 			
-		photmanto.loadFromFITSFile(filename, maxRows)
+		extension = filename.split('.')[-1]
+		if extension=='log':
+			photmanto.loadFromLogFile(filename)
+		if extension=='fits':
+			photmanto.loadFromFITSFile(filename, maxRows)
 		return
 		
 	def do_set(self, line):
@@ -186,12 +190,40 @@ class photCommands(cmd.Cmd):
 			print "Could not understand slot ID."
 			return
 		try:
-			stepSize = int(params[1])
+			factor = float(params[1])
+			stepSize = int(params[2])
 		except IndexError:
 			stepSize = 1
+			factor = 4
+			print "Using default values: factor: %f, range: %f"%(factor, stepSize)
 		
-		photmanto.sigmaclip(slotID, stepSize)
+		photmanto.sigmaclip(slotID, factor, stepSize)
 		return
+		
+	def do_cat(self, line):
+		""" cat [slot id]
+		Prints out all of the data (line by line) in a slot."""
+		params = line.split(' ')
+		try:
+			slotID = int(params[0])
+		except ValueError:
+			print "Could not understand slot ID."
+			return
+		photmanto.catSlot(slotID)
+		return
+		
+	def do_removezeros(self, line):
+		""" removezeros [slot id]
+		Removes all data points from the slot where the y-axis value is equal to zero. """
+		params = line.split(' ')
+		try:
+			slotID = int(params[0])
+		except ValueError:
+			print "Could not understand slot ID."
+			return
+		photmanto.removeZeros(slotID)
+		return
+		
 		
 		
 	def do_plot(self, line):

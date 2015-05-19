@@ -12,7 +12,7 @@ import loadingSavingUtils, statsUtils
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Uses matplotlib to plot light curves from rashley''s format CSV file.')
-	parser.add_argument('inputdata', type=str, help='Input data in CSV format')
+	parser.add_argument('inputfiles', type=str, nargs='+', help='Input data in CSV format')
 	parser.add_argument('-c', nargs='+', default = ['Counts_1'], type=str, help='Columns to plot')
 	parser.add_argument('--channels', nargs='+', default = ['r', 'g', 'b'], type=str, help='Channels to plot')
 	parser.add_argument('-m', action = 'store_true', help='Use magnitude scale')
@@ -26,65 +26,50 @@ if __name__ == "__main__":
 	arg = parser.parse_args()
 	print arg
 	
-	photometry = loadingSavingUtils.loadCSV(arg.inputdata)
+	allData = []
 	
-	filters = { 'r':'i', 'g':'g', 'b':'u' }
+	numPlots = 0
+	for filename in arg.inputfiles:
+		columnNames, photometry = loadingSavingUtils.loadNewCSV(filename)
+		allData.append(photometry)
+		numPlots+= 1
 	
 	""" Data is now loaded 
 	"""
+	c = 'k'
+	sizePerPlot = 4
 
-	plotData = {}
-	colours = arg.channels
-	for c in colours:
-		x_values = []
-		y_values = []
-		y_errors = []
-		epoch_values = []
-		comparisony_values = []
-		comparisony_errors = []
-		fluxRatioValues = []
-		fluxRatioErrors = []
-		magnitudeValues = []
-		magnitudeErrors = []
-		data = photometry[c]
-		for d in data:
-			if (arg.phaseplot):
-				x_values.append(d['Phase'])
-				epoch_values.append(d['Epoch'])
-			else:
-				x_values.append(d['MJD'])
-				
-			y_values.append(d['Counts_1'])
-			y_errors.append(d['Sigma_1'])
-			comparisony_values.append(d['Counts_2'])
-			comparisony_errors.append(d['Sigma_2'])
-			fluxRatio = d['Counts_1'] / d['Counts_2']
-			fluxRatioError = fluxRatio * math.sqrt( (d['Sigma_1']/d['Counts_1'])**2 + (d['Sigma_2']/d['Counts_2'])**2 )
-			fluxRatioValues.append(fluxRatio)
-			fluxRatioErrors.append(fluxRatioError)
-			magnitude = -2.5 * math.log10(fluxRatio)
-			magnitudeError = -2.5 * fluxRatioError / math.log(10) / fluxRatio
-			magnitudeValues.append(magnitude)
-			magnitudeErrors.append(magnitudeError)
+	xColumn = columnNames[0]
+	yColumn = columnNames[1]
+	yErrors = columnNames[2]
+	matplotlib.pyplot.figure(figsize=(12, sizePerPlot * numPlots + 1))
+	
+	for index, photometry in enumerate(allData):
+		subPlot = index+1
+		x_values = photometry[xColumn]
+		y_values = photometry[yColumn]
+		y_errors = photometry[yErrors]
+		axes = matplotlib.pyplot.subplot(numPlots, 1, subPlot)
+		print "subplot", numPlots, 1, subPlot
 		
-		if (arg.bin!=1):
-			x_temp, y_values, y_errors = statsUtils.binDataWithErrors(x_values, y_values, y_errors, arg.bin)
-			x_temp, fluxRatioValues, fluxRatioErrors = statsUtils.binDataWithErrors(x_values, fluxRatioValues, fluxRatioErrors, arg.bin)
-			x_temp, magnitudeValues, magnitudeErrors = statsUtils.binDataWithErrors(x_values, magnitudeValues, magnitudeErrors, arg.bin)
-			x_values, comparisony_values, comparisony_errors = statsUtils.binDataWithErrors(x_values, comparisony_values, comparisony_errors, arg.bin)
-		
-		magnitudeMean = numpy.mean(magnitudeValues)
-		magnitudeValues = [m - magnitudeMean for m in magnitudeValues]
-		
-		if (not arg.phaseplot):
-			MJDoffset = int(min(x_values))
-			print "MJD offset:",MJDoffset
-			x_values = [x - MJDoffset for x in x_values]
-		
-		matplotlib.pyplot.figure(figsize=(12, 16))
-		axes = matplotlib.pyplot.subplot(4, 1, 4)
-		if (not arg.phaseplot):
-			matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
+		matplotlib.pyplot.xlabel(xColumn, size = 14)
+		matplotlib.pyplot.ylabel('Relative counts', size = 14)
+		if 'JD' in xColumn:
+			JDoffset = int(x_values[0])
+			x_values = [x - JDoffset for x in x_values]
+			matplotlib.pyplot.xlabel(xColumn + " - " + str(JDoffset), size = 14)
+			matplotlib.pyplot.xlim(0.7, 0.9)
+			matplotlib.pyplot.ylim(0.0, 4.0)
+			
+		matplotlib.pyplot.errorbar(x_values, y_values, color=c, yerr=y_errors, fmt = '.', ecolor=c, capsize=0)
+	
+	fig = matplotlib.pyplot.gcf()
+	matplotlib.pyplot.show()
+	fig.savefig('lightcurves.eps',dpi=100, format='eps')
+	fig.savefig('lightcurves.png',dpi=100, format='png')
+	
+	
+	"""	matplotlib.pyplot.xlabel('MJD' + ' +' + str(MJDoffset), size = 14)
 		else:
 			matplotlib.pyplot.xlabel('Phase' , size = 14)
 			
@@ -109,8 +94,6 @@ if __name__ == "__main__":
 		
 		matplotlib.pyplot.show()
 		
-	""" Now do the stacked plot
-	"""
 	
 	height = len(colours) * 4 + 1
 	matplotlib.pyplot.figure(figsize=(12, height))
@@ -164,8 +147,6 @@ if __name__ == "__main__":
 		loadingSavingUtils.writeSingleChannelCSV(filename, data)
 		
 		
-	""" Now do the colour plot(s)
-	"""
 	if len(arg.channels)==1:
 		sys.exit()
 	
@@ -248,4 +229,4 @@ if __name__ == "__main__":
 	matplotlib.pyplot.show()
 	fig.savefig('colourcurves.eps',dpi=100, format='eps')
 	fig.savefig('colourcurves.png',dpi=100, format='png')
-	
+	"""

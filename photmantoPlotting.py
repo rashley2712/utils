@@ -21,6 +21,11 @@ def matplot(slot, state):
 		xLabel = slot.timeColumn
 	else:
 		xLabel = state['xlabel']
+		
+	if 'JD' in xLabel:
+		JDoffset = int(xValues[0])
+		xValues = [x - JDoffset for x in xValues]
+		xLabel+= " - " + str(JDoffset)
 
 	yValues = slot.getPhotometryColumn(slot.yColumn)
 	if state['ylabel'] == 'auto':

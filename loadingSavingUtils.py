@@ -61,6 +61,29 @@ def removeZeroValues(photometry):
 	numRemoved = len(photometry) - len(newPhotometry)
 	return newPhotometry, numRemoved
 		
+def loadNewCSV(filename):
+	photometry = {}
+	csvfile = open(filename, 'r')
+	reader = csv.reader(csvfile, delimiter=',')
+	headings = reader.next()
+	columnNames = []
+	for h in headings:
+		columnName = h.strip()
+		columnNames.append(columnName)
+		photometry[columnName] = []
+	for line in reader:
+		for index, value in enumerate(line):
+			v = float(value.strip())
+			photometry[columnNames[index]].append(v)
+	
+	csvfile.close()
+	
+	print "Loaded the following from %s:"%filename
+	for k in photometry.keys():
+		print k, len(photometry[k])
+			
+	
+	return columnNames, photometry
 
 def loadCSV(filename):
 	photometry = {}
