@@ -19,11 +19,12 @@ if __name__ == "__main__":
 	print arg
 	
 	matplotlib.pyplot.figure(figsize=(12, 8))
-	matplotlib.pyplot.xlabel("Frame number", size = 14)
 	matplotlib.pyplot.subplot(2, 1, 1)
+	matplotlib.pyplot.xlabel("Frame number", size = 14)
 	matplotlib.pyplot.ylabel("X (pixels)", size = 14)
 	matplotlib.pyplot.subplot(2, 1, 2)
 	matplotlib.pyplot.ylabel("Y (pixels)", size = 14)
+	matplotlib.pyplot.xlabel("Frame number", size = 14)
 	
 	desiredAperture = arg.aperture
 	desiredCCD = arg.ccd
@@ -32,15 +33,15 @@ if __name__ == "__main__":
 	ccdIndex = 4
 	fieldScale = arg.scale
 	sleep = arg.sleep	
-	
+	xIndex = 14*(desiredAperture-1) + 8
+	yIndex = 14*(desiredAperture-1) + 9
+	print xIndex, yIndex	
 	stop = False
 	while not stop:
 		inputFile = open(arg.logfile,'r')
 		
 		
 		
-		xIndex = 14*(desiredAperture-1) + 8
-		yIndex = 14*(desiredAperture-1) + 9
 		xValues = []
 		yValues = []
 		for line in inputFile:
