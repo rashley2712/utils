@@ -1,6 +1,9 @@
 import cmd, sys, os
 import photmanto
+import os
 import readline
+import generalUtils
+import shlex
 
 class photCommands(cmd.Cmd):
 	"""Simple command processor example."""
@@ -53,13 +56,19 @@ class photCommands(cmd.Cmd):
 			print "Could not find %s. Try '!ls' to list local files."%filename
 			return
 			
-		photmanto.loadFromFITSFile(filename, maxRows)
+		extension = filename.split('.')[-1]
+		if extension=='log':
+			photmanto.loadFromLogFile(filename)
+		if extension=='fits':
+			photmanto.loadFromFITSFile(filename, maxRows)
 		return
 		
 	def do_set(self, line):
 		""" set [variable] [state]
-		Set a state variable to a specific value  (eg "set plotter pgplot"). To set values for a specific slot, use 'set slot [slotID] [variable] [value]'"""
+		Set a state variable to a specific value  (eg "set plotter pgplot"). 
+		To set properties for a specific slot, use 'set slot [slotID] [variable] [value]'"""
 		params = line.split(' ')
+		params = shlex.split(line)
 		if len(params)<2: return
 		variable = params[0]
 		value = params[1]
@@ -157,12 +166,74 @@ class photCommands(cmd.Cmd):
 		photmanto.writeCSV(filename, slotID)
 		return
 		
+	def do_div(self, line):
+		""" div [slot A] [slot B] [slot D]
+		Executes a division of [slot A] by [slot B] and places the result in [slot D]."""
+		params = line.split(' ')
+		try:
+			slotA = int(params[0])
+			slotB = int(params[1])
+			slotD = int(params[2])
+		except ValueError:
+			print "Could not understand at least one of the slots given. You need to give me 3 slotIDs which are integers."
+			return
+		photmanto.divide(slotA, slotB, slotD)
+		return
+
+	def do_sigmaclip(self, line):
+		""" sigmaclip [slot ID] sigma factor [optional step size]
+		Performs a sigma-clip of the column in yColumn and creates a mask in the slot. """
+		params = line.split(' ')
+		try:
+			slotID = int(params[0])
+		except ValueError:
+			print "Could not understand slot ID."
+			return
+		try:
+			factor = float(params[1])
+			stepSize = int(params[2])
+		except IndexError:
+			stepSize = 1
+			factor = 4
+			print "Using default values: factor: %f, range: %f"%(factor, stepSize)
+		
+		photmanto.sigmaclip(slotID, factor, stepSize)
+		return
+		
+	def do_cat(self, line):
+		""" cat [slot id]
+		Prints out all of the data (line by line) in a slot."""
+		params = line.split(' ')
+		try:
+			slotID = int(params[0])
+		except ValueError:
+			print "Could not understand slot ID."
+			return
+		photmanto.catSlot(slotID)
+		return
+		
+	def do_removezeros(self, line):
+		""" removezeros [slot id]
+		Removes all data points from the slot where the y-axis value is equal to zero. """
+		params = line.split(' ')
+		try:
+			slotID = int(params[0])
+		except ValueError:
+			print "Could not understand slot ID."
+			return
+		photmanto.removeZeros(slotID)
+		return
+		
+		
 		
 	def do_plot(self, line):
 		""" plot [slot_number]
 		Plot the contents of the slot """
-		slotNumber = int(line)
-		photmanto.plot(slotNumber)
+		slotIDs = generalUtils.parseIntegerList(line)
+		if len(slotIDs)==0:
+			print "Nothing to plot."
+			return
+		photmanto.plot(slotIDs)
 		return
 		
 	def do_times(self, line):
@@ -180,7 +251,7 @@ class photCommands(cmd.Cmd):
 		return
 	
 	def do_NOP(self, line):
-		"""NOP
+		""" NOP
 		Do nothing."""
 		return 
 		
@@ -189,15 +260,34 @@ class photCommands(cmd.Cmd):
 		Used for debugging. """
 		print "Performing the test command [%s]"%line
 		return
+	
+	def do_lsl(self, line):
+		""" lsl [slotIDs]
+		Alias for "ls -l"
+		Show more info about what's in the slots. """
+		if line=="":
+			photmanto.listAllSlots(long=True)
+			return
+		slotIDs = generalUtils.parseIntegerList(line)
+		if len(slotIDs)==0: photmanto.listAllSlots(long=True)
+		else: photmanto.listSlots(slotIDs, long = True)
+		
+		return
 		
 	def do_ls(self, line):
-		""" ls
-		Show info about what's in the slots. """
+		""" ls [slotIDs]
+		Show info about what's in the slots. 
+		'*' - all slots
+		'1-5' - slots 1 through to 5 (inclusive)
+		'1,3,4' - comma separated list of slots"""
 		
+		if line=="":
+			photmanto.listAllSlots()
+			return
+		slotIDs = generalUtils.parseIntegerList(line)
+		if len(slotIDs)==0: photmanto.listAllSlots()
+		else: photmanto.listSlots(slotIDs)
 		
-		photmanto.listAllSlots(line)
-		
-		self.do_show(line)
 		return
 		
 	def do_show(self, line):
@@ -237,3 +327,10 @@ class photCommands(cmd.Cmd):
 	
 	def postloop(self):
 		return True
+
+	def do_shell(self, line):
+		"Run a shell command"
+		print "running shell command:", line
+		output = os.popen(line).read()
+		print output
+		self.last_output = output

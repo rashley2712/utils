@@ -17,11 +17,21 @@ def matplot(slot, state):
 		matplotlib.pyplot.clf() 		# Clear the current plot
 	
 	xValues = slot.getPhotometryColumn(slot.timeColumn)
-	xLabel = slot.timeColumn
-	if slot.yColumn == "":
-		yColumn = "counts"
+	if state['xlabel'] == 'auto':
+		xLabel = slot.timeColumn
 	else:
-		yColumn = slot.yColumn
+		xLabel = state['xlabel']
+		
+	if 'JD' in xLabel:
+		JDoffset = int(xValues[0])
+		xValues = [x - JDoffset for x in xValues]
+		xLabel+= " - " + str(JDoffset)
+
+	yValues = slot.getPhotometryColumn(slot.yColumn)
+	if state['ylabel'] == 'auto':
+		yLabel = slot.yColumn
+	else:
+		yLabel = state['ylabel']
 	
 	if errorPlot:
 		yErrorsColumn = slot.yError
@@ -29,11 +39,7 @@ def matplot(slot, state):
 			errorPlot = False
 		else:
 			yErrors = slot.getPhotometryColumn(yErrorsColumn)
-		
-	yValues = slot.getPhotometryColumn(yColumn)
-	yLabel = yColumn
-	
-	
+			
 	if not errorPlot:
 		plotSymbols = state['plotcolour'] + '.'
 		matplotlib.pyplot.plot(xValues, yValues, plotSymbols)

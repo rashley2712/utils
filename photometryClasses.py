@@ -73,6 +73,7 @@ class slotObject:
 		self.yColumn = ""
 		self.yError = ""
 		self.times = []
+		self.CCD = "none"
 		
 	def initFromJSON(self, jsonObject):
 		self.target = jsonObject['target']
@@ -81,6 +82,7 @@ class slotObject:
 		self.aperture = jsonObject['aperture']
 		self.runName = jsonObject['runName'] 
 		self.columnNames = jsonObject['columns']
+		self.CCD = jsonObject['ccd']
 		self.timeColumn = jsonObject['timecolumn']
 		try:
 			self.yColumn = jsonObject['ycolumn']
@@ -95,11 +97,51 @@ class slotObject:
 		self.photometry = photometry
 		self.updatePhotometryColumnNames()
 		
-	def addColumn(self, name, values):
-		self.columnNames.append(name)
+	def addColumn(self, name, values, clobber=False):
+		try:
+			index = self.columnNames.index(name)
+		except ValueError:
+			index = -1
+		
+		if index!= -1:
+			print "A column called %s already exists. "%name
+			if not clobber: 
+				print "... not overwriting existing column."
+				return
+			else: 
+				print "... overwriting it."
+		else:
+			self.columnNames.append(name)
+	
 		self.photometry[name] = numpy.array(values)
 		print "Column Names are now:", self.columnNames
 		return
+		
+		
+	def applyMask(self, mask):
+		# First check that the mask is the correct length
+		maskLength = len(mask)
+		columnLengths = self.getColumnLengths()
+		print "Mask length:", maskLength
+		print "Internal column lengths:", columnLengths
+		for key in columnLengths.keys():
+			if columnLengths[key] != maskLength:
+				print "The column %s [%d] has a different length to the mask %d."%(key, maskLength)
+				return
+		newPhotometry = {}
+		for key in self.photometry.keys():
+			oldArray = self.photometry[key]
+			newArray = []
+			for ismasked, value in zip(mask, oldArray):
+				if not ismasked:
+					newArray.append(value)
+			newPhotometry[key] = numpy.array(newArray)
+		
+		self.photometry = newPhotometry
+		
+		newColumnLengths = self.getColumnLengths()
+		print "New columnlengths are:", newColumnLengths
+		return 
 		
 	def getPhotometryColumn(self, columnName):
 		try:
@@ -115,9 +157,20 @@ class slotObject:
 			return False
 		self.yColumn = columnName
 		return True
+	
+	def setYError(self, columnName):
+		try:
+			index = self.columnNames.index(columnName)
+		except ValueError:
+			return False
+		self.yError = columnName
+		return True
 		
 	def setTimeColumn(self, columnName):
-		self.times = self.photometry[columnName]
+		try:
+			index = self.columnNames.index(columnName)
+		except ValueError:
+			return False
 		self.timeColumn = columnName
 		return True
 		
@@ -147,19 +200,35 @@ class slotObject:
 		me['timecolumn'] = self.timeColumn
 		me['ycolumn'] = self.yColumn
 		me['yerror'] = self.yError
-		
+		me['ccd'] = self.CCD 
 		
 		for c in self.columnNames:
 			me[c] = self.photometry[c].tolist()
 		return json.dumps(me)	
+		
+	def catData(self):
+		firstKey = self.photometry.keys()[0]
+		for key in self.photometry.keys():
+			print str(key), '\t', 
+		print
+		for index in range(len(self.photometry[firstKey])):
+			for key in self.photometry.keys():
+				value = self.photometry[key][index]
+				print value, '\t',
+			print
+			if (index%20)==0:
+				for key in self.photometry.keys():
+					print str(key), '\t', 
+				print
+				
 	
 	def __str__(self):
-		retStr = "ID: %d Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d"%(self.id, self.runName, self.target, self.filter, self.aperture, len(self.photometry['MJD']))
+		retStr = "ID: %d Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t  CCD: %s \t Length: %d"%(self.id, self.runName, self.target, self.filter, self.aperture, self.CCD, len(self.photometry['MJD']))
 		return retStr
 		
 	def longString(self):
 		retStr = "========================================================================================================\n"
-		retStr+= "ID: %d Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t Length: %d\n"%(self.id, self.runName, self.target, self.filter, self.aperture, len(self.photometry['MJD']))
+		retStr+= "ID: %d Run file: %s \tTarget: %s \tFilter: %s \tAperture: %d \t CCD: %s \t Length: %d\n"%(self.id, self.runName, self.target, self.filter, self.aperture, self.CCD, len(self.photometry['MJD']))
 		retStr+= "Available columns: "
 		retStr+= str(self.columnNames) + "\n"
 		if self.timeColumn!="": retStr+= "X-axis: '%s'  "%self.timeColumn
