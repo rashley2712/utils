@@ -63,25 +63,7 @@ if __name__ == "__main__":
 		sigmaX = numpy.std(xValues)
 		sigmaY = numpy.std(yValues)
 		numPoints = len(xValues)
-		print "Total frames read:", numPoints
-		print "Mean position (%f, %f)"%(meanX, meanY)	
-		print "Standard dev  (%f, %f)"%(sigmaX, sigmaY)	
-		print "Last position was: (%f, %f)"%(xValues[-1], yValues[-1])
-		if numPoints > endFrame-1:
-			staticX = numpy.mean(xValues[startFrame-1:endFrame-1])
-			staticY = numpy.mean(yValues[startFrame-1:endFrame-1])
-			print "Target position based on frames %d to %d is (%f, %f)."%(startFrame, endFrame, staticX, staticY)
-			deltaX = staticX - xValues[-1]
-			deltaY = staticY - yValues[-1]
-			deltaXField = deltaX * fieldScale
-			deltaYField = deltaY * fieldScale
-			print "Drift from target is (%f, %f)  in frame number %d."%(deltaX, deltaY, len(xValues)+1)
-			print "Correction to be applied is (%f, %f) arcseconds."%(deltaXField, deltaYField)
-		else:
-			print "Need more frames to accumulate first, starting at %d"%endFrame
-			
-		print "------------------------------------------------------------------------------------"
-
+		
 		# Compute the running average...
 		xAverage = []
 		yAverage = []
@@ -97,6 +79,33 @@ if __name__ == "__main__":
 		#print "xAverages", xAverage	
 		#print "Lengths", len(xValues), len(xAverage)
 
+		
+		print "Total frames read:", numPoints
+		print "Mean position (%f, %f)"%(meanX, meanY)	
+		print "Standard dev  (%f, %f)"%(sigmaX, sigmaY)	
+		print "Last position was: (%f, %f)"%(xValues[-1], yValues[-1])
+		if numPoints > endFrame-1:
+			staticX = numpy.mean(xValues[startFrame-1:endFrame-1])
+			staticY = numpy.mean(yValues[startFrame-1:endFrame-1])
+			print "Target position based on frames %d to %d is (%f, %f)."%(startFrame, endFrame, staticX, staticY)
+			deltaX = xValues[-1] - staticX
+			deltaY = yValues[-1] - staticY
+			deltaXField = deltaX * fieldScale
+			deltaYField = deltaY * fieldScale
+			print "Drift from target is (%f, %f)  in frame number %d."%(deltaX, deltaY, len(xValues)+1)
+			print "Correction to be applied is (%f, %f) arcseconds."%(deltaXField, deltaYField)
+			deltaAverageX = xAverage[-1] - staticX
+			deltaAverageY = yAverage[-1] - staticY
+			dAX = deltaAverageX * fieldScale
+			dAY = deltaAverageY * fieldScale
+			
+			print "Latest running average position is (%f, %f) or delta (%f, %f) or (%f, %f) arcseconds."%(xAverage[-1], yAverage[-1], deltaAverageX, deltaAverageY, dAX, dAY)
+		else:
+			print "Need more frames to accumulate first, starting at %d"%endFrame
+			
+		print "------------------------------------------------------------------------------------"
+
+		
 		if pointsBack!=-1:
 			if numPoints>pointsBack:
 				frames = range( numPoints - pointsBack +1, numPoints +1)
