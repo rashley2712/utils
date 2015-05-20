@@ -15,6 +15,7 @@ if __name__ == "__main__":
 	parser.add_argument('-t','--sleep', type=int, default = 50, help='Sleep time to wait between checking the log file for new data. Defaults to 5 seconds.')
 	parser.add_argument('--scale', type=float, default = 0.3, help='Field scale in arcseconds per pixel. Defaults to 0.3 (WHT).')
 	parser.add_argument('--plotlast', type=int, default = -1, help='How many of the points to plot in the graph. Defaults to -1 (all points).')
+	parser.add_argument('--runaverage', type=int, default = 30, help='Number of points to compute the running average over. Defaults to 30.')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -36,7 +37,8 @@ if __name__ == "__main__":
 	sleep = arg.sleep	
 	xIndex = 14*(desiredAperture-1) + 8
 	yIndex = 14*(desiredAperture-1) + 9
-	pointsBack = arg.plotlast	
+	pointsBack = arg.plotlast
+	groupSize = arg.runaverage
 	
 	stop = False
 	while not stop:
@@ -80,11 +82,28 @@ if __name__ == "__main__":
 			
 		print "------------------------------------------------------------------------------------"
 
+		# Compute the running average...
+		xAverage = []
+		yAverage = []
+		for index in range(0, groupSize):
+			xAverage.append(numpy.mean(xValues[0:index+1]))
+			yAverage.append(numpy.mean(yValues[0:index+1]))
+		for index in range(groupSize, numPoints):
+			average = numpy.mean(xValues[index-groupSize:index])
+			xAverage.append(average)
+			average = numpy.mean(yValues[index-groupSize:index])
+			yAverage.append(average)
+		#print "xValues", xValues[0:groupSize]
+		#print "xAverages", xAverage	
+		#print "Lengths", len(xValues), len(xAverage)
+
 		if pointsBack!=-1:
 			if numPoints>pointsBack:
 				frames = range( numPoints - pointsBack +1, numPoints +1)
-				xValues = xValues[ numPoints - pointsBack : numPoints] 
+				xValues = xValues[ numPoints - pointsBack : numPoints]
+				xAverage = xAverage[ numPoints - pointsBack : numPoints] 
 				yValues = yValues[ numPoints - pointsBack : numPoints] 
+				yAverage = yAverage[ numPoints - pointsBack : numPoints] 
 		else:
 			frames = range(1, len(xValues)+1)
 		matplotlib.pyplot.clf()
@@ -93,6 +112,7 @@ if __name__ == "__main__":
 		matplotlib.pyplot.ylabel("X (pixels)", size = 14)
 		matplotlib.pyplot.xlim(frames[0], frames[-1])
 		matplotlib.pyplot.scatter(frames, xValues, color = 'r')
+		matplotlib.pyplot.plot(frames, xAverage, color = 'k', lw=2)
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX+sigmaX, meanX+sigmaX], color='k', linestyle='dashed')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX, meanX], color='k', linestyle='-')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX-sigmaX, meanX-sigmaX], color='k', linestyle='dashed')
@@ -102,6 +122,7 @@ if __name__ == "__main__":
 		matplotlib.pyplot.ylabel("Y (pixels)", size = 14)
 		matplotlib.pyplot.xlim(frames[0], frames[-1])
 		matplotlib.pyplot.scatter(frames, yValues, color = 'g')
+		matplotlib.pyplot.plot(frames, yAverage, color = 'k', lw=2)
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY+sigmaY, meanY+sigmaY], color='k', linestyle='dashed')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY, meanY], color='k', linestyle='-')
 		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY-sigmaY, meanY-sigmaY], color='k', linestyle='dashed')
