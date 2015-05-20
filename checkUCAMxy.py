@@ -92,13 +92,12 @@ if __name__ == "__main__":
 			deltaY = yValues[-1] - staticY
 			deltaXField = deltaX * fieldScale
 			deltaYField = deltaY * fieldScale
-			print "Drift from target is (%f, %f)  in frame number %d."%(deltaX, deltaY, len(xValues)+1)
+			print "Distance from target is (%f, %f)  in frame number %d."%(deltaX, deltaY, len(xValues)+1)
 			print "Correction to be applied is (%f, %f) arcseconds."%(deltaXField, deltaYField)
 			deltaAverageX = xAverage[-1] - staticX
 			deltaAverageY = yAverage[-1] - staticY
 			dAX = deltaAverageX * fieldScale
 			dAY = deltaAverageY * fieldScale
-			
 			print "Latest running average position is (%f, %f) or delta (%f, %f) or (%f, %f) arcseconds."%(xAverage[-1], yAverage[-1], deltaAverageX, deltaAverageY, dAX, dAY)
 		else:
 			print "Need more frames to accumulate first, starting at %d"%endFrame
@@ -122,9 +121,9 @@ if __name__ == "__main__":
 		matplotlib.pyplot.xlim(frames[0], frames[-1])
 		matplotlib.pyplot.scatter(frames, xValues, color = 'r')
 		matplotlib.pyplot.plot(frames, xAverage, color = 'k', lw=2)
-		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX+sigmaX, meanX+sigmaX], color='k', linestyle='dashed')
-		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX, meanX], color='k', linestyle='-')
-		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX-sigmaX, meanX-sigmaX], color='k', linestyle='dashed')
+		#matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX+sigmaX, meanX+sigmaX], color='k', linestyle='dashed')
+		matplotlib.pyplot.plot( [frames[0], frames[-1]], [staticX, staticX], color='k', linestyle='-')
+		#matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX-sigmaX, meanX-sigmaX], color='k', linestyle='dashed')
 		
 		matplotlib.pyplot.subplot(2, 1, 2)
 		matplotlib.pyplot.xlabel("Frame number", size = 14)
@@ -132,9 +131,9 @@ if __name__ == "__main__":
 		matplotlib.pyplot.xlim(frames[0], frames[-1])
 		matplotlib.pyplot.scatter(frames, yValues, color = 'g')
 		matplotlib.pyplot.plot(frames, yAverage, color = 'k', lw=2)
-		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY+sigmaY, meanY+sigmaY], color='k', linestyle='dashed')
-		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY, meanY], color='k', linestyle='-')
-		matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY-sigmaY, meanY-sigmaY], color='k', linestyle='dashed')
+		#matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY+sigmaY, meanY+sigmaY], color='k', linestyle='dashed')
+		matplotlib.pyplot.plot( [frames[0], frames[-1]], [staticY, staticY], color='k', linestyle='-')
+		#matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY-sigmaY, meanY-sigmaY], color='k', linestyle='dashed')
 		
 		matplotlib.pyplot.draw()
 		matplotlib.pyplot.show(block = False)
