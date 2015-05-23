@@ -287,12 +287,20 @@ def removeZeros(slotID):
 def calculateBMJD(slotID):
 	slot = slots.getSlotByID(slotID)
 	times = slot.getPhotometryColumn('MJD')
-	obsLong = 98.48
-	obsLat = 18.57
-	obsAlt = 2457.
+	""" TNT observatory
+		obsLong = 98.48
+		obsLat = 18.57
+		obsAlt = 2457. """
+	# WHT observatory
+	obsLong = 342.1184
+	obsLat = 28.7606
+	obsAlt = 2326. 
 	obsLocation = astropy.coordinates.EarthLocation(lon = obsLong, lat = obsLat, height=obsAlt)
-	targetRASex = "07 11 26"
+	targetRASex = "07 11 26"			# CSS081231
 	targetDecSex = "+44 04 05"
+	targetRASex = "21 07 58.188"		# HU Aqr  21 07 58.188 -05 17 40.47
+	targetDecSex = "-05 17 40.47"
+	
 	ra, dec = generalUtils.fromSexagesimal(targetRASex, targetDecSex)
 	print "Calculating barycentric MJD or BMJD"
 	print "Observatory location: Lat: %f [deg] Long: %f [deg] Height: %f [m]"%(obsLat, obsLong, obsAlt)

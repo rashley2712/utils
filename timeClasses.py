@@ -20,7 +20,7 @@ class ephemerisObject:
 		HJD_difference = HJD - self.T0
 		#norbits = int( HJD_difference / self.Period)
 		phase = (HJD_difference % self.Period) / self.Period
-		if phase>0.5: phase = phase - 1.0
+		#if phase>0.5: phase = phase - 1.0
 		return phase
 		
 	def getOrbits(self, HJD):
@@ -36,6 +36,7 @@ class ephemerisObject:
 	def loadFromFile(self, filename):
 		file = open(filename, 'r')
 		for line in file:
+			if line[0] == '#': continue
 			tokens = line.split()
 			if len(tokens)>1: 
 				if tokens[0] == 'T0': self.T0 = float(tokens[1])
@@ -51,7 +52,7 @@ class ephemerisObject:
 		print "Given coords:", coords
 		raHours = int(coords[0])
 		raMinutes = int(coords[1])
-		raSeconds = int(coords[2])
+		raSeconds = float(coords[2])
 		raFraction = float(raSeconds)/3600. + float(raMinutes)/60.
 		raTotal = float(raHours) + raFraction
 		raDegrees = raTotal * 15.0
@@ -63,7 +64,7 @@ class ephemerisObject:
 		decCalc = decDegrees + decMinutes/60. + decSeconds/3600.
 		if sign == '-':
 			decCalc = -1.0 * decCalc
-		#print "RA:", raDegrees, "DEC:", decCalc
+		print "RA:", raDegrees, "DEC:", decCalc
 		return raDegrees, decCalc
 			
 	def __str__(self):
