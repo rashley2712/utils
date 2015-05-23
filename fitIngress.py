@@ -7,16 +7,17 @@ import astropy.io.fits
 import astropy.stats
 import loadingSavingUtils, statsUtils
 import scipy.optimize
+import time
+import random
 
 def function(x):
-	y = a1 / (1 + math.exp(-a2*(x-a3))) + a4 + a5 * (x - a3)
+	y = a1 / (1 + numpy.exp(-a2*(x-a3))) + a4 + a5 * (x - a3)
 	return y
 	
 def calcChiSquared(xValues, yValues):
 	cs = 0
 	for x, y in zip(xValues,yValues):
 		yFit = function(x)
-		print x, y, yFit
 		cs+= (y-yFit)**2
 	return cs
 	
@@ -29,66 +30,69 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Fits a sigmoid function to an eclipse ingress.')
 	parser.add_argument('inputfile', type=str, help='Input data in CSV format')
-	 
+	parser.add_argument('--trim', type = int, default=5, help='Max size of trimming of the data set. [default: 5].') 
 	arg = parser.parse_args()
 	print arg
+	runStr = arg.inputfile[:6]
+	trimSize = arg.trim
 	c = 'k'
 	filename = arg.inputfile
 	columnNames, photometry = loadingSavingUtils.loadNewCSV(filename)
 	""" Data is now loaded 
 	"""
-	
-	# Fit parameters
-	a1 = -2
-	a2 = 30000
-	a3 = 0.81037
-	a4 = 2
-	a5 = -0.03
-
-	
-	matplotlib.pyplot.figure(figsize=(12, 5))
-	xInput = numpy.arange(0.805, 0.815, .00001)
-	y = [function(x) for x in xInput]
-	matplotlib.pyplot.plot(xInput, y, color = c)
-	matplotlib.pyplot.show(block= False)
-	
-	
 	xColumn = columnNames[0]
 	yColumn = columnNames[1]
 	yErrors = columnNames[2]
-	
-	matplotlib.pyplot.figure(figsize=(12, 5))
-	
 	x_values = photometry[xColumn]
 	y_values = photometry[yColumn]
 	y_errors = photometry[yErrors]
-	
 	JDoffset = int(x_values[0])
 	x_values = [x - JDoffset for x in x_values]
 	
-	
-	# Make a guess of a3
-	# Make a guess of a2
-	stepHeight = max(y_values) - min(y_values)
-	print "Step height [a1] is", stepHeight
-	a1 = -stepHeight
+	# Determine ingress or egress
+	beginY = numpy.mean(y_values[0:4])
+	endY = numpy.mean(y_values[-5:-1])
+	print "begin y", beginY, "end y", endY
+	if endY>beginY:
+		egress = True
+		print "This is an egress."
+	else:
+		egress = False
+		print "This is an ingress."
+		
+	# Initial parameters
+	drop = endY - beginY
+	a1 = drop
+	print "Drop is [a0]:", a1
+	a2 = 30000.
 	print "Sharpness [a2] is", a2
-	
-	midX = a3
-	print "Midpoint of dropin x [a3] is", midX
-	a3 = midX
-	topHeight = max(y_values)
-	print "Top height [a4] is", topHeight
-	a4 = topHeight
+	a3 = numpy.median(x_values)
+	print "Midpoint of drop is [a3]", a3
+	a4 = beginY
+	print "Initial value is [a4]", a4
+	a5 = 0.
 	print "Linear slope [a5] is", a5
 	
+	# Do a test plot first
+	y_fit = function(x_values)
+	matplotlib.pyplot.figure(figsize=(8, 5))
+	matplotlib.pyplot.plot(x_values, y_fit)
+	matplotlib.pyplot.plot(x_values, y_values)
+	matplotlib.pyplot.show()
+	
+	
+	
+	matplotlib.pyplot.figure(figsize=(8, 5))
+	
 	chiSquared = calcChiSquared(x_values, y_values)
-	print "chi squared:", chiSquared
+	#print "chi squared:", chiSquared
 	
 	aguess = numpy.array([a1, a2, a3, a4, a5])
+	startGuess = aguess
 	print "a0", aguess
 	aresult = scipy.optimize.curve_fit(func, x_values, y_values, aguess, y_errors)
 	parameters = aresult[0]
+	originalResult = aresult[0]
 	
 	a1 = parameters[0]
 	a2 = parameters[1]
@@ -97,22 +101,81 @@ if __name__ == "__main__":
 	a5 = parameters[4]
 	
 	y_fit = [function(x) for x in x_values]
+	lowerX = min(x_values)
+	upperX = max(x_values)
+	smootherX = numpy.arange(lowerX, upperX, 0.000001)
+	smootherY = function(smootherX)
 	
-	print "Eclipse ingress time:", a3, a3+JDoffset
+	print "Eclipse ingress time: %f or %5.8f"%(a3, a3+JDoffset)
+	
 	matplotlib.pyplot.xlabel(xColumn, size = 14)
 	matplotlib.pyplot.ylabel('Relative counts', size = 14)
 	
 	matplotlib.pyplot.xlabel(xColumn + " - " + str(JDoffset), size = 14)
 			
 	matplotlib.pyplot.errorbar(x_values, y_values, color=c, yerr=y_errors, fmt = '.', ecolor=c, capsize=0)
-	matplotlib.pyplot.plot(x_values, y_fit, color = 'r')
-	matplotlib.pyplot.draw()
-	
+	#matplotlib.pyplot.plot(x_values, y_fit, color = 'r')
+	matplotlib.pyplot.plot(smootherX, smootherY, color = 'g')
+	matplotlib.pyplot.plot([a3, a3], [0, a4], color = 'g', linestyle='dashed')
 	fig = matplotlib.pyplot.gcf()
-	matplotlib.pyplot.show()
+	fig.suptitle(runStr + ' ingress', fontsize=20)
+
+	matplotlib.pyplot.draw()
+	matplotlib.pyplot.show(block = False)
+	fig.savefig(runStr +'_ingress.eps',dpi=100, format='eps')
+	fig.savefig(runStr +'_ingress.png',dpi=100, format='png')
+	time.sleep(3)
+	
+	times = []
+	random.seed()
+	for n in range(1000):
+		# Give all the points a random bump...
+		y_perturbed = []
+		for y, y_error in zip(y_values, y_errors):
+			y_p = numpy.random.normal(y, y_error)
+			y_perturbed.append(y_p)	
+		y_perturbed = numpy.array(y_perturbed)
+		# Trim off a few points from each end of the data. 
+		leftTrim = random.randrange(0, trimSize)
+		rightTrim = random.randrange(0, trimSize)
+		trimmed_x = x_values[leftTrim: len(x_values)-rightTrim]
+		trimmed_y = y_values[leftTrim: len(x_values)-rightTrim]
+		trimmed_yp = y_perturbed[leftTrim: len(x_values)-rightTrim]
+		trimmed_errors = y_errors[leftTrim: len(x_values)-rightTrim]
+		# Run a new fit...
+		aguess = numpy.array([a1, a2, a3, a4, a5])
+		aguess = startGuess
+		aresult = scipy.optimize.curve_fit(func, trimmed_x, trimmed_yp, aguess, trimmed_errors)
+		parameters = aresult[0]
+		a1 = parameters[0]
+		a2 = parameters[1]
+		a3 = parameters[2]
+		a4 = parameters[3]
+		a5 = parameters[4]
+		print "Montecarlo test number:", n, "Trim: [%d, %d]"%(leftTrim, rightTrim),"Eclipse ingress time: %f or %5.10f"%(a3, a3+JDoffset)
+		times.append(a3)
+		
+		y_fit = [function(x) for x in x_values]
+		
+		matplotlib.pyplot.clf()
+		matplotlib.pyplot.xlabel(xColumn, size = 14)
+		matplotlib.pyplot.ylabel('Relative counts', size = 14)
+		matplotlib.pyplot.xlabel(xColumn + " - " + str(JDoffset), size = 14)
+		matplotlib.pyplot.errorbar(trimmed_x, trimmed_y, color=c, yerr=trimmed_errors, fmt = '.', ecolor=c, capsize=0)
+		matplotlib.pyplot.scatter(trimmed_x, trimmed_yp, color='r', marker = 'o')
+		matplotlib.pyplot.plot([a3, a3], [-.1*a4, 1.1*a4], color = 'g', linestyle='dashed')
+		matplotlib.pyplot.plot(x_values, y_fit, color = 'r')
+		matplotlib.pyplot.draw()
+		#time.sleep(0.2)
+		
+	print "Mean: %5.10f  Stddev:%2.12f or %f seconds"%(numpy.mean(times), numpy.std(times), numpy.std(times)*86400.)	
+	print "Original time: %5.8f, Montecarlo mean: %5.8f, stddev: %2.12f"%(originalResult[2] + JDoffset, numpy.mean(times) + JDoffset, numpy.std(times))
+	fig = matplotlib.pyplot.gcf()
+	#matplotlib.pyplot.show()
+	"""
 	fig.savefig('ingress.eps',dpi=100, format='eps')
 	fig.savefig('ingress.png',dpi=100, format='png')
-	
+	"""
 	
 	sys.exit()
 	
