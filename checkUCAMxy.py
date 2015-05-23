@@ -122,7 +122,7 @@ if __name__ == "__main__":
 		matplotlib.pyplot.scatter(frames, xValues, color = 'r')
 		matplotlib.pyplot.plot(frames, xAverage, color = 'k', lw=2)
 		#matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX+sigmaX, meanX+sigmaX], color='k', linestyle='dashed')
-		matplotlib.pyplot.plot( [frames[0], frames[-1]], [staticX, staticX], color='k', linestyle='-')
+		matplotlib.pyplot.plot( [frames[0], frames[-1]], [staticX, staticX], color='k', linestyle='-', lw=2)
 		#matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanX-sigmaX, meanX-sigmaX], color='k', linestyle='dashed')
 		
 		matplotlib.pyplot.subplot(2, 1, 2)
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 		matplotlib.pyplot.scatter(frames, yValues, color = 'g')
 		matplotlib.pyplot.plot(frames, yAverage, color = 'k', lw=2)
 		#matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY+sigmaY, meanY+sigmaY], color='k', linestyle='dashed')
-		matplotlib.pyplot.plot( [frames[0], frames[-1]], [staticY, staticY], color='k', linestyle='-')
+		matplotlib.pyplot.plot( [frames[0], frames[-1]], [staticY, staticY], color='k', linestyle='-', lw=2)
 		#matplotlib.pyplot.plot( [frames[0], frames[-1]], [meanY-sigmaY, meanY-sigmaY], color='k', linestyle='dashed')
 		
 		matplotlib.pyplot.draw()
