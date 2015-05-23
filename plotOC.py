@@ -10,13 +10,14 @@ import scipy.optimize
 import time
 import random
 import timeClasses
-
+import csv
 	
 
 if __name__ == "__main__":
 
-	parser = argparse.ArgumentParser(description='Test an ephemeris.')
-	parser.add_argument('-e', '--filename', type=str, help='Ephemeris .dat file.')
+	parser = argparse.ArgumentParser(description='Plot an O-C.')
+	parser.add_argument('filename', type=str, help='CSV file of eclipse times.')
+	parser.add_argument('-e', '--ephemerisfilename', type=str, help='Ephemeris .dat file.')
 	arg = parser.parse_args()
 	print arg
 	if arg.filename == None:
@@ -25,9 +26,49 @@ if __name__ == "__main__":
 
 	ephemeris = timeClasses.ephemerisObject()
 	
-	ephemeris.loadFromFile(arg.filename)
+	ephemeris.loadFromFile(arg.ephemerisfilename)
 	
 	print ephemeris
+	
+	csvfile = open(arg.filename, 'r')
+	reader = csv.reader(csvfile, delimiter=',')
+	headings = reader.next()
+	columns = []
+	for h in headings:
+		columnName = h.strip()
+		columns.append(columnName)
+	
+	MJDs = []
+	errors = []	
+	for line in reader:
+		values = [v.strip() for v in line]
+		MJD = float(values[0])
+		error = float(values[1])
+		MJDs.append(MJD)
+		errors.append(error)
+	
+	ocs = []
+	cycles = []
+	for MJD, error in zip(MJDs, errors):
+		phase = ephemeris.getPhase(MJD)
+		cycle = ephemeris.getOrbits(MJD)
+		if phase>0.5: phase-=1
+		phaseDifference = phase 
+		print phaseDifference
+		#if phaseDifference < 0: phaseDifference-=1
+		ominusc = phaseDifference * ephemeris.Period
+		print MJD, phase, phaseDifference, ominusc, ominusc*86400., cycle
+		ocs.append(ominusc*86400.)
+		cycles.append(cycle)
+		
+	matplotlib.pyplot.figure(figsize=(12, 8))
+	matplotlib.pyplot.scatter(cycles, ocs)
+	fig = matplotlib.pyplot.gcf()
+	
+	matplotlib.pyplot.show()
+	fig.savefig('huaqr_oc.eps',dpi=100, format='eps')
+	fig.savefig('huaqr_oc.png',dpi=100, format='png')
+	sys.exit()
 	
 	print "======================================================="
 	print "Red"
