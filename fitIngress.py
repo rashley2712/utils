@@ -78,7 +78,7 @@ if __name__ == "__main__":
 	matplotlib.pyplot.figure(figsize=(8, 5))
 	matplotlib.pyplot.plot(x_values, y_fit)
 	matplotlib.pyplot.plot(x_values, y_values)
-	matplotlib.pyplot.show()
+	matplotlib.pyplot.show(block=False)
 	
 	
 	
