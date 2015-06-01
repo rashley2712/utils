@@ -54,6 +54,18 @@ def removeDuplicatesFromList(list):
 			newList.append(l)
 	return newList
 	
+def getBetweenChars(inputString, startChar, endChar):
+	""" Gets a portion of a string between two characters """
+	returnString = ""
+	if (startChar not in inputString):
+		return returnString
+	if (endChar not in inputString):
+		return returnString
+	startPosition = inputString.find(startChar)
+	endPosition = inputString[startPosition:].find(endChar)
+	returnString = inputString[startPosition+1:startPosition+endPosition]
+	return returnString
+		
 	
 def fromSexagesimal(raStr, decStr):
 	""" Format for input ra and dec are 'HH:MM:SS.dd' and 'nDD:MM:SS.dd'

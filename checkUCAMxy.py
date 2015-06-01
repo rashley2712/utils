@@ -49,6 +49,7 @@ if __name__ == "__main__":
 		for line in inputFile:
 			if line[0] != '#':
 				params = line.split()
+				print params
 				CCD = int(params[ccdIndex])
 				if CCD == desiredCCD:
 					xPosition = float(params[xIndex])
