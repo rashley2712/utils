@@ -6,6 +6,7 @@ import argparse, sys
 import astropy.io.fits
 import astropy.stats
 import astropy.time
+import astropy.coordinates.EarthLocation
 import timeClasses
 #import helcorr
 import photometryClasses

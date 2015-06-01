@@ -76,8 +76,22 @@ if __name__ == "__main__":
 
 	print "======================================================="
 	print "LT Rise"
-	MJD = 49102.4200026
-	#MJD = 56944.9054808
+	MJD = 56944.9054808
+	
+	print "Phase of %f is %f"%(MJD, ephemeris.getPhase(MJD)) 
+	print "N Orbits of %f is %d"%(MJD, ephemeris.getOrbits(MJD)) 
+	
+	phase = ephemeris.getPhase(MJD)
+	phaseDifference = 1 - phase
+	
+	ominusc = phaseDifference * ephemeris.Period
+	
+	print "O-C is %f days, or %f seconds."%(ominusc, ominusc*86400.)
+
+
+	print "======================================================="
+	print "trm BMJD"
+	MJD = 57163.17069173
 	
 	print "Phase of %f is %f"%(MJD, ephemeris.getPhase(MJD)) 
 	print "N Orbits of %f is %d"%(MJD, ephemeris.getOrbits(MJD)) 

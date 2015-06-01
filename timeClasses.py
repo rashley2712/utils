@@ -25,8 +25,9 @@ class ephemerisObject:
 		
 	def getOrbits(self, HJD):
 		HJD_difference = HJD - self.T0
-		norbits = int( HJD_difference / self.Period)
-		return norbits
+		norbits = int(HJD_difference / self.Period)
+		upperorbit = int(round(HJD_difference / self.Period))
+		return norbits, upperorbit
 		
 	def getOffsetOrbits(self, HJD):
 		HJD_difference = HJD - self.T0 - self.Period/2.0
