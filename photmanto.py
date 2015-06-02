@@ -30,10 +30,132 @@ def loadFromLogFile(filename, maxRows = 0):
 	ultraspec = True
 	inputFile = open(filename, 'r')
 	
+	xValues = []
+	yValues = []
+	frameList = []
+	headerBlock = ""
+	runName = "--unknown--"
+	telescope = "--unknown--"
+	targetName = "--unknown--"
+	filterName = "--unknown--"
+	PI = "--unknown--"
+	columnCount = 0
 	for line in inputFile:
-		if line[0]=='#':
-			print "Comment:", line
+		if line[0] == '#':
+			headerBlock+=line
+			if ("target" in line) and ("estimated" not in line):
+				targetName = generalUtils.getBetweenChars(line, '=', '/').strip()
+				print "Target: %s"%targetName
+			if ("filters" in line):
+				filterName = generalUtils.getBetweenChars(line, '=', '/').strip()
+				print "Filters: %s"%filterName
+			if ("Telescope" in line) and ("observing" not in line):
+				telescope = generalUtils.getBetweenChars(line, '=', '/').strip()
+				print "Telescope: %s"%telescope
+			if (" pi " in line):
+				PI = generalUtils.getBetweenChars(line, '=', '/').strip()
+				print "PI: %s"%PI
+			if (" Data file name " in line):
+				runName = generalUtils.getBetweenChars(line, '=', '\n').strip()
+				print "run data file: %s"%runName
+			if (" Server file name " in line):
+				runName = generalUtils.getBetweenChars(line, '=', '\n').strip()
+				print "run data file: %s"%runName
+				
+		if line[0] != '#':
+			params = line.split()
+			# print params
+			frameIndex = int(params[0])
+			frameList.append(frameIndex)
+			columnCount = len(params)
+	firstFrame = frameList[0]
+	countRecurrence = 0
+	for f in frameList:
+		if f == firstFrame: countRecurrence+=1
 	
+	numApertures = int( ((columnCount-7)/14) )
+	print "ColumnCount: ", columnCount, "which means %d apertures."%numApertures
+	frameList = generalUtils.removeDuplicatesFromList(frameList)
+	print "The run in file %s contains %d frames. Start frame: %d End frame: %d"%(filename, len(frameList), min(frameList), max(frameList))
+	if countRecurrence == 3:
+		print "This file has 3 CCDs. It is an ULTRACAM file."
+		ultracam = True
+		ultraspec = False
+	if countRecurrence == 1: 
+		print "This file has 1 CCD. It is an ULTRASPEC file."
+		ultracam = False
+		ultraspec = True
+
+	if (ultracam): CCDs = [1, 2, 3]
+	else: CCDs = [1]
+	for CCD in CCDs: 
+		for aperture in range(1, numApertures+1):
+			apertureIndex = 14*(aperture-1) + 7
+			print "Reading data for aperture %d, CCD %d"%(aperture, CCD)
+			inputFile.seek(0)
+			MJDs = []
+			counts = []
+			skys = []
+			sigmas = []
+			errors = []
+			timeFlags = []
+			exposures = []
+			FWHMs = []
+			betas = []
+			xs = []
+			ys = []
+			for line in inputFile:
+				if line[0] != '#':
+					params = line.split()
+					# print params
+					CCDValue = int(params[4])
+					apertureValue = int(params[apertureIndex])
+					if CCDValue == CCD: 
+						frameIndex = int(params[0])
+						MJDs.append(float(params[1]))
+						timeFlags.append(int(params[2]))
+						exposures.append(float(params[3]))
+						FWHMs.append(float(params[5]))
+						betas.append(float(params[6]))
+						xs.append(float(params[apertureIndex + 1]))
+						ys.append(float(params[apertureIndex + 2]))
+						counts.append(float(params[apertureIndex + 7]))
+						sigmas.append(float(params[apertureIndex + 8]))
+						skys.append(float(params[apertureIndex + 9]))
+						errors.append(int(params[apertureIndex + 13]))
+					
+			photometry = {}
+			
+			photometry['MJD'] = numpy.array(MJDs)
+			photometry['exposure'] = numpy.array(exposures)
+			photometry['FWHM'] = numpy.array(FWHMs)
+			photometry['beta'] = numpy.array(betas)
+			photometry['x'] = numpy.array(xs)
+			photometry['y'] = numpy.array(ys)
+			photometry['counts'] = numpy.array(counts)
+			photometry['sigma'] = numpy.array(sigmas)
+			photometry['sky'] = numpy.array(skys)
+			photometry['error'] = numpy.array(errors)	
+		
+			id = slots.getNextSlotID()
+			print "new ID:", id
+			slot = photometryClasses.slotObject(id)
+			slot.setPhotometry(photometry)
+			slot.setTimeColumn('MJD')
+			slot.setYColumn('counts')
+			slot.setYError('sigma')
+			slot.target = targetName
+			slot.filter = filterName
+			slot.aperture = aperture
+			slot.headers = headerBlock
+			slot.runName = runName
+			slot.telescope = telescope
+			slot.CCD = "CCD %d"%CCD
+			numSlots = slots.addSlot(slot)
+			print "Added the data to a new slot. Total number of slots is now: %d"%(numSlots)
+			print slot
+	
+	inputFile.close()
 	return
 	
 
