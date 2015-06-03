@@ -101,8 +101,8 @@ if __name__ == "__main__":
 	fig = matplotlib.pyplot.gcf()
 	matplotlib.pyplot.show()
 	matplotlib.pyplot.show()
-	fig.savefig('zoomed_spectra.eps',dpi=100, format='eps')
-	fig.savefig('zoomed.png',dpi=200, format='png')
+	fig.savefig('Halpha_zoom.eps',dpi=100, format='eps')
+	fig.savefig('Halpha_zoom.png',dpi=200, format='png')
 
 
 	spectrum = spectra[5]

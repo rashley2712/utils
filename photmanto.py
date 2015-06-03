@@ -75,7 +75,7 @@ def loadFromLogFile(filename, maxRows = 0):
 	
 	numApertures = int( ((columnCount-7)/14) )
 	print "ColumnCount: ", columnCount, "which means %d apertures."%numApertures
-	frameList = generalUtils.removeDuplicatesFromList(frameList)
+	# frameList = generalUtils.removeDuplicatesFromList(frameList)
 	print "The run in file %s contains %d frames. Start frame: %d End frame: %d"%(filename, len(frameList), min(frameList), max(frameList))
 	if countRecurrence == 3:
 		print "This file has 3 CCDs. It is an ULTRACAM file."
@@ -104,7 +104,11 @@ def loadFromLogFile(filename, maxRows = 0):
 			betas = []
 			xs = []
 			ys = []
+			lineCounter = 0
 			for line in inputFile:
+				lineCounter+= 1
+				sys.stdout.write("\rLine number: %d    "%(lineCounter))
+				sys.stdout.flush()
 				if line[0] != '#':
 					params = line.split()
 					# print params
@@ -417,11 +421,19 @@ def calculateBMJD(slotID):
 	# obsLong = 342.1184
 	# obsLat = 28.7606
 	# obsAlt = 2326. 
+	# VLT (Paranal)
+	obsLong = 289.5972
+	obsLat = -24.6253
+	obsAlt = 2635. 
+	
 	obsLocation = astropy.coordinates.EarthLocation(lon = obsLong, lat = obsLat, height=obsAlt)
+	
 	targetRASex = "07 11 26"			# CSS081231
 	targetDecSex = "+44 04 05"
 	# targetRASex = "21 07 58.188"		# HU Aqr  21 07 58.188 -05 17 40.47
 	# targetDecSex = "-05 17 40.47"
+	targetRASex = "14 09 07.46"			# V834 Cen
+	targetDecSex = "-45 17 17.1"
 	
 	ra, dec = generalUtils.fromSexagesimal(targetRASex, targetDecSex)
 	print "Calculating barycentric MJD or BMJD"
