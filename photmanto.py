@@ -603,6 +603,35 @@ def calculateMinutes(slotID):
 	slot.addColumn('minutes', minutesArray)
 	return
 
+def calculateCountRate(slotID):
+	slot = slots.getSlotByID(slotID)
+	
+	counts = slot.getPhotometryColumn('counts')
+	sigmas = slot.getPhotometryColumn('sigma')
+	exposures = slot.getPhotometryColumn('exposure')
+	if len(counts) == 0:
+		print "Could not locate the 'counts' column. Aborting operation."
+		return
+	if len(exposures) == 0:
+		print "Could not locate the 'exposure' column. Aborting operation."
+		return
+	if len(exposures) != len(counts):
+		print "For some reason the lengths of the 'exposure' and the 'counts' column are different lengths. Need to abort the operation."
+		return
+	countrates = []
+	sigma_crs = []
+	for s, c, e in zip(sigmas, counts, exposures):
+		cr = c / e
+		sigma_cr = s / e
+		print "Count: %f [%f], Exposure: %f seconds, CountRate: %f [%f] c/s"%(c, s, e, cr, sigma_cr)
+		countrates.append(cr)
+		sigma_crs.append(sigma_cr)
+		
+	slot.addColumn('countrate', countrates)
+	slot.addColumn('sigma_cr', sigma_crs)
+	return
+
+
 def showHeader(slotID):
 	slot = slots.getSlot(slotID)
 	header = slot.headers
@@ -618,17 +647,17 @@ def setSlotProperty(slotID, property, value):
 		if (slot.setYColumn(value)): print "setting yaxis to " + value
 		else: print value, "is not a valid column in slot ", slotID
 	if property=='yerrors':
-		if (slot.setYErrors(value)): print "setting yerrors to " + value
+		if (slot.setYError(value)): print "setting yerrors to " + value
 		else: print value, "is not a valid column in slot ", slotID
 	setattr(slot, property, value)
 	return
 	
 def copySlot(fromID, toID):
 	if (not slots.exists(fromID)):
-		print "Aborting opteration: No slot known with source ID: %d"%fromID
+		print "Aborting operation: No slot known with source ID: %d"%fromID
 		return
 	if (slots.exists(toID)):
-		print "Aborting opteration: A slot already exists with destination ID: %d"%toID
+		print "Aborting operation: A slot already exists with destination ID: %d"%toID
 		return
 	oldSlot = slots.getSlot(fromID)
 	newSlot = copy.deepcopy(oldSlot)

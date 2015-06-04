@@ -132,9 +132,27 @@ class photCommands(cmd.Cmd):
 		if operation == 'bmjd': photmanto.calculateBMJD(slotID)
 		return
 		
-	def do_minutes(self, line):
+	def do_normalise(self, line):
+		""" normalise [slotID]
+			Calculates the counts per second and puts it in a new column called 'countrate'. Needs a 'counts' column and an 'exposure' column to work from. 
+		"""
 		params = line.split(' ')
-		print "params:", params
+		if params[0]=='': 
+			print "Please specify a slot ID."
+			return
+		try: 
+			slotID = int(params[0])
+		except ValueError:
+			print "Did not understand the slot ID:", params[0]
+			return
+		photmanto.calculateCountRate(slotID)
+		return
+		
+	def do_minutes(self, line):
+		""" minutes [slotID]
+			Calculates the minutes from the start of the run and adds a new 'minutes' column. Needs a BMJD or an MJD column to work from. 
+		"""
+		params = line.split(' ')
 		if params[0]=='': 
 			print "Please specify a slot ID."
 			return
@@ -150,7 +168,6 @@ class photCommands(cmd.Cmd):
 		""" csv [slotID] [filename]
 		Write the 3 key columns (xaxis, yaxis, yerrors) to a CSV file."""
 		params = line.split(' ')
-		print "params:", params
 		if len(params)<2: 
 			print "Specify a slotID and a filename."
 			return

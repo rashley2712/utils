@@ -146,7 +146,9 @@ class slotObject:
 	def getPhotometryColumn(self, columnName):
 		try:
 			data = self.photometry[columnName]
-		except ValueError, KeyError:
+		except ValueError:
+			return []
+		except KeyError:
 			return []
 		return data	
 	
