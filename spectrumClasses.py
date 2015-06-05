@@ -21,6 +21,23 @@ class spectrumObject:
 		
 		return self.length
 		
+	def snipWavelengthRange(self, lower, upper):
+		newWavelengths = []
+		newFlux = []
+		if lower>=upper: return self.length
+			
+		for w, f in zip(self.wavelengths, self.flux):
+			if (w<lower) or (w>upper):
+				newWavelengths.append(w)
+				newFlux.append(f)
+		self.length = len(newWavelengths)
+		self.wavelengths = newWavelengths
+		self.flux = newFlux
+		self.wavelengthRange = (min(self.wavelengths), max(self.wavelengths))
+			
+		return self.length		
+	
+		
 	def trimWavelengthRange(self, lower, upper):
 		newWavelengths = []
 		newFlux = []
@@ -34,7 +51,7 @@ class spectrumObject:
 		self.length = len(newWavelengths)
 		self.wavelengths = newWavelengths
 		self.flux = newFlux
-		self.wavelengthRange = (min(wavelengths), max(wavelengths))
+		self.wavelengthRange = (min(self.wavelengths), max(self.wavelengths))
 			
 		return self.length		
 		
