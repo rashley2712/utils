@@ -603,6 +603,17 @@ def calculateMinutes(slotID):
 	slot.addColumn('minutes', minutesArray)
 	return
 
+def calculateMean(slotID):
+	slot = slots.getSlotByID(slotID)
+	yValues = slot.getPhotometryColumn(slot.yColumn)
+	yErrors = slot.getPhotometryColumn(slot.yError)
+	weights = 1.0/yErrors
+	mean = numpy.average(yValues, weights = weights)
+	print "Weighted mean:", mean
+	print "Std dev:", numpy.std(yValues)
+	return
+
+
 def calculateCountRate(slotID):
 	slot = slots.getSlotByID(slotID)
 	
