@@ -24,6 +24,17 @@ state = {	'plotter'	: 'matplot', \
 			'ps'		: False,  \
 		 	'plotterhandle': None}
 
+telescopes = []
+telescope = {}
+telescope['name'] = "Very Large Telescope, UT3 (Melipal)"
+telescope['longitude'] = 289.5972
+telescope['latitude'] = -24.6253
+telescope['altitude'] = 2635.
+telescopes.append(telescope)
+
+print "Telescope information:"
+print telescopes
+
 def loadFromLogFile(filename, maxRows = 0):
 	""" Loads the photometry data from a log file created by Tom Marsh ULTRACAM pipeline. """
 	ultracam = False
