@@ -130,6 +130,7 @@ class photCommands(cmd.Cmd):
 			return
 		operation = params[1]
 		if operation == 'bmjd': photmanto.calculateBMJD(slotID)
+		if operation == 'mean': photmanto.calculateMean(slotID)
 		return
 		
 	def do_normalise(self, line):
@@ -240,9 +241,7 @@ class photCommands(cmd.Cmd):
 			return
 		photmanto.removeZeros(slotID)
 		return
-		
-		
-		
+				
 	def do_plot(self, line):
 		""" plot [slot_number]
 		Plot the contents of the slot """
@@ -308,16 +307,21 @@ class photCommands(cmd.Cmd):
 		return
 		
 	def do_show(self, line):
-		""" show [columns] [slotid]
-		Show info about a slot (eg list columns available). """
+		""" show [slotid] [info]
+		Show info about a slot (eg list columns available). 
+		Examples:
+			show [slotid] header   - Lists the raw header info extracted when importing the data.  """
+
 		params = line.split(' ')
-		if len(params)<2: return
-		parameter = params[0]
-		if parameter == 'columns':
-			slotID = int(params[1])
+		try:
+			slotID = int(params[0])
+			command = params[1]
+		except ValueError:
+			print "Could not understand the slot ID. It should be the number of a valid slot."
+			return
+		if command == 'columns':
 			photmanto.showColumns(slotID)
-		if parameter == 'header':
-			slotID = int(params[1])
+		if command == 'header':
 			photmanto.showHeader(slotID)
 		
 		return

@@ -22,18 +22,48 @@ state = {	'plotter'	: 'matplot', \
 			'xlabel'	: 'auto', \
 			'ylabel'	: 'auto', \
 			'ps'		: False,  \
-		 	'plotterhandle': None}
+		 	'plotterhandle': None }
 
-telescopes = []
-telescope = {}
-telescope['name'] = "Very Large Telescope, UT3 (Melipal)"
-telescope['longitude'] = 289.5972
-telescope['latitude'] = -24.6253
-telescope['altitude'] = 2635.
-telescopes.append(telescope)
+def findTelescope(name):
+	telescopes = []
+	# VLT
+	telescope = {}
+	telescope['name'] = "Very Large Telescope, UT3 (Melipal)"
+	telescope['longitude'] = 289.5972
+	telescope['latitude'] = -24.6253
+	telescope['altitude'] = 2635.
+	telescopes.append(telescope)
+	telescope = {}
+	# TNT observatory
+	telescope = {}
+	telescope['name'] = "Thai National Observatory"
+	telescope['longitude'] = 98.48
+	telescope['latitude'] = 18.57
+	telescope['altitude'] = 2457.
+	telescopes.append(telescope)
+	telescope = {}
+	# WHT observatory
+	telescope = {}
+	telescope['name'] = "William Herschel Telescope"
+	telescope['longitude'] = 342.1184
+	telescope['latitude'] = 28.7606
+	telescope['altitude'] = 2326.
+	telescopes.append(telescope)
+	# NTT observatory
+	telescope = {}
+	telescope['name'] = "New Technology Telescope"
+	telescope['longitude'] = 289.27
+	telescope['latitude'] = 29.2567
+	telescope['altitude'] = 2347.
+	telescopes.append(telescope)
 
-print "Telescope information:"
-print telescopes
+	for t in telescopes:
+		if t['name'] in name: 
+			foundTelescope = t
+			print "Found the following telescope for this object:", foundTelescope
+			return foundTelescope
+
+	return None
 
 def loadFromLogFile(filename, maxRows = 0):
 	""" Loads the photometry data from a log file created by Tom Marsh ULTRACAM pipeline. """
@@ -61,8 +91,8 @@ def loadFromLogFile(filename, maxRows = 0):
 				filterName = generalUtils.getBetweenChars(line, '=', '/').strip()
 				print "Filters: %s"%filterName
 			if ("Telescope" in line) and ("observing" not in line):
-				telescope = generalUtils.getBetweenChars(line, '=', '/').strip()
-				print "Telescope: %s"%telescope
+				telescopeName = generalUtils.getBetweenChars(line, '=', '/').strip()
+				print "Telescope name: %s"%telescopeName
 			if (" pi " in line):
 				PI = generalUtils.getBetweenChars(line, '=', '/').strip()
 				print "PI: %s"%PI
@@ -164,7 +194,7 @@ def loadFromLogFile(filename, maxRows = 0):
 			slot.aperture = aperture
 			slot.headers = headerBlock
 			slot.runName = runName
-			slot.telescope = telescope
+			slot.telescope = findTelescope(telescopeName)
 			slot.CCD = "CCD %d"%CCD
 			numSlots = slots.addSlot(slot)
 			print "Added the data to a new slot. Total number of slots is now: %d"%(numSlots)
@@ -388,9 +418,9 @@ def showColumns(slotID):
 	if not slot:
 		print "No slot with slot id %d found."%slotID
 		return
-	columns = slot.getPhotometryColumnList()
+	columns = slot.columnNames
 	print "Available columns:", columns
-	print "Time [%s]"%slot.timeColumn,
+	print "Selected columns: Time [%s]"%slot.timeColumn,
 	if slot.yColumn!="": print " y-axis [%s]"%slot.yColumn,
 	if slot.yError!="": print " y-errors [%s]"%slot.yError,
 	print 
@@ -424,32 +454,36 @@ def removeZeros(slotID):
 def calculateBMJD(slotID):
 	slot = slots.getSlotByID(slotID)
 	times = slot.getPhotometryColumn('MJD')
-	# TNT observatory
-	obsLong = 98.48
-	obsLat = 18.57
-	obsAlt = 2457. 
-	# WHT observatory
-	# obsLong = 342.1184
-	# obsLat = 28.7606
-	# obsAlt = 2326. 
-	# VLT (Paranal)
-	obsLong = 289.5972
-	obsLat = -24.6253
-	obsAlt = 2635. 
 	
+	# Double-check that we have the info we need to perform this calculation
+	if slot.telescope == None:
+		print "Sorry. There is no telescope information set for this object."
+		return
+
+	if slot.coordinates == None:
+		print "Sorry. We don't have the coordinates for this object. You can set them with the 'set' command."
+		return
+
+	print "Calculating barycentric MJD or BMJD"	
+	obsLong = slot.telescope['longitude']
+	obsLat = slot.telescope['latitude']
+	obsAlt = slot.telescope['altitude']
+	obsName = slot.telescope['name'] 
+	
+	print "Using the following telescope information:\nName: %s\nLongitude: %.2f [deg]\tLatitude: %.2f [deg]\t Altitude: %.1f [m]"%(obsName, obsLong, obsLat, obsAlt)
+
+
 	obsLocation = astropy.coordinates.EarthLocation(lon = obsLong, lat = obsLat, height=obsAlt)
-	
+
 	targetRASex = "07 11 26"			# CSS081231
 	targetDecSex = "+44 04 05"
 	# targetRASex = "21 07 58.188"		# HU Aqr  21 07 58.188 -05 17 40.47
 	# targetDecSex = "-05 17 40.47"
 	targetRASex = "14 09 07.46"			# V834 Cen
 	targetDecSex = "-45 17 17.1"
-	
 	ra, dec = generalUtils.fromSexagesimal(targetRASex, targetDecSex)
-	print "Calculating barycentric MJD or BMJD"
-	print "Observatory location: Lat: %f [deg] Long: %f [deg] Height: %f [m]"%(obsLat, obsLong, obsAlt)
 	print "Target position: %s, %s (%f, %f)"%(targetRASex, targetDecSex, ra, dec)
+
 	targetCoords = astropy.coordinates.SkyCoord(ra, dec, unit='deg')
 	BMJD = []
 	t = times[0]

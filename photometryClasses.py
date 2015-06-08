@@ -1,6 +1,6 @@
 import numpy
 import json
-		
+
 
 class slotCollection:
 	def __init__(self):
@@ -74,6 +74,7 @@ class slotObject:
 		self.yError = ""
 		self.times = []
 		self.CCD = "none"
+		self.coordinates = None
 		
 	def initFromJSON(self, jsonObject):
 		self.target = jsonObject['target']
