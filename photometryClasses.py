@@ -1,6 +1,6 @@
 import numpy
 import json
-
+import inspect
 
 class slotCollection:
 	def __init__(self):
@@ -93,7 +93,21 @@ class slotObject:
 			self.yError = jsonObject['yerror']
 		except:
 			self.yError = ""
-				
+		
+	def getProperty(self, propertyName):
+		if propertyName == 'dir':
+			attributes = dir(self)
+			propertyList = [a for a in attributes if not(a[0].startswith('__') and a[0].endswith('__'))]
+			propertyList = inspect.getmembers(self, lambda a:not(inspect.isroutine(a)))
+			return propertyList
+
+
+		try:
+			retrievedProperty = getattr(self, propertyName)
+		except AttributeError:
+			retrievedProperty = None
+		return retrievedProperty 
+
 	def setPhotometry(self, photometry):
 		self.photometry = photometry
 		self.updatePhotometryColumnNames()

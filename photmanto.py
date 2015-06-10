@@ -475,13 +475,7 @@ def calculateBMJD(slotID):
 
 	obsLocation = astropy.coordinates.EarthLocation(lon = obsLong, lat = obsLat, height=obsAlt)
 
-	targetRASex = "07 11 26"			# CSS081231
-	targetDecSex = "+44 04 05"
-	# targetRASex = "21 07 58.188"		# HU Aqr  21 07 58.188 -05 17 40.47
-	# targetDecSex = "-05 17 40.47"
-	targetRASex = "14 09 07.46"			# V834 Cen
-	targetDecSex = "-45 17 17.1"
-	ra, dec = generalUtils.fromSexagesimal(targetRASex, targetDecSex)
+	ra, dec = slot.coordinates
 	print "Target position: %s, %s (%f, %f)"%(targetRASex, targetDecSex, ra, dec)
 
 	targetCoords = astropy.coordinates.SkyCoord(ra, dec, unit='deg')
@@ -648,6 +642,19 @@ def calculateMinutes(slotID):
 	slot.addColumn('minutes', minutesArray)
 	return
 
+def calculateSeconds(slotID):
+	slot = slots.getSlotByID(slotID)
+	times = slot.getPhotometryColumn(slot.timeColumn)
+	beginTime = min(times)
+	secondsArray = []
+	for t in times:
+		seconds = (t - beginTime)*24*60*60
+		print t, "converted to", seconds
+		secondsArray.append(seconds)
+	slot.addColumn('seconds', secondsArray)
+	return
+
+
 def calculateMean(slotID):
 	slot = slots.getSlotByID(slotID)
 	yValues = slot.getPhotometryColumn(slot.yColumn)
@@ -696,6 +703,21 @@ def showHeader(slotID):
 	
 def setSlotProperty(slotID, property, value):
 	slot = slots.getSlotByID(slotID)
+	if property=="coordinates":
+		if len(value)==6:
+			raStr = value[0] + " " + value[1] + " " + value[2]
+			decStr = value[3] + " " + value[4] + " " + value[5]
+			(ra, dec) = generalUtils.fromSexagesimal(raStr, decStr)
+			print raStr, decStr, "converts to (%.3f, %.3f)"%(ra, dec), "degrees."
+			slot.coordinates = (ra, dec)
+		elif len(value)==2:
+			raStr = value[0]
+			decStr = value[1]
+			(ra, dec) = generalUtils.fromSexagesimal(raStr, decStr)
+			print raStr, decStr, "converts to (%.3f, %.3f)"%(ra, dec), "degrees."
+			slot.coordinates = (ra, dec)
+		return
+	value = value[0]
 	if property=='xaxis':
 		if (slot.setTimeColumn(value)): print "setting xaxis to " + value
 		else: print value, "is not a valid column in slot ", slotID
@@ -707,6 +729,15 @@ def setSlotProperty(slotID, property, value):
 		else: print value, "is not a valid column in slot ", slotID
 	setattr(slot, property, value)
 	return
+
+def printProperty(slotID, propertyName):
+	slot = slots.getSlotByID(slotID)
+	if (not slot):
+		print "No slot with ID %d found."%(slotID)
+		return
+	print slot.getProperty(propertyName)
+	return
+
 	
 def copySlot(fromID, toID):
 	if (not slots.exists(fromID)):

@@ -75,7 +75,7 @@ class photCommands(cmd.Cmd):
 		if variable=='slot':
 			print "Setting slot value:", params[1:]
 			if len(params)<4: 
-				print "Too few parameters specified. 'set slot [slotID] [variable] [value]'."
+				print "Too few parameters specified. 'set slot [slotID] [variable] [values]'."
 				return
 			try:
 				slotID = int(params[1])
@@ -83,7 +83,7 @@ class photCommands(cmd.Cmd):
 				print "Invalid slot id"
 				return
 			parameter = params[2]
-			value = params[3]
+			value = params[3:]
 			photmanto.setSlotProperty(slotID, parameter, value)
 		else: 
 			photmanto.setState(variable, value)
@@ -131,6 +131,8 @@ class photCommands(cmd.Cmd):
 		operation = params[1]
 		if operation == 'bmjd': photmanto.calculateBMJD(slotID)
 		if operation == 'mean': photmanto.calculateMean(slotID)
+		if operation == 'minutes': photmanto.calculateMinutes(slotID)
+		if operation == 'seconds': photmanto.calculateSeconds(slotID)
 		return
 		
 	def do_normalise(self, line):
@@ -321,8 +323,11 @@ class photCommands(cmd.Cmd):
 			return
 		if command == 'columns':
 			photmanto.showColumns(slotID)
-		if command == 'header':
+		elif command == 'header':
 			photmanto.showHeader(slotID)
+		else:
+			propertyName = params[1]
+			photmanto.printProperty(slotID, propertyName)
 		
 		return
 	
