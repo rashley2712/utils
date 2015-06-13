@@ -471,11 +471,11 @@ def calculateBMJD(slotID):
 	
 	print "Using the following telescope information:\nName: %s\nLongitude: %.2f [deg]\tLatitude: %.2f [deg]\t Altitude: %.1f [m]"%(obsName, obsLong, obsLat, obsAlt)
 
-
 	obsLocation = astropy.coordinates.EarthLocation(lon = obsLong, lat = obsLat, height=obsAlt)
 
 	ra, dec = slot.coordinates
-	print "Target position: %s, %s (%f, %f)"%(targetRASex, targetDecSex, ra, dec)
+	targetRADEC = generalUtils.toSexagesimal((ra,dec))
+	print "Target position: %s (%f, %f)"%(targetRADEC, ra, dec)
 
 	targetCoords = astropy.coordinates.SkyCoord(ra, dec, unit='deg')
 	BMJD = []
