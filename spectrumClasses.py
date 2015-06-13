@@ -1,5 +1,6 @@
 import numpy
 import json
+import scipy.interpolate
 
 class spectrumObject:
 	def __init__(self):
@@ -7,6 +8,7 @@ class spectrumObject:
 		self.flux = []
 		self.length = 0 
 		self.wavelengthRange = (0, 0)
+		self.name = 'unknown'
 		
 	def setData(self, wavelengths, flux):
 		if len(wavelengths) != len(flux):
@@ -20,8 +22,22 @@ class spectrumObject:
 		self.wavelengthRange = (min(wavelengths), max(wavelengths))
 		
 		return self.length
+
+	def resample(self, sampleWavelengths):
+		spline = scipy.interpolate.splrep(self.wavelengths, self.flux, s=0)
+		sampleFlux = scipy.interpolate.splev(sampleWavelengths, spline, der=0)
+		self.wavelengths = sampleWavelengths
+		self.flux = sampleFlux
+
+	def writeCSV(self, filename):
+		outputfile = open(filename, 'w')
+		outputfile.write("wavelength, flux\n")
+		for w, f in zip(self.wavelengths, self.flux):
+			outputfile.write("%f, %f\n"%(w, f))
+		outputfile.close()
 		
 	def snipWavelengthRange(self, lower, upper):
+		""" Removes a section from the spectrum """
 		newWavelengths = []
 		newFlux = []
 		if lower>=upper: return self.length
@@ -37,8 +53,35 @@ class spectrumObject:
 			
 		return self.length		
 	
+	def integrate(self, lower = -1, upper = -1):
+		""" Integrates under the spectrum between two wavelength limits. Defaults to all of the spectrum """
+		total = 0
+		for w, f in zip(self.wavelengths, self.flux):
+			total = total + f
+		return total
+
+	def divide(self, constant):
+		""" Divides the spectrum by a constant value """
+		newFlux = []
+		for w, f in zip(self.wavelengths, self.flux):
+			newFlux.append(f / constant)
+		self.flux = newFlux
+		return 
+
+	def subtractSpectrum(self, subtractSpectrum):
+		if len(self.wavelengths)!=len(subtractSpectrum.wavelengths):
+			print "Can't subtract spectra of different lengths."
+			return
+		newFlux = []
+		for (aw, af, bw, bf) in zip(self.wavelengths, self.flux, subtractSpectrum.wavelengths, subtractSpectrum.flux):
+			f = af - bf
+			print af, bf, f
+			newFlux.append(f)
+		self.flux = newFlux
+		return
 		
 	def trimWavelengthRange(self, lower, upper):
+		""" Trims out the lower and upper portions of the spectrum """ 
 		newWavelengths = []
 		newFlux = []
 	

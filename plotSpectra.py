@@ -24,6 +24,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Loads a series of spectra that were saved from Molly. Plots them using Matplotlib.')
 	parser.add_argument('inputFiles', type=str, nargs='+', help='Molly files containing the spectra')
 	parser.add_argument('-e', type=str, help='Optional ephemeris file')
+	parser.add_argument('--model', type=str, help='Optional model spectrum (to subtract).')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -66,9 +67,22 @@ if __name__ == "__main__":
 	
 		
 	numSpectra = len(spectra)
+
+	if arg.model != None:	
+		columnNames, data = loadingSavingUtils.loadNewCSV(arg.model)
+
+		modelSpectrum = spectrumClasses.spectrumObject()
+		modelSpectrum.objectName = "M-dwarf model"
+		modelSpectrum.setData(data['wavelength'], data['flux'])
+
+
+
+
 	matplotlib.pyplot.figure(figsize=(20, 4*numSpectra + 1))
-	offset = 1.2
+	offset = 0.1
 	for index, spectrum in enumerate(spectra):
+		if arg.model!=None:
+			spectrum.subtractSpectrum(modelSpectrum)
 		yValues = [y + offset * index for y in spectrum.getFlux()]
 		matplotlib.pyplot.plot(spectrum.getWavelengths(), yValues, drawstyle = 'steps', color = 'k')
 		if hasEphemeris:
@@ -89,14 +103,14 @@ if __name__ == "__main__":
 
 	numSpectra = len(spectra)
 	matplotlib.pyplot.figure(figsize=(16, 4*numSpectra + 1))
-	offset = 1
+	offset = 0.7
 	for index, spectrum in enumerate(spectra):
-		(wavelengths, flux) = spectrum.getSubsetByWavelength(6400, 6800)
-		yValues = [y + offset * index for y in flux]
-		matplotlib.pyplot.plot(wavelengths, yValues, drawstyle = 'steps', color = 'k')
+		(wavelengths, flux) = spectrum.getSubsetByWavelength(8000, 8400)
+		yValues = [3*y + offset * index for y in flux]
+		matplotlib.pyplot.plot(wavelengths, yValues, color = 'k', drawstyle='lines')
 		if hasEphemeris:
 			phase = ephemeris.getPhase(spectrum.HJD)
-			labelX = 6450
+			labelX = 8010
 			labelY = spectrum.getNearestFlux(labelX) + offset*index + offset/5.0
 			matplotlib.pyplot.text(labelX, labelY, 'phase: %1.2f'%(phase), fontsize=15)
 	
@@ -104,12 +118,14 @@ if __name__ == "__main__":
 	matplotlib.pyplot.xlabel(r"Wavelength $(\AA)$", size = 16)
 
 	fig = matplotlib.pyplot.gcf()
-	matplotlib.pyplot.show(block= False)
-	fig.savefig('Halpha_zoom.eps',dpi=100, format='eps')
-	fig.savefig('Halpha_zoom.png',dpi=200, format='png')
+	matplotlib.pyplot.show(block= True)
+	fig.savefig('sodium8190.eps',dpi=100, format='eps')
+	fig.savefig('sodium8190.png',dpi=200, format='png')
 
 
-	spectrum = copy.deepcopy(spectra[10])
+
+
+	spectrum = copy.deepcopy(spectra[15])
 	numSpectra = 1
 	matplotlib.pyplot.figure(figsize=(20, 4*numSpectra + 1))
 	offset = 0
@@ -217,3 +233,10 @@ if __name__ == "__main__":
 	fig.savefig('hump2.eps',dpi=100, format='eps')
 	fig.savefig('hump2.png',dpi=200, format='png')
 
+
+	# write all spectra to CSV
+	for spectrum in spectra:
+		phase = ephemeris.getPhase(spectrum.HJD)
+		filename = "phase%f.csv"%phase
+		spectrum.writeCSV(filename)
+	

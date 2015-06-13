@@ -66,7 +66,7 @@ def findTelescope(name):
 	return None
 
 def loadFromLogFile(filename, maxRows = 0):
-	""" Loads the photometry data from a log file created by Tom Marsh ULTRACAM pipeline. """
+	""" Loads the photometry data from a log file created by Tom Marsh's ULTRACAM pipeline. """
 	ultracam = False
 	ultraspec = True
 	inputFile = open(filename, 'r')
@@ -81,6 +81,7 @@ def loadFromLogFile(filename, maxRows = 0):
 	filterName = "--unknown--"
 	PI = "--unknown--"
 	columnCount = 0
+	uniqueCCDs = []
 	for line in inputFile:
 		if line[0] == '#':
 			headerBlock+=line
@@ -107,22 +108,21 @@ def loadFromLogFile(filename, maxRows = 0):
 			params = line.split()
 			# print params
 			frameIndex = int(params[0])
+			CCD = int(params[4])
+			if CCD not in uniqueCCDs: uniqueCCDs.append(CCD)
 			frameList.append(frameIndex)
 			columnCount = len(params)
 	firstFrame = frameList[0]
-	countRecurrence = 0
-	for f in frameList:
-		if f == firstFrame: countRecurrence+=1
 	
 	numApertures = int( ((columnCount-7)/14) )
 	print "ColumnCount: ", columnCount, "which means %d apertures."%numApertures
 	# frameList = generalUtils.removeDuplicatesFromList(frameList)
 	print "The run in file %s contains %d frames. Start frame: %d End frame: %d"%(filename, len(frameList), min(frameList), max(frameList))
-	if countRecurrence == 3:
+	if len(uniqueCCDs) == 3:
 		print "This file has 3 CCDs. It is an ULTRACAM file."
 		ultracam = True
 		ultraspec = False
-	if countRecurrence == 1: 
+	if len(uniqueCCDs) == 1: 
 		print "This file has 1 CCD. It is an ULTRASPEC file."
 		ultracam = False
 		ultraspec = True
@@ -391,7 +391,6 @@ def restoreSession(filename):
 	print "Loading slots from file:", dataFilename
 	inputfile = open(dataFilename, "r")
 	
-	slotData = []
 	allData = json.load(inputfile)
 	for index, s in enumerate(allData):
 		loadedSlot = json.loads(s)
@@ -410,7 +409,7 @@ def restoreSession(filename):
 			print "New slot created: %d - for: %s"%(loadedSlotID, newSlot)
 			slots.addSlot(newSlot)
 	inputfile.close()
-	
+	addData = None
 	return
 	
 def showColumns(slotID):
