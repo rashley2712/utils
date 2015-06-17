@@ -148,13 +148,37 @@ if __name__ == "__main__":
 	print "Fit m:%4.8f  c:%4.8f"%(m_fit, c_fit)
 	newPeriod = ephemeris.Period + m_fit/86400.
 	print "Original period %1.12f  New period %1.12f"%(ephemeris.Period, newPeriod)
-		
+	
+	# Now fit a straight line to all of the data
+	x_values = numpy.array(cycles)
+	y_values = numpy.array(ocs)
+	y_errors = numpy.array(ocErrors)
+	m = 0.
+	c=-20.
+	guess = numpy.array([m, c])
+	print "Now fitting on all of the data points"
+	print "initial guess", guess
+	result, covariance = scipy.optimize.curve_fit(func, x_values, y_values, guess, y_errors)
+	parameters = result
+	errors = numpy.sqrt(numpy.diag(covariance))
+	print "Covariance:", covariance
+	m_err = errors[0]
+	m_fit = parameters[0]
+	c_fit = parameters[1]
+	print "Fit m:%4.8f  c:%4.8f"%(m_fit, c_fit)
+	newPeriod = ephemeris.Period + m_fit/86400.
+	newError = m_err / 86400.
+	newT0 = ephemeris.T0 + c_fit/86400.
+	newT0Error = errors[1]/86400.
+	print "Original period %1.12f[%e]  New period %1.12f[%e]"%(ephemeris.Period, ephemeris.Period_error, newPeriod, newError)
+	print "Original T0 %7.8f[%e]  New T0: %7.8f[%e]"%(ephemeris.T0, ephemeris.T0_error, newT0, newT0Error)
+	
 		
 	""" Try a quadratic. Just for a laugh. """
 	x_values = numpy.array(cycles)
 	y_values = numpy.array(ocs)
 	y_errors = numpy.array(ocErrors)
-	print x_values, y_values, y_errors
+	# print x_values, y_values, y_errors
 	a1 = 0.0
 	a2 = 0.0
 	a3 = 0.0 
@@ -185,7 +209,7 @@ if __name__ == "__main__":
 	
 	xPlots = numpy.arange(xmin, xmax, 100)
 	yPlots = quad(xPlots, a1, a2, a3)
-	matplotlib.pyplot.plot( xPlots, yPlots, color='g', linestyle='dotted')
+	# matplotlib.pyplot.plot( xPlots, yPlots, color='g', linestyle='dotted')
 	
 	matplotlib.pyplot.xlim(xmin, xmax)
 	

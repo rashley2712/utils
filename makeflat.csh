@@ -1,6 +1,6 @@
 #!/bin/csh
 if ( $#argv < 2 ) then
-  echo "Usage: makeflat [polynomial-order] [mask? y/n] [list-of-files]"
+  echo "Usage: makeflat.csh [polynomial-order] [mask? y/n] [list-of-files]"
   exit
 endif
 starlink >& /dev/null

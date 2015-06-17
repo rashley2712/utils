@@ -9,9 +9,14 @@ import loadingSavingUtils
 import statsUtils
 
 	
-def appendPhotometry(existing, new):
-	print "Appending photometry"
+def appendPhotometry(existing, new, **keywords):
 	colours = ['r', 'g', 'b']
+	
+	for kw in keywords.keys(): 
+		if kw=='colours':
+			colours = keywords[kw]
+
+	print "Appending photometry"
 	for c in colours:
 		photometry = existing[c]
 		newPhotometry = new[c]
@@ -31,6 +36,7 @@ if __name__ == "__main__":
 	parser.add_argument('datafile', nargs='+', type=str, help='Input data file(s)')
 	parser.add_argument('-o', '--outfile', type=str, default='default', help='Name of the output file.')
 	parser.add_argument('--channels', nargs='+', default = ['r', 'g', 'b'], type=str, help='Channels to plot')
+	parser.add_argument('-s', default = 0, type=float, help='Sigma clip factor')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -59,9 +65,9 @@ if __name__ == "__main__":
 			additionalFiles = arg.datafile[1:]
 			for newFilename in additionalFiles:
 				print "...also loading", newFilename
-				additionalPhotometry = loadingSavingUtils.loadFITSFile(newFilename)
+				additionalPhotometry = loadingSavingUtils.loadFITSFile(newFilename, colours = colours)
 				
-				photometry = appendPhotometry(photometry, additionalPhotometry)
+				photometry = appendPhotometry(photometry, additionalPhotometry, colours = colours)
 	
 	if filetype == 'csv':
 		print "Loading", filename
@@ -85,6 +91,12 @@ if __name__ == "__main__":
 	for c in colours:
 		photometry[c], numRemoved = loadingSavingUtils.removeZeroValues(photometry[c])
 		if numRemoved>0: print "..removed %d zero values from %s."%(numRemoved, c)
+	
+	if (arg.s != 0):
+		sigmaClip = float(arg.s)
+		for c in colours:
+			photometry[c], numRemoved = loadingSavingUtils.sigmaClip(photometry[c], sigmaClip)
+			if numRemoved>0: print "..removed %d sigma clipped values from %s, with sigma clip %2.2f"%(numRemoved, c, sigmaClip)
 	
 	
 	if arg.outfile == 'default':

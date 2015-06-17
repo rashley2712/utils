@@ -76,10 +76,22 @@ if __name__ == "__main__":
 		modelSpectrum.setData(data['wavelength'], data['flux'])
 
 
+	for s in spectra:
+		if hasEphemeris:
+			uniqueString = "%1.3f"%ephemeris.getPhase(s.HJD)
+		else:
+			uniqueString = "%f"%s.HJD
+		filename = s.objectName + "_" + uniqueString + ".json"
+		s.writeToJSON(filename)
+	
+	test = spectrumClasses.spectrumObject()
+	test.loadFromJSON("OT0711_0.815.json")
+
+	print test.ra
 
 
 	matplotlib.pyplot.figure(figsize=(20, 4*numSpectra + 1))
-	offset = 0.1
+	offset = 1.0
 	for index, spectrum in enumerate(spectra):
 		if arg.model!=None:
 			spectrum.subtractSpectrum(modelSpectrum)
@@ -101,13 +113,12 @@ if __name__ == "__main__":
 	fig.savefig('spectra.eps',dpi=100, format='eps')
 	fig.savefig('spectra.png',dpi=200, format='png')
 
-	numSpectra = len(spectra)
 	matplotlib.pyplot.figure(figsize=(16, 4*numSpectra + 1))
 	offset = 0.7
 	for index, spectrum in enumerate(spectra):
 		(wavelengths, flux) = spectrum.getSubsetByWavelength(8000, 8400)
 		yValues = [3*y + offset * index for y in flux]
-		matplotlib.pyplot.plot(wavelengths, yValues, color = 'k', drawstyle='lines')
+		matplotlib.pyplot.plot(wavelengths, yValues, color = 'k', drawstyle='steps')
 		if hasEphemeris:
 			phase = ephemeris.getPhase(spectrum.HJD)
 			labelX = 8010
@@ -122,10 +133,7 @@ if __name__ == "__main__":
 	fig.savefig('sodium8190.eps',dpi=100, format='eps')
 	fig.savefig('sodium8190.png',dpi=200, format='png')
 
-
-
-
-	spectrum = copy.deepcopy(spectra[15])
+	spectrum = copy.deepcopy(spectra[8])
 	numSpectra = 1
 	matplotlib.pyplot.figure(figsize=(20, 4*numSpectra + 1))
 	offset = 0

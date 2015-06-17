@@ -65,6 +65,18 @@ def getBetweenChars(inputString, startChar, endChar):
 	endPosition = inputString[startPosition:].find(endChar)
 	returnString = inputString[startPosition+1:startPosition+endPosition]
 	return returnString
+
+def getBetweenStrings(inputString, startString, endString):
+	""" Gets a portion of a string between two strings """
+	returnString = ""
+	if (startString not in inputString):
+		return returnString
+	if (endString not in inputString):
+		return returnString
+	startPosition = inputString.find(startString)
+	endPosition = inputString[startPosition:].find(endString)
+	returnString = inputString[startPosition+len(startString):startPosition+endPosition]
+	return returnString
 		
 	
 def fromSexagesimal(raStr, decStr):

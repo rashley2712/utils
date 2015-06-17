@@ -26,7 +26,7 @@ foreach file ($argv)
   endif
   mv $file fitsfiles
   ultradas $sdffile
-  fixhead 1 7 $sdffile
+  fixhead 1 3 $sdffile
   fitskeys $sdffile:r > zzz_keys.tmp
   set obstype = `grep OBSTYPE zzz_keys.tmp`
   set obstype = $obstype[2]

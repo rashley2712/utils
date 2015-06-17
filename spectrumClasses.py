@@ -121,6 +121,35 @@ class spectrumObject:
 				newWavelengths.append(w)
 				newFlux.append(f)
 		return (newWavelengths, newFlux)
+
+	def writeToJSON(self, filename):
+		object = {}
+		for key in self.__dict__.keys():
+			data = getattr(self, key)
+			if type(data)==numpy.float32:
+				data = float(data)
+			
+			if type(data)==list:
+				data = numpy.array(data).tolist()
+			
+			object[key] = data
+			
+		outputfile = open(filename, 'w')
+		json.dump(object, outputfile)
+		outputfile.close()
+	
+	def loadFromJSON(self, filename):
+		inputfile = open(filename, "r")
+		jsonObject = json.load(inputfile)
+		for key in jsonObject.keys():
+			keyString = str(key)
+			value = jsonObject[key]
+			print key, type(value)
+			if type(value) is unicode: 
+				value = str(value)
+			setattr(self, key, value)
+		inputfile.close()
+						
 		
 	def parseHeaderInfo(self, headers):
 		self.objectName = headers['Object']
