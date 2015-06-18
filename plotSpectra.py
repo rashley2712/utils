@@ -10,7 +10,6 @@ import argparse
 import astropy.io.fits
 import astropy.stats
 import loadingSavingUtils, statsUtils
-import trm.dnl.molly
 import spectrumClasses, timeClasses
 import scipy.optimize
 import copy
@@ -21,9 +20,10 @@ def quad(x, a1, a2, a3):
 
 if __name__ == "__main__":
 
-	parser = argparse.ArgumentParser(description='Loads a series of spectra that were saved from Molly. Plots them using Matplotlib.')
+	parser = argparse.ArgumentParser(description='Loads a series of spectra from the JSON files. Plots them using Matplotlib.')
 	parser.add_argument('inputFiles', type=str, nargs='+', help='Molly files containing the spectra')
 	parser.add_argument('-e', type=str, help='Optional ephemeris file')
+	parser.add_argument('--list', action='store_true', help='Specify this option if the input file is actually a list of input files.')
 	parser.add_argument('--model', type=str, help='Optional model spectrum (to subtract).')
 	 
 	arg = parser.parse_args()
@@ -42,28 +42,27 @@ if __name__ == "__main__":
 
 	spectra = []
 	
-	for fileIndex, f in enumerate(arg.inputFiles):
+	filenames = []
+	if arg.list:
+		# Load the list of files.
+		if len(arg.inputFiles)>1: 
+			print "You can only give me one list of filenames."
+			sys.exit()
+		filename = arg.inputFiles[0]
+		fileList = open(filename, 'r')
+		for line in fileList:
+			filenames.append(str(line.strip()))
+	else:
+		filenames = arg.inputFiles
+	print "Files to be loaded", filenames
 	
-		mollyFile = trm.dnl.molly.rmolly(f)
 	
-		
-		for index, r in enumerate(mollyFile):
-			data = r.toHDU()
-			wavelengths = r.x.data
-			flux = r.y.data
-			head = r.head
-			if r.has_mask: print "Mask found"
-			spectrum = spectrumClasses.spectrumObject()
-			npoints = spectrum.setData(wavelengths, flux)
-			targetName = spectrum.parseHeaderInfo(head)
-			print "Parsed headers of", targetName
-			print r.oneLine()
-			if fileIndex == 0:
-				spectra.append(spectrum)
-			else:
-				#spectra[index].appendDataAtNewWavelengths(wavelengths, flux)
-				spectra[index].appendNewData(spectrum)
-		
+	spectra = []
+	for fileIndex, f in enumerate(filenames):
+		spectrum = spectrumClasses.spectrumObject()
+		spectrum.loadFromJSON(f)
+		print "Loaded %s, contains %s."%(f, spectrum.objectName)
+		spectra.append(spectrum)
 	
 		
 	numSpectra = len(spectra)

@@ -144,12 +144,11 @@ class spectrumObject:
 		for key in jsonObject.keys():
 			keyString = str(key)
 			value = jsonObject[key]
-			print key, type(value)
 			if type(value) is unicode: 
 				value = str(value)
 			setattr(self, key, value)
 		inputfile.close()
-						
+
 		
 	def parseHeaderInfo(self, headers):
 		self.objectName = headers['Object']
