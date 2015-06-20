@@ -39,9 +39,9 @@ def doubleGaussian(x, a0, a1, a2):
 	print a0, a1, a2
 	return y
 
-def sinewave(x, a0, a1):
+def sinewave(x, a0, a1, a2):
 	omega = 2*math.pi
-	y = a0 + a1 * numpy.sin( omega * x)
+	y = a0 + a1 * numpy.sin( omega * (x + a2))
 	return y
 
 if __name__ == "__main__":
@@ -93,6 +93,7 @@ if __name__ == "__main__":
 
 	mainPGPlotWindow = ppgplot.pgopen('/xs')	
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
+	ppgplot.pgask(False)
 	ppgplot.pglab("wavelength", "flux", "spectrum")
 	phases = []
 	rvs = []
@@ -186,49 +187,58 @@ if __name__ == "__main__":
 		wvshifts.append(a2)
 		wvshiftErrors.append(errors[2])
 
-	mainPGPlotWindow = ppgplot.pgopen('/xs')	
-	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	ppgplot.pglab("phase", "wavelength", "WV shifts")
-	ppgplot.pgsci(1)
-	ppgplot.pgenv(min(phases), max(phases), min(wvshifts), max(wvshifts), 0, 0)
-	ppgplot.pgpt(phases, wvshifts)
-	ppgplot.pgerrb(2, phases, wvshifts, wvshiftErrors, 0)
-	ppgplot.pgerrb(4, phases, wvshifts, wvshiftErrors, 0)
-
+	# Convert the wavelengths into velocities. 
+	velocity = [(w- 8183)/8183 * 3E5 for w in wvshifts]
+	velocityError = [ 3E5 /8183 * d for d in wvshiftErrors]
+	print "Velocities:", velocity
+	print "Velocity errors:", velocityError
+	
 	# Now fit a sine wave to our plot
-	a0 = 8185.0  
-	a1 = 10.0
-	guess = numpy.array([a0, a1])
+	a0 = 0.0  
+	a1 = 250.0
+	a2 = 0.0
+	guess = numpy.array([a0, a1, a2])
 	x_values = phases
-	y_values = wvshifts
-	y_errors = wvshiftErrors
+	y_values = velocity
+	y_errors = velocityError
 	results, covariance = scipy.optimize.curve_fit(sinewave, x_values, y_values, guess, y_errors)
 	print "Sine result:", results
 	print "Sine errors:", covariance
 	a0 = results[0]
 	a1 = results[1]
-	xFit = numpy.arange(min(x_values), max(x_values), 0.01)
-	yFit = sinewave(xFit, a0, a1)
+	a2 = results[2]
+	xFit = numpy.arange(0, 1, 0.01)
+	yFit = sinewave(xFit, a0, a1, a2)
+
+	mainPGPlotWindow = ppgplot.pgopen('/xs')	
+	pgPlotTransform = [0, 1, 0, 0, 0, 1]
+	ppgplot.pgsci(1)
+	ppgplot.pgenv(0, 1, min(velocity)*1.1, max(velocity)*1.1, 0, 0)
+	ppgplot.pgpt(phases, velocity)
+	ppgplot.pgerrb(2, phases, velocity, velocityError, 0)
+	ppgplot.pgerrb(4, phases, velocity, velocityError, 0)
 	ppgplot.pgsci(5)
 	ppgplot.pgsls(2)
-	ppgplot.pgline([min(x_values), max(x_values)], [a0, a0])
+	ppgplot.pgline( [0, 1], [a0, a0])
 	ppgplot.pgsls(1)
 	ppgplot.pgline(xFit, yFit)
 	ppgplot.pgsci(1)
-	ppgplot.pglab("phase [t]", "wavelength [A]", "%f + %f*sin(2pi*t)"%(a0, a1))
+	ppgplot.pglab("phase [phi]", "velocity [km/s]", "%.0f + %.0f*sin(2*pi*[phi + %.4f])"%(a0, a1, a2))
 	
-	mainPGPlotWindow = ppgplot.pgopen('pgplot.ps/ps')	
+	mainPGPlotWindow = ppgplot.pgopen('pgplot.eps/ps')	
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	ppgplot.pglab("phase", "wavelength", "WV shifts")
 	ppgplot.pgsci(1)
-	ppgplot.pgenv(min(phases), max(phases), min(wvshifts), max(wvshifts), 0, 0)
-	ppgplot.pgpt(phases, wvshifts)
-	ppgplot.pgerrb(2, phases, wvshifts, wvshiftErrors, 0)
-	ppgplot.pgerrb(4, phases, wvshifts, wvshiftErrors, 0)
-	ppgplot.pgline([min(x_values), max(x_values)], [a0, a0])
+	ppgplot.pgenv(0, 1, min(velocity)*1.1, max(velocity)*1.1, 0, 0)
+	ppgplot.pgpt(phases, velocity)
+	ppgplot.pgerrb(2, phases, velocity, velocityError, 0)
+	ppgplot.pgerrb(4, phases, velocity, velocityError, 0)
+	ppgplot.pgsci(5)
+	ppgplot.pgsls(2)
+	ppgplot.pgline( [0, 1], [a0, a0])
 	ppgplot.pgsls(1)
 	ppgplot.pgline(xFit, yFit)
+	ppgplot.pgsci(1)
+	ppgplot.pglab("phase [phi]", "velocity [km/s]", "")
 	
-
 	for p, w, e in zip(phases, wvshifts, wvshiftErrors):
 		print p, w, e

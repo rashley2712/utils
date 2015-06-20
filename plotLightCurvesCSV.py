@@ -6,6 +6,7 @@ import argparse, sys
 import astropy.io.fits
 import astropy.stats
 import loadingSavingUtils, statsUtils
+import timeClasses
 
 		
 
@@ -13,18 +14,23 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Uses matplotlib to plot light curves from rashley''s format CSV file.')
 	parser.add_argument('inputfiles', type=str, nargs='+', help='Input data in CSV format')
-	parser.add_argument('-c', nargs='+', default = ['Counts_1'], type=str, help='Columns to plot')
-	parser.add_argument('--channels', nargs='+', default = ['r', 'g', 'b'], type=str, help='Channels to plot')
-	parser.add_argument('-m', action = 'store_true', help='Use magnitude scale')
 	parser.add_argument('--bin', type=int, default = 1, help='Binning factor')
-	parser.add_argument('--outcsv', type=str, default = "temp", help='Output each channel to csv with this name.')
 	parser.add_argument('--zero', action = 'store_true', help='Remove the mean value from the plots.... Centering around zero.')
 	parser.add_argument('--errors', action = 'store_true', help='Load and plot the error bars.')
-	parser.add_argument('--colourplots', nargs='+', default = ['gr'], type=str, help='Colour plots requested')
 	parser.add_argument('--phaseplot', action = 'store_true', help = 'Do a phased plot')
+	parser.add_argument('-e', '--ephemeris', type=str, help='Optional ephemeris file')
 	 
 	arg = parser.parse_args()
 	print arg
+	
+	if arg.ephemeris!=None:
+		# Load the ephemeris file
+		hasEphemeris = True
+		ephemeris = timeClasses.ephemerisObject()
+		ephemeris.loadFromFile(arg.ephemeris)
+		print ephemeris
+	else:
+		hasEphemeris = False
 	
 	allData = []
 	
@@ -33,6 +39,8 @@ if __name__ == "__main__":
 		columnNames, photometry = loadingSavingUtils.loadNewCSV(filename)
 		allData.append(photometry)
 		numPlots+= 1
+	
+	
 	
 	""" Data is now loaded 
 	"""
@@ -53,7 +61,7 @@ if __name__ == "__main__":
 		print "subplot", numPlots, 1, subPlot
 		
 		matplotlib.pyplot.xlabel(xColumn, size = 14)
-		matplotlib.pyplot.ylabel('Relative counts', size = 14)
+		matplotlib.pyplot.ylabel('Flux ratio', size = 14)
 		if 'JD' in xColumn:
 			JDoffset = int(x_values[0])
 			x_values = [x - JDoffset for x in x_values]

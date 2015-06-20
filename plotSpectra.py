@@ -13,6 +13,7 @@ import loadingSavingUtils, statsUtils
 import spectrumClasses, timeClasses
 import scipy.optimize
 import copy
+import ppgplot
 
 def quad(x, a1, a2, a3):
 	y = a1 * x * x + a2 *x + a3
@@ -54,7 +55,6 @@ if __name__ == "__main__":
 			filenames.append(str(line.strip()))
 	else:
 		filenames = arg.inputFiles
-	print "Files to be loaded", filenames
 	
 	
 	spectra = []
@@ -62,10 +62,17 @@ if __name__ == "__main__":
 		spectrum = spectrumClasses.spectrumObject()
 		spectrum.loadFromJSON(f)
 		print "Loaded %s, contains %s."%(f, spectrum.objectName)
+		if hasEphemeris:
+			phase = ephemeris.getPhase(spectrum.HJD)
+			spectrum.phase = phase
 		spectra.append(spectrum)
-	
 		
 	numSpectra = len(spectra)
+	
+	if hasEphemeris:
+		# Sort the spectra by their phase
+		sortedSpectra = sorted(spectra, key=lambda object: object.phase, reverse = False)
+	
 
 	if arg.model != None:	
 		columnNames, data = loadingSavingUtils.loadNewCSV(arg.model)
@@ -75,41 +82,28 @@ if __name__ == "__main__":
 		modelSpectrum.setData(data['wavelength'], data['flux'])
 
 
-	for s in spectra:
-		if hasEphemeris:
-			uniqueString = "%1.3f"%ephemeris.getPhase(s.HJD)
-		else:
-			uniqueString = "%f"%s.HJD
-		filename = s.objectName + "_" + uniqueString + ".json"
-		s.writeToJSON(filename)
 	
-	test = spectrumClasses.spectrumObject()
-	test.loadFromJSON("OT0711_0.815.json")
-
-	print test.ra
-
-
-	matplotlib.pyplot.figure(figsize=(20, 4*numSpectra + 1))
+	matplotlib.pyplot.figure(figsize=(20, 1.4*numSpectra + 1))
 	offset = 1.0
-	for index, spectrum in enumerate(spectra):
+	for index, spectrum in enumerate(sortedSpectra):
 		if arg.model!=None:
 			spectrum.subtractSpectrum(modelSpectrum)
 		yValues = [y + offset * index for y in spectrum.getFlux()]
 		matplotlib.pyplot.plot(spectrum.getWavelengths(), yValues, drawstyle = 'steps', color = 'k')
 		if hasEphemeris:
 			phase = ephemeris.getPhase(spectrum.HJD)
-			labelX = 5550
+			labelX = 4250
 			labelY = spectrum.getNearestFlux(labelX) + offset*index + offset/5.0
 			matplotlib.pyplot.text(labelX, labelY, 'phase: %1.2f'%(phase), fontsize=20)
 	
 	matplotlib.pyplot.yticks(fontsize = 22)
-	matplotlib.pyplot.ylabel(r"F$_{\nu}$ (mJy) with offset of %1.1f applied."%offset, size = 22)
+	matplotlib.pyplot.ylabel(r"F$_{\nu}$ (mJy)", size = 22)
 	matplotlib.pyplot.xticks(fontsize = 22)
 	matplotlib.pyplot.xlabel(r"Wavelength $(\AA)$", size = 22)
 
 	fig = matplotlib.pyplot.gcf()
 	matplotlib.pyplot.show(block = False)
-	fig.savefig('spectra.eps',dpi=100, format='eps')
+	fig.savefig('spectra.eps',dpi=300, format='eps')
 	fig.savefig('spectra.png',dpi=200, format='png')
 
 	matplotlib.pyplot.figure(figsize=(16, 4*numSpectra + 1))
