@@ -1,3 +1,5 @@
+import math
+
 def toSexagesimal(world):
 	raDeg = world[0]
 	ra = raDeg/15.
@@ -13,7 +15,18 @@ def toSexagesimal(world):
 	outString = "RA: %02d:%02d:%02.1f"%(hours, minutes, seconds)
 	outString+= " DEC: %02d:%02d:%02.3f"%(dec, decMinutes, decSeconds)
 	return outString
-	
+
+def filterOutNaNs(data):
+	""" Filter out NaN entries from a dictionary containing any number of arrays (all of the same length)"""
+	newData = {}
+	for key in data.keys():
+		newData[key] = []
+	for index, d in enumerate(data[key]):
+		for key in data.keys():
+			value = data[key][index]
+			if not math.isnan(value):
+				newData[key].append(value)
+	return newData			
 	
 def parseIntegerList(line):
 	""" Takes a string containing a list directive and turns it into a list of valid integers. Removes duplicates.
