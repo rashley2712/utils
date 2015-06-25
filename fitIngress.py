@@ -9,6 +9,7 @@ import loadingSavingUtils, statsUtils
 import scipy.optimize
 import time
 import random
+import ppgplot
 
 def function(x):
 	y = a1 / (1 + numpy.exp(-a2*(x-a3))) + a4 + a5 * (x - a3)
@@ -82,8 +83,9 @@ if __name__ == "__main__":
 	matplotlib.pyplot.plot(x_values, y_fit)
 	matplotlib.pyplot.plot(x_values, y_values)
 	matplotlib.pyplot.show(block=False)
-	
 	matplotlib.pyplot.figure(figsize=(8, 5))
+	
+
 	
 	chiSquared = calcChiSquared(x_values, y_values)
 	#print "chi squared:", chiSquared
@@ -119,9 +121,9 @@ if __name__ == "__main__":
 	print "x, y-limits: ", xLims, yLims
 	steps = 1000
 	size = (xLims[1]-xLims[0])/steps
-	x_inter = numpy.arange(xLims[0], xLims[1], size)
-	y_fit = [function(x) for x in x_inter]
-	matplotlib.pyplot.plot(x_inter, y_fit, color = 'g')
+	xFit = numpy.arange(xLims[0], xLims[1], size)
+	yFit = [function(x) for x in xFit]
+	matplotlib.pyplot.plot(xFit, yFit, color = 'g')
 	
 	matplotlib.pyplot.plot([a3, a3], [yLims[0], yLims[1]], color = 'g', linestyle='dashed')
 	
@@ -132,6 +134,26 @@ if __name__ == "__main__":
 	matplotlib.pyplot.show(block = False)
 	fig.savefig(runStr +'_%s.eps'%fileappendix,dpi=100, format='eps')
 	fig.savefig(runStr +'_%s.png'%fileappendix,dpi=100, format='png')
+	
+	plotDevices = ["/xs", "%s.eps/ps"%fileappendix]
+	for plotDevice in plotDevices:
+		mainPGPlotWindow = ppgplot.pgopen(plotDevice)
+		pgPlotTransform = [0, 1, 0, 0, 0, 1]
+		ppgplot.pgpap(10, 0.618)
+		ppgplot.pgsci(1)
+		ppgplot.pgenv(min(x_values), max(x_values), yLims[0], yLims[1], 0, 0)
+		ppgplot.pgslw(7)
+		ppgplot.pgpt(x_values, y_values, 1)
+		ppgplot.pgslw(1)
+		ppgplot.pgerrb(2, x_values, y_values, y_errors, 0)
+		ppgplot.pgerrb(4, x_values, y_values, y_errors, 0)
+		ppgplot.pgsls(2)
+		ppgplot.pgline(xFit, yFit)
+		ppgplot.pgsls(3)
+		ppgplot.pgline([a3, a3], [yLims[0], yLims[1]])
+		ppgplot.pgsls(1)
+		ppgplot.pglab(xColumn + " - " + str(JDoffset), "flux ratio", "")
+		ppgplot.pgclos()
 	time.sleep(3)
 	
 	times = []

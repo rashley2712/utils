@@ -120,7 +120,7 @@ if __name__ == "__main__":
 			ppgplot.pgerrb(2, x_values, y_values, y_errors, 0)
 			ppgplot.pgerrb(4, x_values, y_values, y_errors, 0)
 			ppgplot.pglab(xLabel, yLabel, photometry["runName"])
-	
+			
 		ppgplot.pgclos()
 	if not hasEphemeris:
 		sys.exit()
