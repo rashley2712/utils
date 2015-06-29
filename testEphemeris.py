@@ -10,6 +10,7 @@ import scipy.optimize
 import time
 import random
 import timeClasses
+import trm.sla
 
 	
 
@@ -17,6 +18,7 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Test an ephemeris.')
 	parser.add_argument('-e', '--filename', type=str, help='Ephemeris .dat file.')
+	parser.add_argument('csvfile', type=str, help='CSV file containing MJDs.')
 	arg = parser.parse_args()
 	print arg
 	if arg.filename == None:
@@ -28,77 +30,19 @@ if __name__ == "__main__":
 	ephemeris.loadFromFile(arg.filename)
 	
 	print ephemeris
-	
-	print "======================================================="
-	print "Red"
-	MJD = 57163.17148243
-	
-	print "Phase of %f is %f"%(MJD, ephemeris.getPhase(MJD)) 
-	print "N Orbits of %f is %d"%(MJD, ephemeris.getOrbits(MJD)) 
-	
-	phase = ephemeris.getPhase(MJD)
-	phaseDifference = 1 - phase
-	
-	ominusc = phaseDifference * ephemeris.Period
-	
-	print "O-C is %f days, or %f seconds."%(ominusc, ominusc*86400.)
-	
-	
-	
-	print "======================================================="
-	print "Green"
-	MJD = 57163.17148299
-	
-	print "Phase of %f is %f"%(MJD, ephemeris.getPhase(MJD)) 
-	print "N Orbits of %f is %d"%(MJD, ephemeris.getOrbits(MJD)) 
-	
-	phase = ephemeris.getPhase(MJD)
-	phaseDifference = 1 - phase
-	
-	ominusc = phaseDifference * ephemeris.Period
-	
-	print "O-C is %f days, or %f seconds."%(ominusc, ominusc*86400.)
 
-	print "======================================================="
-	print "Blue"
-	MJD = 57163.17148816
+	# Now load some light-curve data
+	columnNames, photometry = loadingSavingUtils.loadNewCSV(arg.csvfile)
+	xColumn = columnNames[0]
 	
-	print "Phase of %f is %f"%(MJD, ephemeris.getPhase(MJD)) 
-	print "N Orbits of %f is %d"%(MJD, ephemeris.getOrbits(MJD)) 
+	obsLong = 98.48
+	obsLat = 18.57
+	obsAlt = 2457.2
+	ra = ephemeris.ra /15.
+	dec = ephemeris.dec
+	print "Input ra", ra, "dec", dec, 
+	for MJD in photometry[xColumn]:
+		result = trm.sla.utc2tdb(MJD, obsLong, obsLat, obsAlt, ra, dec)
+		bmjd = result[2]
+		print "%6.8f --> %6.8f"%(MJD, bmjd)
 	
-	phase = ephemeris.getPhase(MJD)
-	phaseDifference = 1 - phase
-	
-	ominusc = phaseDifference * ephemeris.Period
-	
-	print "O-C is %f days, or %f seconds."%(ominusc, ominusc*86400.)
-
-
-	print "======================================================="
-	print "LT Rise"
-	MJD = 56944.9054808
-	
-	print "Phase of %f is %f"%(MJD, ephemeris.getPhase(MJD)) 
-	print "N Orbits of %f is %d"%(MJD, ephemeris.getOrbits(MJD)) 
-	
-	phase = ephemeris.getPhase(MJD)
-	phaseDifference = 1 - phase
-	
-	ominusc = phaseDifference * ephemeris.Period
-	
-	print "O-C is %f days, or %f seconds."%(ominusc, ominusc*86400.)
-
-
-	print "======================================================="
-	print "trm BMJD"
-	MJD = 57163.17069173
-	
-	print "Phase of %f is %f"%(MJD, ephemeris.getPhase(MJD)) 
-	print "N Orbits of %f is %d"%(MJD, ephemeris.getOrbits(MJD)) 
-	
-	phase = ephemeris.getPhase(MJD)
-	phaseDifference = 1 - phase
-	
-	ominusc = phaseDifference * ephemeris.Period
-	
-	print "O-C is %f days, or %f seconds."%(ominusc, ominusc*86400.)
