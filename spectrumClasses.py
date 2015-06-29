@@ -146,6 +146,8 @@ class spectrumObject:
 			value = jsonObject[key]
 			if type(value) is unicode: 
 				value = str(value)
+			if type(value) is list:
+				value = numpy.array(value)
 			setattr(self, key, value)
 		inputfile.close()
 

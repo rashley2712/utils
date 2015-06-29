@@ -10,7 +10,6 @@ import argparse
 import astropy.io.fits
 import astropy.stats
 import loadingSavingUtils, statsUtils
-import trm.dnl.molly
 import spectrumClasses, timeClasses
 import scipy.optimize
 import copy
@@ -82,8 +81,9 @@ if __name__ == "__main__":
 	lowest_chi = 100;
 	bestFit = "none"
 	bestIndex = 0
+	matplotlib.pyplot.figure(figsize=(20, 4*1 + 1))
 	for index, s in enumerate(spectra):
-		matplotlib.pyplot.figure(figsize=(20, 4*1 + 1))
+		matplotlib.pyplot.clf()
 		s.resample(observedSpectrum.wavelengths)
 		subSpectrum = copy.deepcopy(s)
 		newLength = subSpectrum.trimWavelengthRange(7000, 7500)
@@ -122,6 +122,33 @@ if __name__ == "__main__":
 
 	print "Best fit %s %d.  [%f]"%(bestFit, bestIndex, lowest_chi)
 
+	# Now plot the best fit again...
+	matplotlib.pyplot.figure(figsize=(14, 6))
+	model = spectra[bestIndex]
+	# subSpectrum = copy.deepcopy(model)
+	# newLength = subSpectrum.trimWavelengthRange(7000, 7500)
+	# area = subSpectrum.integrate()
+	# model.divide(area)
+	# model.divide(1/tioArea)
+	offset = 0.5
+	offsetModel = [f + offset for f in model.flux]
+	residuals = [f - m for f, m in zip(observedSpectrum.flux, model.flux)]
+	matplotlib.pyplot.plot(model.wavelengths, offsetModel,  drawstyle = 'steps', color = 'b')
+	matplotlib.pyplot.plot(observedSpectrum.wavelengths, observedSpectrum.flux, color='k', drawstyle = 'steps')
+	matplotlib.pyplot.plot(observedSpectrum.wavelengths, residuals, color='r', drawstyle = 'steps')
+	matplotlib.pyplot.plot([min(observedSpectrum.wavelengths), max(observedSpectrum.wavelengths)], [0, 0], color='k', linestyle='dashed')
+	matplotlib.pyplot.yticks(fontsize = 18)
+	matplotlib.pyplot.ylabel(r"F$_{\nu}$ (mJy)", size = 18)
+	matplotlib.pyplot.xticks(fontsize = 18)
+	matplotlib.pyplot.xlabel(r"Wavelength $(\AA)$", size = 18)
+	
+	fig = matplotlib.pyplot.gcf()
+	matplotlib.pyplot.draw()
+	matplotlib.pyplot.show(block = True)
+	fig.savefig('modelfit.eps',dpi=100, format='eps')
+	fig.savefig('modelfit.png',dpi=200, format='png')
+	
+	
 	mDwarfTemplate = spectra[bestIndex]
 	mDwarfTemplate.writeCSV("mDwarf.csv")
 
