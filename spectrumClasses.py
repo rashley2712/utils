@@ -75,7 +75,7 @@ class spectrumObject:
 		newFlux = []
 		for (aw, af, bw, bf) in zip(self.wavelengths, self.flux, subtractSpectrum.wavelengths, subtractSpectrum.flux):
 			f = af - bf
-			print af, bf, f
+			#print af, bf, f
 			newFlux.append(f)
 		self.flux = newFlux
 		return

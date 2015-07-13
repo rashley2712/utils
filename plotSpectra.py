@@ -25,12 +25,10 @@ if __name__ == "__main__":
 	parser.add_argument('inputFiles', type=str, nargs='+', help='Molly files containing the spectra')
 	parser.add_argument('-e', type=str, help='Optional ephemeris file')
 	parser.add_argument('--list', action='store_true', help='Specify this option if the input file is actually a list of input files.')
-	parser.add_argument('--model', type=str, help='Optional model spectrum (to subtract).')
+	parser.add_argument('--model', type=str, help='Optional spectrum (to subtract).')
 	 
 	arg = parser.parse_args()
 	print arg
-	
-	print "Astropy version:", astropy.__version__
 	
 	if arg.e!=None:
 		# Load the ephemeris file
@@ -71,7 +69,7 @@ if __name__ == "__main__":
 	
 	if hasEphemeris:
 		# Sort the spectra by their phase
-		sortedSpectra = sorted(spectra, key=lambda object: object.phase, reverse = False)
+		spectra = sorted(spectra, key=lambda object: object.phase, reverse = False)
 	
 
 	if arg.model != None:	
@@ -82,17 +80,16 @@ if __name__ == "__main__":
 		modelSpectrum.setData(data['wavelength'], data['flux'])
 
 
-	
 	matplotlib.pyplot.figure(figsize=(20, 1.4*numSpectra + 1))
 	offset = 1.0
-	for index, spectrum in enumerate(sortedSpectra):
+	for index, spectrum in enumerate(spectra):
 		if arg.model!=None:
 			spectrum.subtractSpectrum(modelSpectrum)
 		yValues = [y + offset * index for y in spectrum.getFlux()]
 		matplotlib.pyplot.plot(spectrum.getWavelengths(), yValues, drawstyle = 'steps', color = 'k')
 		if hasEphemeris:
 			phase = ephemeris.getPhase(spectrum.HJD)
-			labelX = 4250
+			labelX = 5590
 			labelY = spectrum.getNearestFlux(labelX) + offset*index + offset/5.0
 			matplotlib.pyplot.text(labelX, labelY, 'phase: %1.2f'%(phase), fontsize=20)
 	
