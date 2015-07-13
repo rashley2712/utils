@@ -71,7 +71,6 @@ if __name__ == "__main__":
 		# Sort the spectra by their phase
 		spectra = sorted(spectra, key=lambda object: object.phase, reverse = False)
 	
-
 	if arg.model != None:	
 		columnNames, data = loadingSavingUtils.loadNewCSV(arg.model)
 
