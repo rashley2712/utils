@@ -126,12 +126,13 @@ class spectrumObject:
 		object = {}
 		for key in self.__dict__.keys():
 			data = getattr(self, key)
+			print key, type(data)
 			if type(data)==numpy.float32:
 				data = float(data)
-			
+			if type(data)==numpy.ndarray:
+				data = numpy.array(data).tolist()
 			if type(data)==list:
 				data = numpy.array(data).tolist()
-			
 			object[key] = data
 			
 		outputfile = open(filename, 'w')

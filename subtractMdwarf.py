@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
 		
 	mainPGPlotWindow = ppgplot.pgopen('/xs')	
-	ppgplot.pgask(True)
+	ppgplot.pgask(False)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	yUpper = 2.5
 	yLower = -1.0
@@ -92,8 +92,12 @@ if __name__ == "__main__":
 		area = subSpectrum.integrate()
 		print "area 7000 - 7500", area
 		referenceSpectrum = copy.deepcopy(modelSpectrum)
-		# referenceSpectrum.divide(area)
-		# referenceSpectrum.divide(1/tioArea)
+		# referenceSpectrum.divide(tioArea)
+		# referenceSpectrum.divide(1/area)
+		checkReference = copy.deepcopy(referenceSpectrum)
+		newLength = checkReference.trimWavelengthRange(7000, 7500)
+		area = checkReference.integrate()
+		print "Reference area:", area
 		
 		
 		ppgplot.pgsci(2)
@@ -125,5 +129,8 @@ if __name__ == "__main__":
 		ppgplot.pgsls(2)
 		ppgplot.pgline([lowerWavelength, upperWavelength], [0, 0])
 		ppgplot.pgsls(1)
+		
+		filename = "subtracted_%f.json"%ephemeris.getPhase(spectrum.HJD)
+		spectrum.writeToJSON(filename)
 		
 	

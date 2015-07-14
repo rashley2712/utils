@@ -127,7 +127,7 @@ if __name__ == "__main__":
 	
 				
 	# Restrict the light-curve to a subset of phase
-	phaseLimits = (0.95, 1.05)
+	phaseLimits = (0.51, 0.70)
 	for photometry in allData:
 		pnew = []
 		ynew = []
@@ -140,7 +140,7 @@ if __name__ == "__main__":
 		photometry["phase"] = pnew
 		photometry[yColumn] = ynew
 		photometry[yErrors] = yenew
-	
+	print photometry["phase"]
 	# Find the best y-limits
 	lowerY = 1E8
 	upperY = -1E8
