@@ -14,7 +14,7 @@ if __name__ == "__main__":
 	parser.add_argument('inputFiles', type=str, nargs='+', help='JSON files containing the spectra')
 	parser.add_argument('-e', type=str, help='Optional ephemeris file')
 	parser.add_argument('--list', action='store_true', help='Specify this option if the input file is actually a list of input files.')
-	parser.add_argument('--model', type=str, help='Optional spectrum (to subtract). Also a JSON file.')
+	parser.add_argument('--reference', type=str, help='Spectrum (to subtract). Also a JSON file.')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -55,20 +55,18 @@ if __name__ == "__main__":
 	numSpectra = len(spectra)
 
 	
-	if arg.model != None:	
-		columnNames, data = loadingSavingUtils.loadNewCSV(arg.model)
+	referenceSpectrum = spectrumClasses.spectrumObject()
+	referenceSpectrum.loadFromJSON(arg.reference)
 
-		modelSpectrum = spectrumClasses.spectrumObject()
-		modelSpectrum.objectName = "M-dwarf spectrum"
-		modelSpectrum.setData(data['wavelength'], data['flux'])
-		tioSpectrum = copy.deepcopy(modelSpectrum)
-		tioSpectrum.trimWavelengthRange(7000, 7500)
-		tioArea = tioSpectrum.integrate()
-		print "tioArea", tioArea
+	referenceSpectrum.objectName = "M-dwarf spectrum"
+	tioSpectrum = copy.deepcopy(referenceSpectrum)
+	tioSpectrum.trimWavelengthRange(7000, 7500)
+	tioArea = tioSpectrum.integrate()
+	print "tioArea", tioArea
 
 		
 	mainPGPlotWindow = ppgplot.pgopen('/xs')	
-	ppgplot.pgask(False)
+	ppgplot.pgask(True)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	yUpper = 2.5
 	yLower = -1.0
@@ -91,9 +89,6 @@ if __name__ == "__main__":
 		newLength = subSpectrum.trimWavelengthRange(7000, 7500)
 		area = subSpectrum.integrate()
 		print "area 7000 - 7500", area
-		referenceSpectrum = copy.deepcopy(modelSpectrum)
-		# referenceSpectrum.divide(tioArea)
-		# referenceSpectrum.divide(1/area)
 		checkReference = copy.deepcopy(referenceSpectrum)
 		newLength = checkReference.trimWavelengthRange(7000, 7500)
 		area = checkReference.integrate()

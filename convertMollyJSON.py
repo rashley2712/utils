@@ -14,6 +14,7 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Loads a series of spectra that were saved from Molly converts them to JSON format.')
 	parser.add_argument('mollyfile', type=str, help='Molly file containing the spectra')
+	parser.add_argument('--suffix', type=str, help='Suffix to add to the end of the filenames.')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -43,6 +44,9 @@ if __name__ == "__main__":
 
 	for s in spectra:
 		outname = "%s_%f.json"%(s.objectName, s.HJD)
+		if arg.suffix!=None:
+			outname = "%s_%f_%s.json"%(s.objectName, s.HJD, arg.suffix)
+			
 		print "Writing to %s"%outname
 		s.writeToJSON(outname)
 		

@@ -122,7 +122,7 @@ if __name__ == "__main__":
 	fig.savefig('sodium8190.eps',dpi=100, format='eps')
 	fig.savefig('sodium8190.png',dpi=200, format='png')
 
-	spectrum = copy.deepcopy(spectra[8])
+	spectrum = copy.deepcopy(spectra[2])
 	numSpectra = 1
 	matplotlib.pyplot.figure(figsize=(20, 4*numSpectra + 1))
 	offset = 0
@@ -143,7 +143,7 @@ if __name__ == "__main__":
 	fig.savefig('spectrum.png',dpi=200, format='png')
 
 	# Now snip out part of the spectrum
-	spectrum = copy.deepcopy(spectra[10])
+	spectrum = copy.deepcopy(spectra[2])
 	spectrum.trimWavelengthRange(6000, 6850)
 	spectrum.snipWavelengthRange(6540, 6600)
 	
@@ -187,7 +187,7 @@ if __name__ == "__main__":
 	fig.savefig('hump1.png',dpi=200, format='png')
 
 	# Now snip out part of the spectrum
-	spectrum = copy.deepcopy(spectra[10])
+	spectrum = copy.deepcopy(spectra[2])
 	spectrum.trimWavelengthRange(7700, 8500)
 	spectrum.snipWavelengthRange(8170, 8200)
 	
