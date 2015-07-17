@@ -17,7 +17,7 @@ if __name__ == "__main__":
 	arg = parser.parse_args()
 	print arg
 	
-	pathToCode = "/home/rashley/astro/reductions/CSS081231/boris"
+	pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
 	
 	angle = 90    		# Sight angle in degrees
 	field = 34    		# Field strength in MG
@@ -92,8 +92,8 @@ if __name__ == "__main__":
 		lowerFlambda = min(flambdas)
 		upperFlambda = max(flambdas)
 		
-		trimLower = 50
-		trimUpper = 100500
+		trimLower = 5000
+		trimUpper = 10000
 		newWavelengths = []
 		newFlambdas = []
 		for f, l in zip(flambdas, wavelengths):
@@ -108,6 +108,7 @@ if __name__ == "__main__":
 		upperWavelength = max(wavelengths)
 		lowerFlambda = min(flambdas)
 		upperFlambda = max(flambdas)
+		lowerFlambda = 0
 				
 		if not setEnv:
 			ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlambda, upperFlambda, 0, 0)

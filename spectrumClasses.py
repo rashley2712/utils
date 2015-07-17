@@ -53,12 +53,15 @@ class spectrumObject:
 			
 		return self.length		
 	
-	def integrate(self, lower = -1, upper = -1):
+	def integrate(self, wavelengthrange = (-1, -1)):
 		""" Integrates under the spectrum between two wavelength limits. Defaults to all of the spectrum """
-		total = 0
-		for w, f in zip(self.wavelengths, self.flux):
-			total = total + f
-		return total
+		if wavelengthrange[0]==-1:
+			total = 0
+			for w, f in zip(self.wavelengths, self.flux):
+				total = total + f
+			return total
+		else:
+			
 
 	def divide(self, constant):
 		""" Divides the spectrum by a constant value """

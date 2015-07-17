@@ -64,6 +64,10 @@ if __name__ == "__main__":
 	tioArea = tioSpectrum.integrate()
 	print "tioArea", tioArea
 
+	tio1Range = (7530, 7570)
+	tio2Range = (7670, 7710)
+	
+	tio1reference = referenceSpectrum.integrate(wavelengthrange = tio1Range)
 		
 	mainPGPlotWindow = ppgplot.pgopen('/xs')	
 	ppgplot.pgask(True)
@@ -85,6 +89,13 @@ if __name__ == "__main__":
 		else:
 			ppgplot.pglab("wavelength", "flux", spectrum.objectName)
 	
+		ppgplot.pgsls(3)
+		ppgplot.pgline( [tio1Range[0], tio1Range[0]], [yLower, yUpper])
+		ppgplot.pgline( [tio1Range[1], tio1Range[1]], [yLower, yUpper])
+		ppgplot.pgline( [tio2Range[0], tio2Range[0]], [yLower, yUpper])
+		ppgplot.pgline( [tio2Range[1], tio2Range[1]], [yLower, yUpper])
+		ppgplot.pgsls(1)
+		
 		subSpectrum = copy.deepcopy(spectrum)
 		newLength = subSpectrum.trimWavelengthRange(7000, 7500)
 		area = subSpectrum.integrate()
