@@ -29,7 +29,6 @@ if __name__ == "__main__":
 	else:
 		hasEphemeris = False
 
-	spectra = []
 	
 	filenames = []
 	if arg.list:

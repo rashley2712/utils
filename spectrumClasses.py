@@ -61,6 +61,8 @@ class spectrumObject:
 				total = total + f
 			return total
 		else:
+			total = 0
+			return total
 			
 
 	def divide(self, constant):
