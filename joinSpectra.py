@@ -13,6 +13,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Loads a series of spectra from the JSON files and joins them in the wavelength dimension.')
 	parser.add_argument('files1', type=str, help='List of JSON files containing the first set of spectra')
 	parser.add_argument('files2', type=str, help='List of JSON files containing the second set of spectra')
+	parser.add_argument('--suffix', type=str, help='Suffix to add to the end of the filenames.')
 	parser.add_argument('--device', type=str, help='[Optional] PGPLOT device. Defaults to "/xs".')
 	parser.add_argument('-e', type=str, help='Ephemeris data file')
 	 
@@ -106,4 +107,6 @@ if __name__ == "__main__":
 	
 		if hasEphemeris:
 			filename = "combined_%f.json"%(ephemeris.getPhase(combinedSpectrum.HJD))
+			if arg.suffix!=None:
+					filename = "combined_%f_%s.json"%(ephemeris.getPhase(combinedSpectrum.HJD), arg.suffix)
 			combinedSpectrum.writeToJSON(filename)

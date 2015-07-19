@@ -55,14 +55,15 @@ class spectrumObject:
 	
 	def integrate(self, wavelengthrange = (-1, -1)):
 		""" Integrates under the spectrum between two wavelength limits. Defaults to all of the spectrum """
-		if wavelengthrange[0]==-1:
-			total = 0
-			for w, f in zip(self.wavelengths, self.flux):
-				total = total + f
-			return total
-		else:
-			total = 0
-			return total
+		if wavelengthrange[0]!=-1:
+			wavelengths, fluxes = self.getSubsetByWavelength(wavelengthrange[0], wavelengthrange[1])
+		else: 
+			wavelengths, fluxes = (self.wavelengths, self.flux)
+		
+		total = 0
+		for w, f in zip(wavelengths, fluxes):
+			total = total + f
+		return total
 			
 
 	def divide(self, constant):
