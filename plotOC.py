@@ -192,8 +192,9 @@ if __name__ == "__main__":
 	a3 = parameters[2]
 		
 	matplotlib.pyplot.figure(figsize=(16, 8))
-	matplotlib.pyplot.xlabel("Cycles", size=14)
-	matplotlib.pyplot.ylabel("O-C (seconds)", size=14)
+	matplotlib.pyplot.xlabel("Cycles", size=22)
+	matplotlib.pyplot.ylabel("O-C (seconds)", size=22)
+	matplotlib.pyplot.tick_params(axis='both', which='major', labelsize=22)
 	#matplotlib.pyplot.scatter(cycles, ocs, c=oColours)
 	
 	for a in allData:
@@ -202,11 +203,17 @@ if __name__ == "__main__":
 		ocErrors = a['OCerrors']
 		colour = a['colour']
 		matplotlib.pyplot.errorbar(cycles, ocs, color = colour, yerr=ocErrors, fmt = '.', ecolor=colour, capsize=0)
+	print cycles
 	axes = matplotlib.pyplot.gca()
 	xmin, xmax = axes.get_xlim()
 	matplotlib.pyplot.plot( [xmin, xmax], [0, 0], color='k', linestyle='dashed')
-	matplotlib.pyplot.plot( [xmin, xmax], [xmin * m_fit + c_fit, xmax * m_fit + c_fit], color='b', linestyle='dashed')
+	#matplotlib.pyplot.plot( [xmin, xmax], [xmin * m_fit + c_fit, xmax * m_fit + c_fit], color='b', linestyle='dashed')
 	
+	# Draw some special arrows to show our new data points
+	for xpos in cycles:
+		#matplotlib.pyplot.plot( [ xpos, xpos], [10, 30], color = 'g', linestyle='solid')
+		matplotlib.pyplot.arrow( xpos, 30, 0, -20, fc="g", ec="g", head_width=250, head_length=3 )
+		
 	xPlots = numpy.arange(xmin, xmax, 100)
 	yPlots = quad(xPlots, a1, a2, a3)
 	# matplotlib.pyplot.plot( xPlots, yPlots, color='g', linestyle='dotted')
