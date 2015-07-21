@@ -1,6 +1,7 @@
 import numpy
 import json
 import scipy.interpolate
+import scipy.integrate
 
 class spectrumObject:
 	def __init__(self):
@@ -22,6 +23,13 @@ class spectrumObject:
 		self.wavelengthRange = (min(wavelengths), max(wavelengths))
 		
 		return self.length
+		
+	def sortData(self):
+		wavelengths = self.wavelengths
+		fluxes = self.flux
+		list1, list2 = zip(*sorted(zip(wavelengths, fluxes)))
+		self.wavelengths = list1
+		self.flux = list2
 
 	def resample(self, sampleWavelengths):
 		spline = scipy.interpolate.splrep(self.wavelengths, self.flux, s=0)
@@ -60,11 +68,8 @@ class spectrumObject:
 		else: 
 			wavelengths, fluxes = (self.wavelengths, self.flux)
 		
-		total = 0
-		for w, f in zip(wavelengths, fluxes):
-			total = total + f
+		total = scipy.integrate.simps(fluxes, wavelengths)
 		return total
-			
 
 	def divide(self, constant):
 		""" Divides the spectrum by a constant value """
