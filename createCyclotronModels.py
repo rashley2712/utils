@@ -3,6 +3,7 @@ import sys
 import argparse
 import subprocess
 import ppgplot
+import spectrumClasses
 
 def replaceExpChar(value):
 	if 'D' in value:
@@ -13,43 +14,47 @@ def replaceExpChar(value):
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Creates a series of cyclotron models using the ConstLambda code.')
+	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
 	 
 	arg = parser.parse_args()
 	print arg
 	
-	pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
+	pathToCode = "/home/rashley/astro/reductions/CSS081231/boris"
 	
 	angle = 90    		# Sight angle in degrees
 	field = 34    		# Field strength in MG
-	temperature =50		# Temperature in keV
+	temperature =15		# Temperature in keV
 	log_lambda = 1      # log(lambda)
 	geometry = 0 		# Geometry 0 or 1
 	
-	device = "/xs"
+	device = arg.device
 	# device = "models.ps/ps"
 	
 	mainPGPlotWindow = ppgplot.pgopen(device)	
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	ppgplot.pgask(False)
-	setEnv = False
-	colour = 1
 		
-	for angle in range(90, 0, -5):
+	modelSpectra = []
+	
+	for angle in range(10, 95, 2):
 		print field, angle
 		# filename = "B%fW%fT%fL%f.dat"%(angle, field, temperature, log_lambda)
 		filename = "test"
 		
-		modelCommand = [pathToCode + "/ConstLambda"]
-		modelCommand.append(str(angle))
-		modelCommand.append(str(field))
-		modelCommand.append(str(temperature))
-		modelCommand.append(str(log_lambda))
-		modelCommand.append(str(geometry))
-		modelCommand.append(str(filename))
-	
+		parameterFile = open("ConstLambda_Ein", "w")
+		parameterFile.write("Sichtwinkel      [grad] : %f\n"%angle)
+		parameterFile.write("Magnetfeld       [MG]   : %f\n"%field)
+		parameterFile.write("Temperatur       [keV]  : %f\n"%temperature)
+		parameterFile.write("log(Lambda)      [1]    : %f\n"%log_lambda)
+		parameterFile.write("Geometrie= 0 oder 1     : 0\n")
+		parameterFile.close()
+		modelCommand = [pathToCode + "/ConstLambda.bin"]
+		
 		print "About to execute: " + str(modelCommand)
-		subprocess.call(modelCommand)
-			
+		outfile = open("test.dat", "w")
+		subprocess.call(modelCommand, stdout = outfile)
+		outfile.close()
+		
 		# Load and plot the model
 		filename+= ".dat"
 		print "Loading model:", filename
@@ -92,31 +97,38 @@ if __name__ == "__main__":
 		lowerFlambda = min(flambdas)
 		upperFlambda = max(flambdas)
 		
-		trimLower = 5000
-		trimUpper = 10000
-		newWavelengths = []
-		newFlambdas = []
-		for f, l in zip(flambdas, wavelengths):
-			if l > trimLower and l < trimUpper:
-				newWavelengths.append(l)
-				newFlambdas.append(f)
+		modelSpectrum = spectrumClasses.spectrumObject()
+		modelSpectrum.setData(wavelengths, flambdas)
+		modelSpectrum.trimWavelengthRange(5000, 9000)
+		modelSpectrum.angle = angle
+		modelSpectra.append(modelSpectrum)
 		
-		wavelengths = newWavelengths
-		flambdas = newFlambdas
-		
-		lowerWavelength = min(wavelengths)
-		upperWavelength = max(wavelengths)
-		lowerFlambda = min(flambdas)
-		upperFlambda = max(flambdas)
+		lowerWavelength = min(modelSpectrum.wavelengths)
+		upperWavelength = max(modelSpectrum.wavelengths)
+		lowerFlambda = min(modelSpectrum.flux)
+		upperFlambda = max(modelSpectrum.flux)
 		lowerFlambda = 0
-				
-		if not setEnv:
-			ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlambda, upperFlambda, 0, 0)
-			ppgplot.pglab("wavelength", "i_0", "")
-			setEnv = True
-		ppgplot.pgsci(colour)
-		colour+= 1
 		
-		ppgplot.pgline(wavelengths, flambdas)
+		lowerFlux = 0
+		upperFlux = 0
+		
+		for s in modelSpectra:
+			fmax = max(s.flux)
+			if fmax>upperFlux:
+				upperFlux = fmax
+		
+		ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
+		colour = 1
+		for s in modelSpectra:
+			ppgplot.pgsci(colour)
+			ppgplot.pgline(s.wavelengths, s.flux)
+			plotx = 8500
+			ploty = s.getNearestFlux(plotx)
+			ppgplot.pgptxt(plotx, ploty, 0, 0, "%2.0f'"%(s.angle)) 
+			colour+= 1
+			if colour>15: colour = 1
 			
-			
+		ppgplot.pgsci(1)	
+		label = "T %.1f keV"%temperature
+		ppgplot.pglab("wavelength", "i_0", label)
+		
