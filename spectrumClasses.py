@@ -32,10 +32,15 @@ class spectrumObject:
 		self.flux = list2
 
 	def resample(self, sampleWavelengths):
+		startWavelength = min(sampleWavelengths)
+		endWavelength = max(sampleWavelengths)
+		self.trimWavelengthRange(startWavelength, endWavelength)
+		print "num points:", len(self.wavelengths)
 		spline = scipy.interpolate.splrep(self.wavelengths, self.flux, s=0)
 		sampleFlux = scipy.interpolate.splev(sampleWavelengths, spline, der=0)
 		self.wavelengths = sampleWavelengths
 		self.flux = sampleFlux
+		return sampleFlux
 
 	def writeCSV(self, filename):
 		outputfile = open(filename, 'w')

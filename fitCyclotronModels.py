@@ -4,6 +4,7 @@ import argparse
 import subprocess
 import ppgplot
 import spectrumClasses
+import scipy.optimize
 
 pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
 
@@ -80,6 +81,16 @@ def getModelSpectrum(angle, field, temperature, log_lambda, geometry):
 	
 	return spectrum
 	
+def getSampledModel(wavelengths, angle, field, temperature, log_lambda, geometry):
+	model = getModelSpectrum(angle, field, temperature, log_lambda, geometry)
+	model.resample(wavelengths)
+	modelArea = model.integrate()
+	model.divide(modelArea)
+	model.divide(1/observedArea)
+	print "observed area", observedArea
+	
+	return model.flux
+
 	
 if __name__ == "__main__":
 
@@ -93,7 +104,7 @@ if __name__ == "__main__":
 	
 	angle = 60.0    		# Sight angle in degrees
 	field = 34.0   			# Field strength in MG
-	temperature =25.0		# Temperature in keV
+	temperature =35.0		# Temperature in keV
 	log_lambda = 1      	# log(lambda)
 	geometry = 0 			# Geometry 0 or 1
 	
@@ -126,33 +137,43 @@ if __name__ == "__main__":
 	ppgplot.pgask(False)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
 	
-	colour = 1
-	for angle in range(90, 30, -4):
-		modelSpectrum = getModelSpectrum(angle, field, temperature, 1, 0)
-		lowerWavelength = min(modelSpectrum.wavelengths)
-		upperWavelength = max(modelSpectrum.wavelengths)
-		lowerFlambda = min(modelSpectrum.flux)
-		upperFlambda = max(modelSpectrum.flux)
-		lowerFlambda = 0
-
-		ppgplot.pgslct(modelPlotWindow)
-		ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlambda, upperFlambda, 0, 0)
-		ppgplot.pglab("wavelength", "i_0", modelSpectrum.name)
-			
-		ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
-
-		
-		modelSpectrum.trimWavelengthRange(observedSpectrumRange[0], observedSpectrumRange[1])
-		
-		modelArea = modelSpectrum.integrate()
-		modelSpectrum.divide(modelArea)
-		modelSpectrum.divide(1/observedArea)
-		
-		ppgplot.pgslct(mainPGPlotWindow)
-		ppgplot.pgsci(colour)
-		colour+= 1
-		if colour > 15: colour = 1 
-		ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
-		
 	
+	angle = 60.
+	field = 34.
+	temperature = 30.
+	guess = [angle, field, temperature]
+	
+	modelSpectrum = getModelSpectrum(angle, field, temperature, 1, 0)
+	lowerWavelength = min(modelSpectrum.wavelengths)
+	upperWavelength = max(modelSpectrum.wavelengths)
+	lowerFlambda = min(modelSpectrum.flux)
+	upperFlambda = max(modelSpectrum.flux)
+	lowerFlambda = 0
+
+	ppgplot.pgslct(modelPlotWindow)
+	ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlambda, upperFlambda, 0, 0)
+	ppgplot.pglab("wavelength", "i_0", modelSpectrum.name)
+		
+	ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
+
+	
+	#modelSpectrum.trimWavelengthRange(observedSpectrumRange[0], observedSpectrumRange[1])
+	
+	#modelArea = modelSpectrum.integrate()
+	#modelSpectrum.divide(modelArea)
+	#modelSpectrum.divide(1/observedArea)
+	
+	
+	modelFlux = getSampledModel(spectrum.wavelengths, angle, field, temperature, 1, 0)
+	
+	ppgplot.pgslct(mainPGPlotWindow)
+	# ppgplot.pgsci(colour)
+	# ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
+	# colour+= 1
+	ppgplot.pgsci(colour)
+	ppgplot.pgline(spectrum.wavelengths, modelFlux)
+	colour+= 1
+	if colour > 15: colour = 1 
+	
+
 	
