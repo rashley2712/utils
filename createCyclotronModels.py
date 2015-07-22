@@ -14,30 +14,33 @@ def replaceExpChar(value):
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Creates a series of cyclotron models using the ConstLambda code.')
-	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
+	parser.add_argument('--device', type=str, help='[Additional plot device] PGPLOT device. "/xs" is always selected.')
+	parser.add_argument('-t', '--temperature', type=float, default='10.0', help = 'Temperature in keV. Default is 10 keV.')
+	parser.add_argument('-b', '--field', type=float, default='34.0', help = 'Surface field strength in megagauss (MG). Default is 34 MG.')
 	 
 	arg = parser.parse_args()
 	print arg
 	
-	pathToCode = "/home/rashley/astro/reductions/CSS081231/boris"
+	xDevice = "/xs"
 	
-	angle = 90    		# Sight angle in degrees
-	field = 34    		# Field strength in MG
-	temperature =15		# Temperature in keV
-	log_lambda = 1      # log(lambda)
-	geometry = 0 		# Geometry 0 or 1
+	pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
+	
+	angle = 90    					# Sight angle in degrees
+	field = arg.field     			# Field strength in MG
+	temperature = arg.temperature	# Temperature in keV
+	log_lambda = 1      			# log(lambda)
+	geometry = 0 					# Geometry 0 or 1
 	
 	device = arg.device
 	# device = "models.ps/ps"
 	
-	mainPGPlotWindow = ppgplot.pgopen(device)	
+	mainPGPlotWindow = ppgplot.pgopen(xDevice)	
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	ppgplot.pgask(False)
 		
 	modelSpectra = []
 	
-	for angle in range(10, 95, 2):
-		print field, angle
+	for angle in range(10, 95, 5):
 		# filename = "B%fW%fT%fL%f.dat"%(angle, field, temperature, log_lambda)
 		filename = "test"
 		
@@ -129,6 +132,28 @@ if __name__ == "__main__":
 			if colour>15: colour = 1
 			
 		ppgplot.pgsci(1)	
-		label = "T %.1f keV"%temperature
+		label = "B=%.0f MG, T=%.1f keV"%(field, temperature)
 		ppgplot.pglab("wavelength", "i_0", label)
 		
+	ppgplot.pgclos()
+
+	if arg.device!=None:
+		# Write to an additional output devide	
+		mainPGPlotWindow = ppgplot.pgopen(arg.device)	
+		pgPlotTransform = [0, 1, 0, 0, 0, 1]
+		ppgplot.pgask(False)
+		ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
+		colour = 1
+		for s in modelSpectra:
+			ppgplot.pgsci(colour)
+			ppgplot.pgline(s.wavelengths, s.flux)
+			plotx = 8500
+			ploty = s.getNearestFlux(plotx)
+			ppgplot.pgptxt(plotx, ploty, 0, 0, "%2.0f'"%(s.angle)) 
+			colour+= 1
+			if colour>15: colour = 1
+			
+		ppgplot.pgsci(1)	
+		label = "B=%.0f MG, T=%.1f keV"%(field, temperature)
+		ppgplot.pglab("wavelength", "i_0", label)
+		ppgplot.pgclos()

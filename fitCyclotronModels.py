@@ -5,11 +5,81 @@ import subprocess
 import ppgplot
 import spectrumClasses
 
+pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
+
+
 def replaceExpChar(value):
 	if 'D' in value:
 		value = value.replace('D', 'E')
 	
 	return value
+	
+def getModelSpectrum(angle, field, temperature, log_lambda, geometry):
+	modelParams = {}
+	modelParams['angle'] = float(angle)
+	modelParams['field'] = field
+	modelParams['temperature'] = temperature
+	modelParams['log_lambda'] = log_lambda
+	modelParams['geometry'] = geometry
+	print "Creating a model for: ", modelParams
+	
+	filename = "test.dat"	
+	parameterFile = open("ConstLambda_Ein", "w")
+	parameterFile.write("Sichtwinkel      [grad] : %f\n"%angle)
+	parameterFile.write("Magnetfeld       [MG]   : %f\n"%field)
+	parameterFile.write("Temperatur       [keV]  : %f\n"%temperature)
+	parameterFile.write("log(Lambda)      [1]    : %f\n"%log_lambda)
+	parameterFile.write("Geometrie= 0 oder 1     : 0\n")
+	parameterFile.close()
+
+	modelCommand = [pathToCode + "/ConstLambda.bin"]
+	outfile = open(filename, "w")
+	subprocess.call(modelCommand, stdout = outfile)
+	outfile.close()
+		
+	print "About to execute: " + str(modelCommand)
+	subprocess.call(modelCommand)
+				
+	# Load the computed model
+	print "Loading model:", filename
+			
+	inputfile = open(filename, 'r')
+	freqs = []
+	i_0s = []
+	i_1s = []
+	i_s = []
+	for line in inputfile:
+		if line[0] == '#':
+			continue
+		data = line.split()
+		replaceExpChar(data[0])
+		freqs.append(float(replaceExpChar(data[0])))
+		i_0s.append(float(replaceExpChar(data[1])))
+		i_1s.append(float(replaceExpChar(data[2])))
+		i_s.append(float(replaceExpChar(data[3])))		
+			
+		
+	c = 3.E8
+	angstroms = 1E-10
+	wavelengths = [c / f for f in freqs]
+	flambdas = []
+	for fnu,l in zip(i_0s, wavelengths):
+		flambda = fnu * c / (l*l)
+		flambdas.append(flambda) 
+		# print l, flambda
+	wavelengths = [w / angstroms for w in wavelengths] 
+	lowerWavelength = min(wavelengths)
+	upperWavelength = max(wavelengths)
+	lowerFlambda = min(flambdas)
+	upperFlambda = max(flambdas)
+	
+	spectrum = spectrumClasses.spectrumObject()
+	spectrum.setData(wavelengths, flambdas)
+	spectrum.name = "model: angle=%f, temp=%f, field=%f"%(angle, temperature, field)
+	spectrum.sortData()
+	
+	return spectrum
+	
 	
 if __name__ == "__main__":
 
@@ -20,11 +90,10 @@ if __name__ == "__main__":
 	arg = parser.parse_args()
 	print arg
 	
-	pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
 	
 	angle = 60.0    		# Sight angle in degrees
-	field = 64.0   			# Field strength in MG
-	temperature =20.0		# Temperature in keV
+	field = 34.0   			# Field strength in MG
+	temperature =25.0		# Temperature in keV
 	log_lambda = 1      	# log(lambda)
 	geometry = 0 			# Geometry 0 or 1
 	
@@ -57,85 +126,21 @@ if __name__ == "__main__":
 	ppgplot.pgask(False)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
 	
-	for angle in range(90, 10, -10):
-		modelParams = {}
-		modelParams['angle'] = float(angle)
-		modelParams['field'] = field
-		modelParams['temperature'] = temperature
-		modelParams['log_lambda'] = log_lambda
-		modelParams['geometry'] = geometry
-		print modelParams
-		
-		filename = "test"	
-		modelCommand = [pathToCode + "/ConstLambda"]
-		modelCommand.append(str(field))
-		modelCommand.append(str(angle))
-		modelCommand.append(str(temperature))
-		modelCommand.append(str(log_lambda))
-		modelCommand.append(str(geometry))
-		modelCommand.append(str(filename))
-		
-		print "About to execute: " + str(modelCommand)
-		subprocess.call(modelCommand)
-				
-		# Load and plot the model
-		filename+= ".dat"
-		print "Loading model:", filename
+	colour = 1
+	for angle in range(90, 30, -4):
+		modelSpectrum = getModelSpectrum(angle, field, temperature, 1, 0)
+		lowerWavelength = min(modelSpectrum.wavelengths)
+		upperWavelength = max(modelSpectrum.wavelengths)
+		lowerFlambda = min(modelSpectrum.flux)
+		upperFlambda = max(modelSpectrum.flux)
+		lowerFlambda = 0
+
+		ppgplot.pgslct(modelPlotWindow)
+		ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlambda, upperFlambda, 0, 0)
+		ppgplot.pglab("wavelength", "i_0", modelSpectrum.name)
 			
-		inputfile = open(filename, 'r')
-		freqs = []
-		i_0s = []
-		i_1s = []
-		i_s = []
-		for line in inputfile:
-			if line[0] == '#':
-				continue
-			data = line.split()
-			replaceExpChar(data[0])
-			freqs.append(float(replaceExpChar(data[0])))
-			i_0s.append(float(replaceExpChar(data[1])))
-			i_1s.append(float(replaceExpChar(data[2])))
-			i_s.append(float(replaceExpChar(data[3])))
-			
-			
-		lowerFreq = min(freqs)
-		upperFreq = max(freqs)
-		upper_i0 = max(i_0s)
-		lower_i0 = min(i_0s)
-		upper_i1 = max(i_1s)
-		lower_i1 = min(i_1s)
-		upper_i = max(i_s)
-		lower_i = min(i_s)
-		
-		c = 3.E8
-		angstroms = 1E-10
-		wavelengths = [c / f for f in freqs]
-		flambdas = []
-		for fnu,l in zip(i_0s, wavelengths):
-			flambda = fnu * c / (l*l)
-			flambdas.append(flambda) 
-			# print l, flambda
-		wavelengths = [w / angstroms for w in wavelengths] 
-		lowerWavelength = min(wavelengths)
-		upperWavelength = max(wavelengths)
-		lowerFlambda = min(flambdas)
-		upperFlambda = max(flambdas)
-			
-		# trimLower = 5000
-		# trimUpper = 10000
-		# newWavelengths = []
-		# newFlambdas = []
-		# for f, l in zip(flambdas, wavelengths):
-		#	if l > trimLower and l < trimUpper:
-		#		newWavelengths.append(l)
-		#		newFlambdas.append(f)
-					
-		# Now create a spectrum object from our model
-		modelSpectrum = None
-		modelSpectrum = spectrumClasses.spectrumObject()
-		modelSpectrum.setData(wavelengths, flambdas)
-		modelSpectrum.name = "model: angle %f"%angle
-		modelSpectrum.sortData()
+		ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
+
 		
 		modelSpectrum.trimWavelengthRange(observedSpectrumRange[0], observedSpectrumRange[1])
 		
@@ -143,22 +148,10 @@ if __name__ == "__main__":
 		modelSpectrum.divide(modelArea)
 		modelSpectrum.divide(1/observedArea)
 		
-		
-		
-		lowerWavelength = min(modelSpectrum.wavelengths)
-		upperWavelength = max(modelSpectrum.wavelengths)
-		lowerFlambda = min(modelSpectrum.flux)
-		upperFlambda = max(modelSpectrum.flux)
-		lowerFlambda = 0
-		
-		ppgplot.pgslct(modelPlotWindow)
-		ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlambda, upperFlambda, 0, 0)
-		ppgplot.pglab("wavelength", "i_0", modelSpectrum.name)
-			
-		ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
-		
 		ppgplot.pgslct(mainPGPlotWindow)
-		ppgplot.pgsci(2)
+		ppgplot.pgsci(colour)
+		colour+= 1
+		if colour > 15: colour = 1 
 		ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
 		
 	
