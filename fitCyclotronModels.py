@@ -5,6 +5,7 @@ import subprocess
 import ppgplot
 import spectrumClasses
 import scipy.optimize
+import numpy
 
 pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
 
@@ -37,13 +38,9 @@ def getModelSpectrum(angle, field, temperature, log_lambda, geometry):
 	outfile = open(filename, "w")
 	subprocess.call(modelCommand, stdout = outfile)
 	outfile.close()
-		
-	print "About to execute: " + str(modelCommand)
-	subprocess.call(modelCommand)
-				
+					
 	# Load the computed model
-	print "Loading model:", filename
-			
+	print "Loading model:", filename		
 	inputfile = open(filename, 'r')
 	freqs = []
 	i_0s = []
@@ -81,16 +78,25 @@ def getModelSpectrum(angle, field, temperature, log_lambda, geometry):
 	
 	return spectrum
 	
-def getSampledModel(wavelengths, angle, field, temperature, log_lambda, geometry):
+def getSampledModel(wavelengths, angle, field, temperature):
+	log_lambda = 1.0
+	geometry = 0
 	model = getModelSpectrum(angle, field, temperature, log_lambda, geometry)
 	model.resample(wavelengths)
 	modelArea = model.integrate()
 	model.divide(modelArea)
 	model.divide(1/observedArea)
-	print "observed area", observedArea
-	
+	ppgplot.pgsci(colour)
+	ppgplot.pgline(model.wavelengths, model.flux)
+	print "colour:", colour
+	colour+- 1
 	return model.flux
-
+	
+def computeChiSq(spectrum, model):
+	chi = 0
+	for f1, f2 in zip(spectrum.flux, model):
+		chi+= (f1-f2)**2 
+	return chi
 	
 if __name__ == "__main__":
 
@@ -140,7 +146,7 @@ if __name__ == "__main__":
 	
 	angle = 60.
 	field = 34.
-	temperature = 30.
+	temperature = 20.
 	guess = [angle, field, temperature]
 	
 	modelSpectrum = getModelSpectrum(angle, field, temperature, 1, 0)
@@ -150,30 +156,40 @@ if __name__ == "__main__":
 	upperFlambda = max(modelSpectrum.flux)
 	lowerFlambda = 0
 
+	colour = 1
 	ppgplot.pgslct(modelPlotWindow)
 	ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlambda, upperFlambda, 0, 0)
 	ppgplot.pglab("wavelength", "i_0", modelSpectrum.name)
 		
 	ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
-
 	
-	#modelSpectrum.trimWavelengthRange(observedSpectrumRange[0], observedSpectrumRange[1])
-	
-	#modelArea = modelSpectrum.integrate()
-	#modelSpectrum.divide(modelArea)
-	#modelSpectrum.divide(1/observedArea)
-	
-	
-	modelFlux = getSampledModel(spectrum.wavelengths, angle, field, temperature, 1, 0)
 	
 	ppgplot.pgslct(mainPGPlotWindow)
-	# ppgplot.pgsci(colour)
-	# ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
-	# colour+= 1
-	ppgplot.pgsci(colour)
-	ppgplot.pgline(spectrum.wavelengths, modelFlux)
-	colour+= 1
-	if colour > 15: colour = 1 
+	ppgplot.pgsci(2)
 	
+	# y_errors = numpy.ones(len(spectrum.flux))
+	colour = 3
+	
+	for i in range(10):
+		print "Iteration:", i
+		model = getSampledModel(spectrum.wavelengths, angle, field, temperature)
+		chi_sq = computeChiSq(spectrum, model)
+		dt = 1
+		chi_sqplusdt = computeChiSq(spectrum, getSampledModel(spectrum.wavelengths, angle, field, temperature + dt))
+		chi_sqminusdt = computeChiSq(spectrum, getSampledModel(spectrum.wavelengths, angle, field, temperature - dt))
+		dXdt = (chi_sqplusdt - chi_sqminusdt ) / (2*dt)
 
+		da = 1
+		chi_sqplusda = computeChiSq(spectrum, getSampledModel(spectrum.wavelengths, angle + da, field, temperature))
+		chi_sqminusda = computeChiSq(spectrum, getSampledModel(spectrum.wavelengths, angle + da, field, temperature))
+		dXda = (chi_sqplusda - chi_sqminusda ) / (2*da)
+
+
+		print "ChiSq", chi_sq
+		print "dChiSq/dt", dXdt
+		
+	
+	#results, covariance = scipy.optimize.curve_fit(getSampledModel, spectrum.wavelengths, spectrum.flux, guess)
+	
+	# print results, covariance
 	
