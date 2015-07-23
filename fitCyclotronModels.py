@@ -79,6 +79,7 @@ def getModelSpectrum(angle, field, temperature, log_lambda, geometry):
 	return spectrum
 	
 def getSampledModel(wavelengths, angle, field, temperature):
+	global colour
 	log_lambda = 1.0
 	geometry = 0
 	model = getModelSpectrum(angle, field, temperature, log_lambda, geometry)
@@ -88,8 +89,8 @@ def getSampledModel(wavelengths, angle, field, temperature):
 	model.divide(1/observedArea)
 	ppgplot.pgsci(colour)
 	ppgplot.pgline(model.wavelengths, model.flux)
-	print "colour:", colour
-	colour+- 1
+	colour+= 1
+	if colour>15: colour = 1
 	return model.flux
 	
 def quadratic(x, a0, a1, a2):
@@ -107,7 +108,7 @@ def getChiSqByParameters(params, *args):
 	temperature = params[1]
 	scale_factor = params[2]
 	linear_offset = params[3]
-	field = args[0]
+	field = params[4]
 	print "Angle: %f [deg], Field: %f [MG], Temperature:%f [keV], scale: %f, offset: %f"%(angle, field, temperature, scale_factor, linear_offset)
 	model = getSampledModel(observedSpectrum.wavelengths, angle, field, temperature)
 	model = [m * scale_factor + linear_offset for m in model]
@@ -125,12 +126,12 @@ if __name__ == "__main__":
 	print arg
 	
 	
-	angle = 60.0    		# Sight angle in degrees
+	angle = 10.0    		# Sight angle in degrees
 	field = 34.0   			# Field strength in MG
 	temperature =35.0		# Temperature in keV
 	log_lambda = 1      	# log(lambda)
 	geometry = 0 			# Geometry 0 or 1
-	
+	colour = 1
 		
 	spectrum = spectrumClasses.spectrumObject()
 	filename = arg.spectrum
@@ -208,8 +209,9 @@ if __name__ == "__main__":
 	ppgplot.pgslct(mainPGPlotWindow)
 	ppgplot.pgsci(2)
 	
-	# y_errors = numpy.ones(len(spectrum.flux))
 	colour = 3
+
+	# y_errors = numpy.ones(len(spectrum.flux))
 	
 	"""for i in range(10):
 		print "Iteration:", i
@@ -236,6 +238,9 @@ if __name__ == "__main__":
 	#        Field strength
 	fixed = (36, 33)
 
-	results = scipy.optimize.differential_evolution(getChiSqByParameters, bounds, args = fixed)
+	# results = scipy.optimize.differential_evolution(getChiSqByParameters, bounds, args = fixed)
+	guess = [60.0, 20.0, 1.0, 0.5, 34]
+	results = scipy.optimize.minimize(getChiSqByParameters, guess, args = fixed, method = 'Nelder-Mead')
+	
 	print results
 	
