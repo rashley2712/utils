@@ -8,7 +8,7 @@ import scipy.optimize
 import numpy
 
 pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
-
+pathToCode = "."
 
 def replaceExpChar(value):
 	if 'D' in value:
@@ -92,10 +92,27 @@ def getSampledModel(wavelengths, angle, field, temperature):
 	colour+- 1
 	return model.flux
 	
+def quadratic(x, a0, a1, a2):
+	y = a0*x*x + a1 *x + a2
+	return y
+	
 def computeChiSq(spectrum, model):
 	chi = 0
 	for f1, f2 in zip(spectrum.flux, model):
 		chi+= (f1-f2)**2 
+	return chi
+	
+def getChiSqByParameters(params, *args):
+	angle = params[0]
+	temperature = params[1]
+	scale_factor = params[2]
+	linear_offset = params[3]
+	field = args[0]
+	print "Angle: %f [deg], Field: %f [MG], Temperature:%f [keV], scale: %f, offset: %f"%(angle, field, temperature, scale_factor, linear_offset)
+	model = getSampledModel(observedSpectrum.wavelengths, angle, field, temperature)
+	model = [m * scale_factor + linear_offset for m in model]
+	chi = computeChiSq(observedSpectrum, model)
+	print "Chi-squared:", chi
 	return chi
 	
 if __name__ == "__main__":
@@ -139,6 +156,30 @@ if __name__ == "__main__":
 	observedArea = spectrum.integrate()
 	print "Wavelength range of observations:", observedSpectrumRange
 	
+	"""spectrum.trimWavelengthRange(6000, 6900)
+	a0 = -2.615E-6
+	a1 = 3.373E-2
+	a2 = -1.08E2
+	yFit = quadratic(numpy.array(spectrum.wavelengths), a0, a1, a2)
+	ppgplot.pgline(spectrum.wavelengths, yFit)
+	
+	x = numpy.array(spectrum.wavelengths)
+	da0 = .1E-6
+	da1 = .1E-2
+	da2 = .1E2
+	
+	chisq
+	alpha00 = (quadratic(x, a0 + da0, a1, a2) - 2 * quadratic(x, a0, a1, a2) + quadratic(x, a0 - da0, a1, a2)) / (da0*da0)
+	alpha11 = (quadratic(x, a0, a1 + da1, a2) - 2 * quadratic(x, a0, a1, a2) + quadratic(x, a0, a1 - da1, a2)) / (da1*da1)
+	alpha22 = (quadratic(x, a0, a1, a2 + da2) - 2 * quadratic(x, a0, a1, a2) + quadratic(x, a0, a1, a2 - da2)) / (da2*da2)
+	alpha01 = (quadratic(x, a0 + da0, a1 + da1, a2) - quadratic(x, a0 - da0, a1 + da1, a2) - quadratic(x, a0+da0, a1 - da1, a2) + quadratic(x, a0-da0, a1-da1, a2)) / (4*da0*da1)
+	alpha = [ [alpha00, alpha01, 0], [alpha01, alpha22, 0], [0, 0, alpha22] ]
+	print alpha
+	
+	
+	sys.exit()
+	"""
+	
 	modelPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(False)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
@@ -170,7 +211,7 @@ if __name__ == "__main__":
 	# y_errors = numpy.ones(len(spectrum.flux))
 	colour = 3
 	
-	for i in range(10):
+	"""for i in range(10):
 		print "Iteration:", i
 		model = getSampledModel(spectrum.wavelengths, angle, field, temperature)
 		chi_sq = computeChiSq(spectrum, model)
@@ -187,9 +228,14 @@ if __name__ == "__main__":
 
 		print "ChiSq", chi_sq
 		print "dChiSq/dt", dXdt
-		
+	"""	
 	
-	#results, covariance = scipy.optimize.curve_fit(getSampledModel, spectrum.wavelengths, spectrum.flux, guess)
-	
-	# print results, covariance
+	observedSpectrum = spectrum
+	#         Angle      Temp     Scale factor  Linear offset
+	bounds = [(45, 80), (10, 40), (0.5, 1.5),   (0.5, 1.5)]
+	#        Field strength
+	fixed = (36, 33)
+
+	results = scipy.optimize.differential_evolution(getChiSqByParameters, bounds, args = fixed)
+	print results
 	
