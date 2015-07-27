@@ -17,6 +17,7 @@ if __name__ == "__main__":
 	parser.add_argument('--device', type=str, help='[Additional plot device] PGPLOT device. "/xs" is always selected.')
 	parser.add_argument('-t', '--temperature', type=float, default='10.0', help = 'Temperature in keV. Default is 10 keV.')
 	parser.add_argument('-b', '--field', type=float, default='34.0', help = 'Surface field strength in megagauss (MG). Default is 34 MG.')
+	parser.add_argument('-a', '--angle', type=float, default='60.0', help = 'Sight angle between the stream and the viewing angle.')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -37,6 +38,7 @@ if __name__ == "__main__":
 	mainPGPlotWindow = ppgplot.pgopen(xDevice)	
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	ppgplot.pgask(False)
+	
 		
 	modelSpectra = []
 	
