@@ -10,7 +10,7 @@ import numpy
 pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
 pathToCode = "."
 
-global iteration
+global iteration, mainPlotWindow, currentPlotWindow
 
 def replaceExpChar(value):
 	if 'D' in value:
@@ -89,10 +89,6 @@ def getSampledModel(wavelengths, angle, field, temperature):
 	modelArea = model.integrate()
 	model.divide(modelArea)
 	model.divide(1/observedArea)
-	ppgplot.pgsci(colour)
-	ppgplot.pgline(model.wavelengths, model.flux)
-	colour+= 1
-	if colour>15: colour = 1
 	return model.flux
 	
 def quadratic(x, a0, a1, a2):
@@ -106,7 +102,7 @@ def computeChiSq(spectrum, model):
 	return chi
 	
 def getChiSqByParameters(params, *args):
-	global iteration
+	global iteration, mainPlotWindow, currentPlotWindow, colour
 	angle = params[0]
 	temperature = params[1]
 	scale_factor = params[2]
@@ -119,6 +115,8 @@ def getChiSqByParameters(params, *args):
 	print "Chi-squared:", chi
 	startWavelength = min(observedSpectrum.wavelengths)
 	endWavelength = max(observedSpectrum.wavelengths)
+	
+	# Draw the most recent iteration
 	ppgplot.pgslct(currentPlotWindow)
 	ppgplot.pgsci(1)
 	ppgplot.pgenv(startWavelength, endWavelength, lowerFlux, upperFlux, 0, 0)
@@ -127,12 +125,23 @@ def getChiSqByParameters(params, *args):
 	ppgplot.pgline(observedSpectrum.wavelengths, model)
 	ppgplot.pgsci(1)
 	ppgplot.pglab("wavelength", "flux", "Current fit: %d"%iteration)
+	
+	# Overplot the iteration on the original diagram
+	print "overplotting"
+	ppgplot.pgslct(mainPlotWindow)
+	ppgplot.pgsci(colour)
+	ppgplot.pgline(observedSpectrum.wavelengths, model)
+	colour += 1
+	if colour>15: colour = 1
+	ppgplot.pgsci(1)
+	
+	
 	iteration += 1
 	return chi
 	
 if __name__ == "__main__":
 	iteration = 0
-	parser = argparse.ArgumentParser(description='Interactively fits a cyclotron model to an observed spectrum.')
+	parser = argparse.ArgumentParser(description='Fits a cyclotron model to an observed spectrum.')
 	parser.add_argument('spectrum', type=str, help='JSON files containing the spectrum to be fit.')
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
 	 
@@ -150,19 +159,21 @@ if __name__ == "__main__":
 	filename = arg.spectrum
 	spectrum.loadFromJSON(filename)
 	print "Loaded %s, contains %s."%(filename, spectrum.objectName)
-		
-	mainPGPlotWindow = ppgplot.pgopen(arg.device)	
-	ppgplot.pgask(False)
-	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	yUpper = 2.5
-	yLower = -0.5
-	ppgplot.pgsci(1)
+	
+	# Snip out Halpha 
+	spectrum.snipWavelengthRange(6550, 6570)
+	
 	lowerWavelength = min(spectrum.wavelengths)
 	upperWavelength = max(spectrum.wavelengths)
 	observedSpectrumRange = (lowerWavelength, upperWavelength)
 	lowerFlux = min(spectrum.flux)
 	upperFlux = max(spectrum.flux)
 	lowerFlux = 0
+	
+	mainPlotWindow = ppgplot.pgopen(arg.device)	
+	ppgplot.pgask(False)
+	pgPlotTransform = [0, 1, 0, 0, 0, 1]
+	ppgplot.pgsci(1)
 	ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
 	ppgplot.pgline(spectrum.wavelengths, spectrum.flux)
 	ppgplot.pglab("wavelength", "flux", spectrum.objectName)
@@ -170,9 +181,10 @@ if __name__ == "__main__":
 	observedArea = spectrum.integrate()
 	print "Wavelength range of observations:", observedSpectrumRange
 		
-	modelPlotWindow = ppgplot.pgopen(arg.device)	
-	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
-
+	# modelPlotWindow = ppgplot.pgopen(arg.device)	
+	# pgPlotTransform = [0, 1, 0, 0, 0, 1]	
+	# ppgplot.pgask(False)
+	
 	currentPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(False)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
@@ -186,25 +198,8 @@ if __name__ == "__main__":
 	temperature = 20.
 	guess = [angle, field, temperature]
 	
-	modelSpectrum = getModelSpectrum(angle, field, temperature, 1, 0)
-	lowerWavelength = min(modelSpectrum.wavelengths)
-	upperWavelength = max(modelSpectrum.wavelengths)
-	lowerFlambda = min(modelSpectrum.flux)
-	upperFlambda = max(modelSpectrum.flux)
-	lowerFlambda = 0
-
-	colour = 1
-	ppgplot.pgslct(modelPlotWindow)
-	ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlambda, upperFlambda, 0, 0)
-	ppgplot.pglab("wavelength", "i_0", modelSpectrum.name)
-		
-	ppgplot.pgline(modelSpectrum.wavelengths, modelSpectrum.flux)
 	
-	
-	ppgplot.pgslct(mainPGPlotWindow)
-	ppgplot.pgsci(2)
-	
-	colour = 3
+	colour = 2
 	
 	observedSpectrum = spectrum
 	#         Angle      Temp     Scale factor  Linear offset
@@ -212,7 +207,7 @@ if __name__ == "__main__":
 	#        Field strength
 	fixed = (36, 33)
 
-	guess = [60.0, 20.0, 1.0, 0.2, 34]
+	guess = [80.0, 20.0, 1.0, 0.1, 34]
 	iteration = 0
 	results = scipy.optimize.minimize(getChiSqByParameters, guess, args = fixed, method = 'Nelder-Mead')
 	

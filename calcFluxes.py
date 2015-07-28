@@ -185,5 +185,7 @@ if __name__ == "__main__":
 		print "D ratio:", d7665/d7165
 		print "TiO 7165:", d7165 / linear(7500, m, c)
 		print "TiO 7665:", d7665 / linear(7500, m, c)
+		print "TiO 7165/local continuum:", d7165 / linear(7165, m, c)
+		print "TiO 7665/local continuum:", d7665 / linear(7665, m, c)
 		print "TiO ratio:", d7665 / d7165
 	sys.exit()
