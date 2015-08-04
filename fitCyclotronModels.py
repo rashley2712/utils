@@ -51,6 +51,8 @@ def getModelSpectrum(angle, field, temperature, log_lambda, geometry):
 	for line in inputfile:
 		if line[0] == '#':
 			continue
+		if " warnung! " in line:
+			continue
 		data = line.split()
 		replaceExpChar(data[0])
 		freqs.append(float(replaceExpChar(data[0])))
@@ -144,6 +146,9 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Fits a cyclotron model to an observed spectrum.')
 	parser.add_argument('spectrum', type=str, help='JSON files containing the spectrum to be fit.')
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
+	parser.add_argument('--angle', type=float, default = 60.0, help='[Optional] Line of sight angle guess. Default is 60 degrees.')
+	parser.add_argument('--temperature', type=float, default = 24.0, help='[Optional] Plasma temperature in keV guess. Default is 24 keV.')
+	parser.add_argument('--field', type=float, default = 34.0, help='[Optional] Surface magnetic field strength MG guess. Default is 34 MG.')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -207,7 +212,10 @@ if __name__ == "__main__":
 	#        Field strength
 	fixed = (36, 33)
 
-	guess = [80.0, 20.0, 1.0, 0.1, 34]
+	angle = arg.angle
+	field = arg.field
+	temperature = arg.temperature
+	guess = [angle, temperature, 1.0, 0.1, field]
 	iteration = 0
 	results = scipy.optimize.minimize(getChiSqByParameters, guess, args = fixed, method = 'Nelder-Mead')
 	
