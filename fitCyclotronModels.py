@@ -82,9 +82,8 @@ def getModelSpectrum(angle, field, temperature, log_lambda, geometry):
 	
 	return spectrum
 	
-def getSampledModel(wavelengths, angle, field, temperature):
+def getSampledModel(wavelengths, angle, field, temperature, log_lambda):
 	global colour
-	log_lambda = 1.0
 	geometry = 0
 	model = getModelSpectrum(angle, field, temperature, log_lambda, geometry)
 	model.resample(wavelengths)
@@ -110,8 +109,9 @@ def getChiSqByParameters(params, *args):
 	scale_factor = params[2]
 	linear_offset = params[3]
 	field = params[4]
-	print "Angle: %f [deg], Field: %f [MG], Temperature:%f [keV], scale: %f, offset: %f"%(angle, field, temperature, scale_factor, linear_offset)
-	model = getSampledModel(observedSpectrum.wavelengths, angle, field, temperature)
+	log_lambda = params[5]
+	print "Angle: %f [deg], Field: %f [MG], Temperature:%f [keV], log_lambda: %f, scale: %f, offset: %f"%(angle, field, temperature, log_lambda, scale_factor, linear_offset)
+	model = getSampledModel(observedSpectrum.wavelengths, angle, field, temperature, log_lambda)
 	model = [m * scale_factor + linear_offset for m in model]
 	chi = computeChiSq(observedSpectrum, model)
 	print "Chi-squared:", chi
@@ -149,6 +149,7 @@ if __name__ == "__main__":
 	parser.add_argument('--angle', type=float, default = 60.0, help='[Optional] Line of sight angle guess. Default is 60 degrees.')
 	parser.add_argument('--temperature', type=float, default = 24.0, help='[Optional] Plasma temperature in keV guess. Default is 24 keV.')
 	parser.add_argument('--field', type=float, default = 34.0, help='[Optional] Surface magnetic field strength MG guess. Default is 34 MG.')
+	parser.add_argument('--loglambda', type=float, default = 1.0, help='[Optional] Log Lambda parameter guess. Default is 1.0.')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -215,7 +216,8 @@ if __name__ == "__main__":
 	angle = arg.angle
 	field = arg.field
 	temperature = arg.temperature
-	guess = [angle, temperature, 1.0, 0.1, field]
+	log_lambda = arg.loglambda
+	guess = [angle, temperature, 1.0, 0.1, field, log_lambda]
 	iteration = 0
 	results = scipy.optimize.minimize(getChiSqByParameters, guess, args = fixed, method = 'Nelder-Mead')
 	

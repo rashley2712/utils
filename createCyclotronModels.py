@@ -104,7 +104,7 @@ if __name__ == "__main__":
 		
 		modelSpectrum = spectrumClasses.spectrumObject()
 		modelSpectrum.setData(wavelengths, flambdas)
-		modelSpectrum.trimWavelengthRange(5000, 9000)
+		modelSpectrum.trimWavelengthRange(4200, 10000)
 		modelSpectrum.angle = angle
 		modelSpectra.append(modelSpectrum)
 		
