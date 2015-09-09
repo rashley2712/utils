@@ -17,6 +17,8 @@ if __name__ == "__main__":
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
 	parser.add_argument('--stacked', action='store_true', help='Specify this option to perform a stacked plot.')
 	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .JSON file.')
+	parser.add_argument('--lower', type=float, help='[optional] lower wavelength of the plot.')
+	parser.add_argument('--upper', type=float, help='[optional] upper wavelength of the plot.')
 	 
 	arg = parser.parse_args()
 	print arg
@@ -66,8 +68,9 @@ if __name__ == "__main__":
 	if numSpectra>1:
 		print "%d spectra have been loaded."%numSpectra
 	
-	for s in spectra:
-		s.trimWavelengthRange(6350, 6750)	
+	if (arg.upper != None) and (arg.lower != None):
+		for s in spectra:
+			s.trimWavelengthRange(arg.lower, arg.upper)	
 	
 	if not arg.stacked:
 		mainPGPlotWindow = ppgplot.pgopen(arg.device)	
@@ -82,11 +85,11 @@ if __name__ == "__main__":
 			lowerFlux = min(spectrum.flux)
 			upperFlux = max(spectrum.flux)
 			ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
-			ppgplot.pgline(spectrum.wavelengths, spectrum.flux)
+			ppgplot.pgbin(spectrum.wavelengths, spectrum.flux)
 			if hasEphemeris:
-				ppgplot.pglab("wavelength", "flux", "%s [%f]"%(spectrum.objectName, spectrum.phase))
+				ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "flux [%s]"%spectrum.fluxUnits, "%s [%f]"%(spectrum.objectName, spectrum.phase))
 			else:
-				ppgplot.pglab("wavelength", "flux", "%s [%s]"%(spectrum.objectName, spectrum.loadedFromFilename))
+				ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "flux [%s]"%spectrum.fluxUnits, "%s [%s]"%(spectrum.objectName, spectrum.loadedFromFilename))
 		
 		
 	
@@ -104,7 +107,7 @@ if __name__ == "__main__":
 		for index, spectrum in enumerate(spectra):
 			ppgplot.pgsci(1)
 			flux = [ f + offset*index for f in spectrum.flux]
-			ppgplot.pgline(spectrum.wavelengths, flux)
+			ppgplot.pgbin(spectrum.wavelengths, flux)
 			plotx = 8600
 			ploty = offset*index + spectrum.getNearestFlux(plotx) + offset/5
 			if hasEphemeris:

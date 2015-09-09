@@ -161,7 +161,6 @@ class spectrumObject:
 	def loadFromJSON(self, filename):
 		inputfile = open(filename, "r")
 		jsonObject = json.load(inputfile)
-		self.loadedFromFilename = filename
 		for key in jsonObject.keys():
 			keyString = str(key)
 			value = jsonObject[key]
@@ -171,7 +170,8 @@ class spectrumObject:
 				value = numpy.array(value)
 			setattr(self, key, value)
 		inputfile.close()
-
+		self.loadedFromFilename = filename
+		
 		
 	def parseHeaderInfo(self, headers):
 		self.objectName = headers['Object']
