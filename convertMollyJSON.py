@@ -46,6 +46,9 @@ if __name__ == "__main__":
 		spectrum = spectrumClasses.spectrumObject()
 		npoints = spectrum.setData(wavelengths, flux)
 		targetName = spectrum.parseHeaderInfo(head)
+		spectrum.wavelengthUnits = r.x.units
+		spectrum.fluxUnits = r.y.units
+		
 		print "Parsed headers of", targetName
 		print r.oneLine()
 		spectra.append(spectrum)

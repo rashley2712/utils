@@ -11,6 +11,8 @@ class spectrumObject:
 		self.wavelengthRange = (0, 0)
 		self.name = 'unknown'
 		self.loadedFromFilename = 'unknown'
+		self.wavelengthUnits = 'unknown'
+		self.fluxUnits = 'unknown'
 		
 	def setData(self, wavelengths, flux):
 		if len(wavelengths) != len(flux):
