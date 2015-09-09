@@ -10,6 +10,7 @@ class spectrumObject:
 		self.length = 0 
 		self.wavelengthRange = (0, 0)
 		self.name = 'unknown'
+		self.loadedFromFilename = 'unknown'
 		
 	def setData(self, wavelengths, flux):
 		if len(wavelengths) != len(flux):
@@ -158,6 +159,7 @@ class spectrumObject:
 	def loadFromJSON(self, filename):
 		inputfile = open(filename, "r")
 		jsonObject = json.load(inputfile)
+		self.loadedFromFilename = filename
 		for key in jsonObject.keys():
 			keyString = str(key)
 			value = jsonObject[key]

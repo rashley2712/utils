@@ -65,7 +65,9 @@ if __name__ == "__main__":
 	numSpectra = len(spectra)
 	if numSpectra>1:
 		print "%d spectra have been loaded."%numSpectra
-		
+	
+	for s in spectra:
+		s.trimWavelengthRange(6350, 6750)	
 	
 	if not arg.stacked:
 		mainPGPlotWindow = ppgplot.pgopen(arg.device)	
@@ -79,12 +81,12 @@ if __name__ == "__main__":
 			upperWavelength = max(spectrum.wavelengths)
 			lowerFlux = min(spectrum.flux)
 			upperFlux = max(spectrum.flux)
-			ppgplot.pgenv(lowerWavelength, upperWavelength, yLower, yUpper, 0, 0)
+			ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
 			ppgplot.pgline(spectrum.wavelengths, spectrum.flux)
 			if hasEphemeris:
 				ppgplot.pglab("wavelength", "flux", "%s [%f]"%(spectrum.objectName, spectrum.phase))
 			else:
-				ppgplot.pglab("wavelength", "flux", spectrum.objectName)
+				ppgplot.pglab("wavelength", "flux", "%s [%s]"%(spectrum.objectName, spectrum.loadedFromFilename))
 		
 		
 	
