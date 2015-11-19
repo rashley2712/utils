@@ -1,5 +1,52 @@
-import math
+import math, numpy, os
+from PIL import Image,ImageDraw,ImageFont
 
+def percentiles(data, lo, hi):
+    """ Returns a normalised array where lo percent of the pixels are 0 and hi percent of the pixels are 255
+    """
+    max = data.max()
+    dataArray = data.flatten()
+    pHi = numpy.percentile(dataArray, hi)
+    pLo = numpy.percentile(dataArray, lo)
+    range = pHi - pLo
+    scale = range/255
+    data = numpy.clip(data, pLo, pHi)
+    data-= pLo
+    data/=scale
+    return data
+	
+def changeExtension(filename, extension):
+	return os.path.splitext(filename)[0] + "." + extension 
+	
+def writePNG(imageArray, filename, caption = ""):
+	""" Writes to a PNG file using the PIL library. Adds a caption if sent in the parameters. Also adds a .png extension if it isn't already there in 'filename' """
+	imgData = numpy.rot90(imageArray, 3)
+	imgSize = numpy.shape(imgData)
+	imgLength = imgSize[0] * imgSize[1]
+	testData = numpy.reshape(imgData, imgLength, order="F")
+	img = Image.new("L", imgSize)
+	palette = []
+	for i in range(256):
+		palette.extend((i, i, i)) # grey scale
+		img.putpalette(palette)
+	img.putdata(testData)
+	outputFilename = changeExtension(filename, "png")
+	print ("Writing PNG file: " + outputFilename) 
+	img.save(outputFilename, "PNG", clobber=True)
+	
+	"""image = Image.fromarray(imageArray)
+	imageCopy = image.copy()    # We need to copy the image so we don't alter the original when adding the caption.
+	if (caption!=""): 
+		font = ImageFont.truetype(config.FONT, 25) 
+		draw = ImageDraw.Draw(imageCopy)
+		if (imageCopy.mode == "L"):
+			draw.text((0, 0), caption, 255, font = font)
+		else: 
+			draw.text((0, 0), caption, (255, 255, 255), font = font)
+	
+	if (filename[-4:]!=".png"): filename+= ".png"
+	imageCopy.save(filename, "PNG")"""
+	
 def toSexagesimal(world):
 	raDeg = world[0]
 	ra = raDeg/15.
@@ -12,9 +59,24 @@ def toSexagesimal(world):
 	decMinutes = (dec - int(dec)) * 60
 	decSeconds = (decMinutes - int(decMinutes)) * 60
 		
-	outString = "RA: %02d:%02d:%02.1f"%(hours, minutes, seconds)
-	outString+= " DEC: %02d:%02d:%02.3f"%(dec, decMinutes, decSeconds)
+	outString = "RA: %02d:%02d:%04.1f"%(hours, minutes, seconds)
+	outString+= " DEC: %02d:%02d:%04.3f"%(dec, decMinutes, decSeconds)
 	return outString
+	
+def writeFriendlyTimeSeconds(seconds):
+	""" Writes a friendly time (in hours and/or minutes) based on an input of seconds
+	"""
+	minutes = seconds / 60.
+	timeStr = str(int(minutes)) + " minutes"
+	if minutes > 60: 
+		hours = minutes/60.
+		minutes = minutes - int(hours)*60
+		timeStr= "%d hour"%(int(hours))
+		if int(hours)!=1: timeStr+="s";
+		timeStr+= ", %d minute"%(int(minutes))
+	if int(minutes)!=1: timeStr+="s";
+			
+	return timeStr
 
 def filterOutNaNs(data):
 	""" Filter out NaN entries from a dictionary containing any number of arrays (all of the same length)"""
