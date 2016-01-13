@@ -12,6 +12,7 @@ import random
 import timeClasses
 import csv
 import scipy.optimize
+import ppgplot
 
 
 def func(x, a1, a2):
@@ -57,16 +58,16 @@ if __name__ == "__main__":
 	for line in reader:
 		values = [v.strip() for v in line]
 		loggedCycle = int(values[0])
-		MJD = float(values[1])
-		error = float(values[2])
-		obs = int(values[3])
+		MJD = float(values[2])
+		error = float(values[3])
+		#obs = int(values[3])
 		loggedCycles.append(loggedCycle)
 		MJDs.append(MJD)
 		errors.append(error)
-		observatories.append(obs)
+		#observatories.append(obs)
 	
-	print "logged cycles:", loggedCycles
-	print "JDs:", MJDs
+	# print "logged cycles:", loggedCycles
+	# print "(b)MJDs:", MJDs
 	
 	ocErrors = []
 	ocs = []
@@ -83,18 +84,38 @@ if __name__ == "__main__":
 		terror = math.sqrt(error**2 + ephemeris.T0_error**2 + ephemeris.Period_error**2) *86400.
 		print upper, MJD, phase, phaseDifference, ominusc, ominusc*86400., error, terror
 		ocs.append(ominusc*86400.)
-		cycles.append(cycle)
+		cycles.append(upper)
 		ocErrors.append(terror)
 		
+	for c, o, oe in zip(cycles, ocs, ocErrors):
+		print c, o, oe
+		
+	plotname = "V471Tau-oc"
+	plotDevices = ["/xs", "%s.eps/ps"%plotname]
+	for plotDevice in plotDevices:
+		mainPGPlotWindow = ppgplot.pgopen(plotDevice)
+		pgPlotTransform = [0, 1, 0, 0, 0, 1]
+		ppgplot.pgpap(10, 0.618)
+		ppgplot.pgsci(1)
+		ppgplot.pgenv(min(cycles)*1.05, max(cycles)*1.05, min(ocs), max(ocs), 0, 0)
+		ppgplot.pgslw(1)
+		ppgplot.pgpt(cycles, ocs, 3)
+		ppgplot.pgslw(1)
+		ppgplot.pgerrb(2, cycles, ocs, ocErrors, 0)
+		ppgplot.pgerrb(4, cycles, ocs, ocErrors, 0)
+		ppgplot.pgsls(2)
+		ppgplot.pglab("Cycle number", "O-C (seconds)", "")
+		ppgplot.pgclos()
 	
-	# Map some colours
+	""""# Map some colours
 	oColours = []
 	for o in observatories:
 		index = o % len(colourMap)
 		colour = colourMap[index]
 		oColours.append(colour)
-	# print oColours
+	# print oColours"""
 	
+	sys.exit()
 	# Break it down by observatory
 	allData = []
 	for index, o in enumerate(observatories):
