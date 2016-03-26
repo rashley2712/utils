@@ -75,31 +75,36 @@ if __name__ == "__main__":
 	for loggedCycle, MJD, error in zip(loggedCycles, MJDs, errors):
 		phase = ephemeris.getPhase(MJD)
 		cycle, upper = ephemeris.getOrbits(MJD)
+		expectedTime = upper * ephemeris.Period + ephemeris.T0
+		timeDifference = MJD - expectedTime
 		# print loggedCycle, upper, MJD
 		if phase>0.5: phase-=1
 		phaseDifference = phase 
 		# print phaseDifference
 		# if phaseDifference < 0: phaseDifference-=1
 		ominusc = phaseDifference * ephemeris.Period
-		terror = math.sqrt(error**2 + ephemeris.T0_error**2 + ephemeris.Period_error**2) *86400.
-		print upper, MJD, phase, phaseDifference, ominusc, ominusc*86400., error, terror
+		terror = math.sqrt(error**2 + ephemeris.T0_error**2 + upper*upper*(ephemeris.Period_error)**2) *86400.
+		sigmasq = error*error*86400*86400 + ephemeris.T0_error*ephemeris.T0_error*86400*86400 + ephemeris.Period_error*ephemeris.Period_error*86400*86400*upper*upper
+		sigma = math.sqrt(sigmasq)
+		ocerror = error * 86400
+		print upper, MJD, expectedTime, phaseDifference, ominusc, ominusc*86400., error, terror, sigma, ocerror
 		ocs.append(ominusc*86400.)
 		cycles.append(upper)
-		ocErrors.append(terror)
+		ocErrors.append(ocerror)
 		
 	for c, o, oe in zip(cycles, ocs, ocErrors):
 		print c, o, oe
 		
-	plotname = "V471Tau-oc"
+	plotname = "QSVir-oc"
 	plotDevices = ["/xs", "%s.eps/ps"%plotname]
 	for plotDevice in plotDevices:
 		mainPGPlotWindow = ppgplot.pgopen(plotDevice)
 		pgPlotTransform = [0, 1, 0, 0, 0, 1]
 		ppgplot.pgpap(10, 0.618)
 		ppgplot.pgsci(1)
-		ppgplot.pgenv(min(cycles)*1.05, max(cycles)*1.05, min(ocs), max(ocs), 0, 0)
+		ppgplot.pgenv(min(cycles)*1.05, max(cycles)*1.05, min(ocs)*1.15, max(ocs)*1.15, 0, 0)
 		ppgplot.pgslw(1)
-		ppgplot.pgpt(cycles, ocs, 3)
+		ppgplot.pgpt(cycles, ocs, 2)
 		ppgplot.pgslw(1)
 		ppgplot.pgerrb(2, cycles, ocs, ocErrors, 0)
 		ppgplot.pgerrb(4, cycles, ocs, ocErrors, 0)

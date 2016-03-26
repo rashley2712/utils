@@ -7,8 +7,8 @@ import spectrumClasses
 import scipy.optimize
 import numpy
 
-pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
-pathToCode = "."
+pathToCode = "/Users/rashley/astro/reductions/CSS081231/boris"
+# pathToCode = "."
 
 global iteration, mainPlotWindow, currentPlotWindow
 
@@ -114,6 +114,7 @@ def getChiSqByParameters(params, *args):
 	model = getSampledModel(observedSpectrum.wavelengths, angle, field, temperature, log_lambda)
 	model = [m * scale_factor + linear_offset for m in model]
 	chi = computeChiSq(observedSpectrum, model)
+	allChiSqs.append(chi)
 	print "Chi-squared:", chi
 	startWavelength = min(observedSpectrum.wavelengths)
 	endWavelength = max(observedSpectrum.wavelengths)
@@ -136,6 +137,20 @@ def getChiSqByParameters(params, *args):
 	colour += 1
 	if colour>15: colour = 1
 	ppgplot.pgsci(1)
+	
+	# Re-generate the Chi-Squared plot
+	ppgplot.pgslct(chiSqPlotWindow)
+	
+	if iteration > 9:
+		ppgplot.pgenv(0, iteration+1, 0, max(allChiSqs), 0, 0)
+	else:
+		ppgplot.pgenv(0, 10, 0, max(allChiSqs), 0, 0)
+	iterations = range(iteration+1)
+	ppgplot.pgpt(iterations, allChiSqs, 2)
+	minCh = min(allChiSqs)
+	medCh = numpy.median(allChiSqs)
+	maxCh = max(allChiSqs)
+	ppgplot.pglab("Iteration [n]", "Chi-squared", "Chi-squared values [%.2f, %.2f, %.2f]"%(minCh, medCh, maxCh))
 	
 	
 	iteration += 1
@@ -199,6 +214,14 @@ if __name__ == "__main__":
 	ppgplot.pgline(spectrum.wavelengths, spectrum.flux)
 	ppgplot.pglab("wavelength", "flux", "Current fit")
 	
+	chiSqPlotWindow = ppgplot.pgopen(arg.device)	
+	ppgplot.pgask(False)
+	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
+	ppgplot.pgslct(chiSqPlotWindow)
+	ppgplot.pgenv(0, 10, 0, 100, 0, 0)
+	ppgplot.pglab("Iteration [n]", "Chi-squared", "Chi-squared values")
+	
+	
 	angle = 60.
 	field = 34.
 	temperature = 20.
@@ -206,6 +229,8 @@ if __name__ == "__main__":
 	
 	
 	colour = 2
+	
+	allChiSqs = []
 	
 	observedSpectrum = spectrum
 	#         Angle      Temp     Scale factor  Linear offset
