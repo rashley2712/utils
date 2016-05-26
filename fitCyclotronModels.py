@@ -15,7 +15,7 @@ pathToCode = "/Users/rashley/astro/reductions/CSS081231/boris"
 global iteration, mainPlotWindow, currentPlotWindow
 
 def radians(angle):
-	return angle/180. * math.PI
+	return angle/180. * math.pi
 
 def replaceExpChar(value):
 	if 'D' in value:
@@ -119,7 +119,8 @@ def getChiSqByParameters(params, *args):
 	field = args[1]
 	
 	# cos(theta) = cos(i)cos(beta) - sin(i)sin(beta)cos(phi + pi/2)
-	cosTheta = math.cos(radians(inclination)
+	cosTheta = math.cos(radians(inclination)) * math.cos(radians(beta)) - math.sin(radians(inclination)) * math.sin(radians(beta))*math.cos(phase + math.pi/2.)
+	angle = math.acos(cosTheta) / math.pi * 180
 	print "Angle: %f [deg], Field: %f [MG], Temperature:%f [keV], log_lambda: %f, scale: %f, offset: %f"%(angle, field, temperature, log_lambda, scale_factor, linear_offset)
 	model = getSampledModel(observedSpectrum.wavelengths, angle, field, temperature, log_lambda)
 	model = [m * scale_factor + linear_offset for m in model]
@@ -196,7 +197,7 @@ if __name__ == "__main__":
 	else: log_lambda = arg.loglambda
 	print "Optical depth (log_lambda) guess:", log_lambda
 	
-	inclination = 
+	inclination = 81.3
 	
 	geometry = 0 			# Geometry 0 or 1
 	colour = 1
@@ -215,6 +216,11 @@ if __name__ == "__main__":
 		phase = ephemeris.getPhase(HJD)
 		print "Phase:", phase
 		phaseAngle = phase * 2 * math.pi 
+	else: 
+		print "We need an ephemeris to compute the phase angle. Exiting."
+		sys.exit()
+		
+	phase = phaseAngle
 		
 	
 	# Snip out Halpha 
