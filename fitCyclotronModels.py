@@ -7,11 +7,15 @@ import spectrumClasses
 import scipy.optimize
 import numpy
 import timeClasses
+import math
 
 pathToCode = "/Users/rashley/astro/reductions/CSS081231/boris"
 # pathToCode = "."
 
 global iteration, mainPlotWindow, currentPlotWindow
+
+def radians(angle):
+	return angle/180. * math.PI
 
 def replaceExpChar(value):
 	if 'D' in value:
@@ -104,17 +108,18 @@ def computeChiSq(spectrum, model):
 	return chi
 	
 def getChiSqByParameters(params, *args):
-	global iteration, mainPlotWindow, currentPlotWindow, colour
+	global iteration, mainPlotWindow, currentPlotWindow, colour, inclination, phase
 	print "Params:", params
 	beta = params[0]
 	log_lambda = params[1]
 	scale_factor = params[2]
 	linear_offset = params[3]
 	print "Args:", args
-	temperature = params[1]
-	scale_factor = params[2]
-	linear_offset = params[3]
-	field = params[4]
+	temperature = args[0]
+	field = args[1]
+	
+	# cos(theta) = cos(i)cos(beta) - sin(i)sin(beta)cos(phi + pi/2)
+	cosTheta = math.cos(radians(inclination)
 	print "Angle: %f [deg], Field: %f [MG], Temperature:%f [keV], log_lambda: %f, scale: %f, offset: %f"%(angle, field, temperature, log_lambda, scale_factor, linear_offset)
 	model = getSampledModel(observedSpectrum.wavelengths, angle, field, temperature, log_lambda)
 	model = [m * scale_factor + linear_offset for m in model]
@@ -190,6 +195,8 @@ if __name__ == "__main__":
 	if arg.loglambda == None: log_lambda = 1.0
 	else: log_lambda = arg.loglambda
 	print "Optical depth (log_lambda) guess:", log_lambda
+	
+	inclination = 
 	
 	geometry = 0 			# Geometry 0 or 1
 	colour = 1
