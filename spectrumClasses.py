@@ -130,6 +130,7 @@ class spectrumObject:
 		
 	def convertFluxes(self):
 		print "Current fluxUnits are:", self.fluxUnits
+		print "Converting from mJy to "
 		
 	def getFlux(self):
 		return self.flux
