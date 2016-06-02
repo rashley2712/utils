@@ -20,18 +20,7 @@ class spectrumObject:
 			return data
 		except AttributeError:
 			return None
-		
-	def getPhaseFromFilename(self):
-		if self.loadedFromFilename == 'unknown':
-			return 99
-		else:
-			print "Calculating phase..."
-			print "Filename: ", self.loadedFromFilename
-		
-		for key in self.__dict__.keys():
-			data = getattr(self, key)
-			print key, data
-			
+		  
 		
 	def setData(self, wavelengths, flux):
 		if len(wavelengths) != len(flux):
@@ -138,6 +127,9 @@ class spectrumObject:
 		
 	def getWavelengths(self):
 		return self.wavelengths
+		
+	def convertFluxes(self):
+		print "Current fluxUnits are:", self.fluxUnits
 		
 	def getFlux(self):
 		return self.flux
