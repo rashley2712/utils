@@ -7,7 +7,7 @@ import spectrumClasses
 import scipy.optimize
 import numpy
 
-pathToCode = "/Users/rashley/astro/reductions/CSS081231/boris"
+pathToCode = "/home/rashley/astro/CSS081231/boris"
 # pathToCode = "."
 
 global iteration, mainPlotWindow, currentPlotWindow
