@@ -14,6 +14,14 @@ class spectrumObject:
 		self.wavelengthUnits = 'unknown'
 		self.fluxUnits = 'unknown'
 		
+	def getProperty(self, property):
+		try:
+			data = getattr(self, property)
+			return data
+		except AttributeError:
+			return None
+		  
+		
 	def setData(self, wavelengths, flux):
 		if len(wavelengths) != len(flux):
 			return -1
@@ -119,6 +127,10 @@ class spectrumObject:
 		
 	def getWavelengths(self):
 		return self.wavelengths
+		
+	def convertFluxes(self):
+		print "Current fluxUnits are:", self.fluxUnits
+		print "Converting from mJy to "
 		
 	def getFlux(self):
 		return self.flux

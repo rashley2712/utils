@@ -6,11 +6,16 @@ import ppgplot
 import spectrumClasses
 import scipy.optimize
 import numpy
+import timeClasses
+import math
 
-pathToCode = "/Users/rashley/astro/reductions/CSS081231/boris"
+pathToCode = "/home/rashley/astro/CSS081231/boris"
 # pathToCode = "."
 
 global iteration, mainPlotWindow, currentPlotWindow
+
+def radians(angle):
+	return angle/180. * math.pi
 
 def replaceExpChar(value):
 	if 'D' in value:
@@ -103,13 +108,19 @@ def computeChiSq(spectrum, model):
 	return chi
 	
 def getChiSqByParameters(params, *args):
-	global iteration, mainPlotWindow, currentPlotWindow, colour
-	angle = params[0]
-	temperature = params[1]
+	global iteration, mainPlotWindow, currentPlotWindow, colour, inclination, phase
+	print "Params:", params
+	beta = params[0]
+	log_lambda = params[1]
 	scale_factor = params[2]
 	linear_offset = params[3]
-	field = params[4]
-	log_lambda = params[5]
+	print "Args:", args
+	temperature = args[0]
+	field = args[1]
+	
+	# cos(theta) = cos(i)cos(beta) - sin(i)sin(beta)cos(phi + pi/2)
+	cosTheta = math.cos(radians(inclination)) * math.cos(radians(beta)) - math.sin(radians(inclination)) * math.sin(radians(beta))*math.cos(phase + math.pi/2.)
+	angle = math.acos(cosTheta) / math.pi * 180
 	print "Angle: %f [deg], Field: %f [MG], Temperature:%f [keV], log_lambda: %f, scale: %f, offset: %f"%(angle, field, temperature, log_lambda, scale_factor, linear_offset)
 	model = getSampledModel(observedSpectrum.wavelengths, angle, field, temperature, log_lambda)
 	model = [m * scale_factor + linear_offset for m in model]
@@ -161,18 +172,33 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Fits a cyclotron model to an observed spectrum.')
 	parser.add_argument('spectrum', type=str, help='JSON files containing the spectrum to be fit.')
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
-	parser.add_argument('--angle', type=float, default = 60.0, help='[Optional] Line of sight angle guess. Default is 60 degrees.')
-	parser.add_argument('--temperature', type=float, default = 24.0, help='[Optional] Plasma temperature in keV guess. Default is 24 keV.')
-	parser.add_argument('--field', type=float, default = 34.0, help='[Optional] Surface magnetic field strength MG guess. Default is 34 MG.')
-	parser.add_argument('--loglambda', type=float, default = 1.0, help='[Optional] Log Lambda parameter guess. Default is 1.0.')
+	parser.add_argument('--angle', type=float, help='[Optional] Pole inclination (Beta) angle guess. Default is 60 degrees.')
+	parser.add_argument('--temperature', type=float, help='[Optional] Plasma temperature in keV guess. Default is 24 keV.')
+	parser.add_argument('--field', type=float, help='[Optional] Surface magnetic field strength MG guess. Default is 34 MG.')
+	parser.add_argument('--loglambda', type=float,  help='[Optional] Log Lambda parameter guess. Default is 1.0.')
+	parser.add_argument('-e', '--ephemeris', type=str, help = "Optional ephemeris file so we can calculate the phase of the spectrum.")
 	 
 	arg = parser.parse_args()
 	print arg
 	
-	angle = 10.0    		# Sight angle in degrees
-	field = 34.0   			# Field strength in MG
-	temperature =35.0		# Temperature in keV
-	log_lambda = 1      	# log(lambda)
+	if arg.angle == None: angle = 80.   
+	else: angle = arg.angle
+	print "Magnetic pole inclination guess:", angle
+	    
+	if arg.field == None: field = 34.
+	else: field = arg.field
+	print "Magnetic field guess:", field
+	
+	if arg.temperature == None: temperature = 29.0
+	else: temperature = arg.temperature
+	print "Plasma temperature guess:", temperature
+		
+	if arg.loglambda == None: log_lambda = 1.0
+	else: log_lambda = arg.loglambda
+	print "Optical depth (log_lambda) guess:", log_lambda
+	
+	inclination = 81.3
+	
 	geometry = 0 			# Geometry 0 or 1
 	colour = 1
 		
@@ -180,6 +206,22 @@ if __name__ == "__main__":
 	filename = arg.spectrum
 	spectrum.loadFromJSON(filename)
 	print "Loaded %s, contains %s."%(filename, spectrum.objectName)
+	
+	if arg.ephemeris!=None:
+		HJD = spectrum.getProperty('HJD')
+		print "HJD:", HJD
+		ephemeris = timeClasses.ephemerisObject()
+		ephemeris.loadFromFile(arg.ephemeris)
+		print ephemeris
+		phase = ephemeris.getPhase(HJD)
+		print "Phase:", phase
+		phaseAngle = phase * 2 * math.pi 
+	else: 
+		print "We need an ephemeris to compute the phase angle. Exiting."
+		sys.exit()
+		
+	phase = phaseAngle
+		
 	
 	# Snip out Halpha 
 	spectrum.snipWavelengthRange(6550, 6570)
@@ -222,27 +264,19 @@ if __name__ == "__main__":
 	ppgplot.pglab("Iteration [n]", "Chi-squared", "Chi-squared values")
 	
 	
-	angle = 60.
-	field = 34.
-	temperature = 20.
-	guess = [angle, field, temperature]
-	
-	
 	colour = 2
-	
 	allChiSqs = []
 	
 	observedSpectrum = spectrum
 	#         Angle      Temp     Scale factor  Linear offset
-	bounds = [(45, 80), (10, 40), (0.5, 1.5),   (0.5, 1.5)]
+	bounds = [(60, 90), (10, 40), (0.5, 1.5),   (0.5, 1.5)]
 	#        Field strength
 	fixed = (36, 33)
 
-	angle = arg.angle
-	field = arg.field
-	temperature = arg.temperature
-	log_lambda = arg.loglambda
-	guess = [angle, temperature, 1.0, 0.1, field, log_lambda]
+	scale = 1.0
+	offset = 0.1
+	guess = [angle, log_lambda, scale, offset]
+	fixed = (temperature, field)
 	iteration = 0
 	results = scipy.optimize.minimize(getChiSqByParameters, guess, args = fixed, method = 'Nelder-Mead')
 	
