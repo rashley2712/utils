@@ -58,25 +58,27 @@ if __name__ == "__main__":
 	filesToCopy = []
 	for f in FITSFilenames:
 		hdulist = fits.open(f)
-		card = hdulist[0]
-
-		# Search for valuable metadata in the FITS headers
-		try:
-			value = card.header[desiredParameter]
-		except KeyError:
-			# print("WARNING: Could not find the FITS header you were looking for: %s"%(desiredParameter))
-			value = None
-		print f, value, "...", 
-		if value==desiredValue:
-			filesToCopy.append(f)
-			print "Will copy to:", args.destination
-		else:
-			print "Won't copy."
-
+		headerFound = False
+		for card in hdulist:
+			# Search for valuable metadata in the FITS headers
+			try:
+				value = card.header[desiredParameter]
+				headerFound = True
+			except KeyError:
+				# print("WARNING: Could not find the FITS header you were looking for in this card: %s"%(desiredParameter))
+				value = None
+		if headerFound:
+			print f, value, "...", 
+			if value==desiredValue:
+				filesToCopy.append(f)
+				print "Will copy to:", args.destination
+			else:
+				print "Won't copy."
+	
 		hdulist.close()
 	
 	for f in filesToCopy:
-		copyCommand = ["cp -vu " + f + " " + args.destination + "/."]
+		copyCommand = ["cp -v " + f + " " + args.destination + "/."]
 		subprocess.call(copyCommand, shell=True)
 			
 	
