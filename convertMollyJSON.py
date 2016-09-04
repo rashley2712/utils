@@ -15,7 +15,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Loads a series of spectra that were saved from Molly converts them to JSON format.')
 	parser.add_argument('mollyfile', type=str, help='Molly file containing the spectra')
 	parser.add_argument('--suffix', type=str, help='Suffix to add to the end of the filenames.')
-	parser.add_argument('-e', type=str, help='Ephemeris data file')
+	parser.add_argument('-e', type=str, help='[Optional] Ephemeris data file')
 	
 	 
 	arg = parser.parse_args()
@@ -35,19 +35,20 @@ if __name__ == "__main__":
 	
 	mollyFilename = arg.mollyfile
 	mollyFile = trm.dnl.molly.rmolly(mollyFilename)
-	
 		
 	for index, r in enumerate(mollyFile):
 		data = r.toHDU()
+		print r.oneLine()
 		wavelengths = r.x.data
-		flux = r.y.data
+		counts = r.y.data
 		head = r.head
 		if r.has_mask: print "Mask found"
 		spectrum = spectrumClasses.spectrumObject()
-		npoints = spectrum.setData(wavelengths, flux)
+		npoints = spectrum.setData(wavelengths, counts)
 		targetName = spectrum.parseHeaderInfo(head)
 		spectrum.wavelengthUnits = r.x.units
 		spectrum.fluxUnits = r.y.units
+		spectrum.fluxUnits = "relative counts"
 		
 		print "Parsed headers of", targetName
 		print r.oneLine()

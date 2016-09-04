@@ -7,7 +7,7 @@ import spectrumClasses
 import scipy.optimize
 import numpy
 
-pathToCode = "/Users/rashley/astro/reductions/CSS081231/boris"
+pathToCode = "/storage/astro2/phrnaw/reductions/CSS081231/boris"
 # pathToCode = "."
 
 global iteration, mainPlotWindow, currentPlotWindow
@@ -129,6 +129,17 @@ def getChiSqByParameters(params, *args):
 	ppgplot.pgsci(1)
 	ppgplot.pglab("wavelength", "flux", "Current fit: %d"%iteration)
 	
+	# Also draw this as a .ps file
+	currentPlotPS = ppgplot.pgopen("latestFit.ps/ps")	
+	ppgplot.pgask(False)
+	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
+	ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
+	ppgplot.pglab("wavelength", "flux", "Current fit: %d"%iteration)
+	ppgplot.pgline(spectrum.wavelengths, spectrum.flux)
+	ppgplot.pgline(observedSpectrum.wavelengths, observedSpectrum.flux)
+	ppgplot.pgline(observedSpectrum.wavelengths, model)
+	ppgplot.pgclos()
+	
 	# Overplot the iteration on the original diagram
 	print "overplotting"
 	ppgplot.pgslct(mainPlotWindow)
@@ -213,6 +224,8 @@ if __name__ == "__main__":
 	ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
 	ppgplot.pgline(spectrum.wavelengths, spectrum.flux)
 	ppgplot.pglab("wavelength", "flux", "Current fit")
+	
+	
 	
 	chiSqPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(False)

@@ -27,6 +27,8 @@ class spectrumObject:
 		
 		return self.length
 		
+		
+		
 	def sortData(self):
 		wavelengths = self.wavelengths
 		fluxes = self.flux
