@@ -48,7 +48,7 @@ class spectrumObject:
 		startWavelength = min(sampleWavelengths)
 		endWavelength = max(sampleWavelengths)
 		self.trimWavelengthRange(startWavelength, endWavelength)
-		print "num points:", len(self.wavelengths)
+		# print "num points:", len(self.wavelengths)
 		spline = scipy.interpolate.splrep(self.wavelengths, self.flux, s=0)
 		sampleFlux = scipy.interpolate.splev(sampleWavelengths, spline, der=0)
 		self.wavelengths = sampleWavelengths

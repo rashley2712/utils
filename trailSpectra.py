@@ -57,6 +57,7 @@ if __name__ == "__main__":
 		if hasEphemeris:
 			phase = ephemeris.getPhase(spectrum.HJD)
 			spectrum.phase = phase
+			print spectrum.HJD, spectrum.phase
 		spectra.append(spectrum)
 		
 	numSpectra = len(spectra)
@@ -70,33 +71,77 @@ if __name__ == "__main__":
 		print "%d spectra have been loaded."%numSpectra
 	
 	if (arg.upper != None) and (arg.lower != None):
+		numPoints = -1
+		wavelengthTemplate = []
 		for s in spectra:
 			s.trimWavelengthRange(arg.lower, arg.upper)	
+			if not numPoints==-1:
+				s.resample(wavelengthTemplate)
+			else:
+				numPoints = len(s.wavelengths)
+				wavelengthTemplate = s.wavelengths
+	
 	
 	# Create bitmap for trail plot
-	ySize = numSpectra
-	xSizeArray = [len(s.wavelengths) for s in spectra]
-	xSize = max(xSizeArray)
-	print "Bitmap for trails size: (%d, %d)"%(xSize, ySize)
-	trailArray = []
-	for index, s in enumerate(spectra):
-		print index, len(numpy.copy(s.flux))
-		trailArray.append(numpy.array(s.flux))
-		print numpy.shape(trailArray)
+	if not hasEphemeris:
+		ySize = numSpectra
+		xSizeArray = [len(s.wavelengths) for s in spectra]
+		xSize = max(xSizeArray)
+		print "Bitmap for trails size: (%d, %d)"%(xSize, ySize)
+		trailArray = []
+		for index, s in enumerate(spectra):
+			trailArray.append(numpy.array(s.flux))
 	
-	trailBitmap = numpy.copy(trailArray)
-	print numpy.shape(trailBitmap)
+		trailBitmap = numpy.copy(trailArray)
+
+	else:
+		numPhaseBins = 40
+		ySize = numPhaseBins * 2
+		xSizeArray = [len(s.wavelengths) for s in spectra]
+		xSize = max(xSizeArray)
+		trailArray = []
+		for index in range(ySize):
+			blankSpectrum = numpy.zeros(xSize)
+			trailArray.append(blankSpectrum)
+		for s in spectra:
+			phase = s.phase
+			phaseBin = int(phase*numPhaseBins)
+			print phase, phaseBin
+			existingSpectrum = trailArray[phaseBin]
+			newSpectrum = (existingSpectrum + s.flux )/2
+			trailArray[phaseBin] = newSpectrum
+			# Also add the spectrum to the phase+1 bin
+			phase = s.phase + 1.0
+			phaseBin = int(phase*float(numPhaseBins))
+			print phase, phaseBin
+			existingSpectrum = trailArray[phaseBin]
+			newSpectrum = (existingSpectrum + s.flux )/2
+			trailArray[phaseBin] = newSpectrum
+			
+
+
+		trailBitmap = numpy.copy(trailArray)
+		
 
 	mainPGPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(True)
-	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	pgPlotTransform = [0, 1, 0, 0, 0, .1]
+	# pgPlotTransform = [0, 1, 0, 0, 0, 1]
+	spectrum = spectra[0] 
+	xScale = (max(spectrum.wavelengths) - min(spectrum.wavelengths)) / xSize
+	pgPlotTransform = [min(spectrum.wavelengths), xScale, 0, 0, 0, 1/float(numPhaseBins)]
 	lowerWavelength = min(spectrum.wavelengths)
 	upperWavelength = max(spectrum.wavelengths)
-	ppgplot.pgenv(0, xSize, 0, ySize, 0, 0)
+	ppgplot.pgenv( min(spectrum.wavelengths), max(spectrum.wavelengths), 0, 2, 0, 0)
 	ppgplot.pggray(generalUtils.percentiles(trailBitmap, 20, 99), 0, xSize-1 , 0, ySize-1 , 255, 0, pgPlotTransform)
 	
-	ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "phase [%s]")
+	epochs = [s.HJD for s in spectra]
+	startHJD = min(epochs)
+	endHJD = max(epochs)
+	if hasEphemeris: 
+		ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "Phase", "%s - %s"%(str(startHJD), str(endHJD)))
+	else:
+		ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "Spectrum number", "%s - %s"%(str(spectra[0].HJD), str(spectra[-1].HJD)))
+		
 		
 		
 	
