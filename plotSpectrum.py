@@ -19,10 +19,18 @@ if __name__ == "__main__":
 	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .JSON file.')
 	parser.add_argument('--lower', type=float, help='[optional] lower wavelength of the plot.')
 	parser.add_argument('--upper', type=float, help='[optional] upper wavelength of the plot.')
+	parser.add_argument('-n', '--normalise', action='store_true', help='Perform a normalise on the spectra. Mean value will be taken from the first spectrum between the ''-nu'' ''-nl'' wavelengths.')
+	parser.add_argument('-nu', type=float, help='Upper wavelength of the spectrum for the normalisation average. Required if ''-n'' is specified.')
+	parser.add_argument('-nl', type=float, help='Lower wavelength of the spectrum for the normalisation average. Required if ''-n'' is specified.')
+	
 	 
 	arg = parser.parse_args()
 	print arg
 	
+	if arg.normalise:
+		if arg.nu is None or arg.nl is None:
+			print "We require a '-nu' value to perform the normalise function."
+			sys.exit()
 	
 	if arg.e!=None:
 		# Load the ephemeris file
@@ -67,10 +75,26 @@ if __name__ == "__main__":
 	numSpectra = len(spectra)
 	if numSpectra>1:
 		print "%d spectra have been loaded."%numSpectra
-	
+		
 	if (arg.upper != None) and (arg.lower != None):
 		for s in spectra:
 			s.trimWavelengthRange(arg.lower, arg.upper)	
+	
+	if arg.normalise:
+		# Perform the normalisation across all spectra
+		referenceSpectrum = spectra[0]
+		normalConstant = referenceSpectrum.integrate((arg.nl, arg.nu))
+		print "Normalisation constant:", normalConstant
+	
+		for index in range(1, len(spectra)):
+			s = spectra[index]
+			normalVal = s.integrate((arg.nl, arg.nu))
+			print "Normalisation value:", normalVal, normalConstant
+			spectra[index].divide(normalVal/normalConstant)
+			normalVal = s.integrate((arg.nl, arg.nu))
+			print "New Normalisation value:", normalVal, normalConstant
+	
+	
 	
 	if not arg.stacked:
 		mainPGPlotWindow = ppgplot.pgopen(arg.device)	
