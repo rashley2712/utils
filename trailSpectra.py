@@ -80,18 +80,20 @@ if __name__ == "__main__":
 	if numSpectra>1:
 		print "%d spectra have been loaded."%numSpectra
 	
-	# Perform the normalisation across all spectra
-	referenceSpectrum = spectra[0]
-	normalConstant = referenceSpectrum.integrate((arg.nl, arg.nu))
-	print "Normalisation constant:", normalConstant
 	
-	for index in range(1, len(spectra)):
-		s = spectra[index]
-		normalVal = s.integrate((arg.nl, arg.nu))
-		print "Normalisation value:", normalVal, normalConstant
-		spectra[index].divide(normalVal/normalConstant)
-		normalVal = s.integrate((arg.nl, arg.nu))
-		print "New Normalisation value:", normalVal, normalConstant
+	if arg.normalise:
+		# Perform the normalisation across all spectra
+		referenceSpectrum = spectra[0]
+		normalConstant = referenceSpectrum.integrate((arg.nl, arg.nu))
+		print "Normalisation constant:", normalConstant
+	
+		for index in range(1, len(spectra)):
+			s = spectra[index]
+			normalVal = s.integrate((arg.nl, arg.nu))
+			print "Normalisation value:", normalVal, normalConstant
+			spectra[index].divide(normalVal/normalConstant)
+			normalVal = s.integrate((arg.nl, arg.nu))
+			print "New Normalisation value:", normalVal, normalConstant
 	
 	
 	if (arg.upper != None) and (arg.lower != None):
@@ -153,7 +155,7 @@ if __name__ == "__main__":
 
 	mainPGPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(True)
-	ppgplot.pgpap(5.0, 2)
+	ppgplot.pgpap(3.0, 1.8)
 	# pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	spectrum = spectra[0] 
 	xScale = (max(spectrum.wavelengths) - min(spectrum.wavelengths)) / xSize
