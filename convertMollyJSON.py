@@ -48,7 +48,7 @@ if __name__ == "__main__":
 		targetName = spectrum.parseHeaderInfo(head)
 		spectrum.wavelengthUnits = r.x.units
 		spectrum.fluxUnits = r.y.units
-		spectrum.fluxUnits = "relative counts"
+		# spectrum.fluxUnits = "relative counts"
 		
 		print "Parsed headers of", targetName
 		print r.oneLine()
