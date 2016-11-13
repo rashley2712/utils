@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys
+import sys, os
 import numpy, math
 import argparse
 import loadingSavingUtils
@@ -18,10 +18,11 @@ def gaussian(x, a0, a1, a2, a3):
 	
 # Lab wavelengths for Sodium doublet  8183 and 8195
 def doubleGaussian(x, a0, a1, a2):
+	global width
 	s = 11.0
 	w = 3.4
+	w = width
 	y = a0 + a1 * numpy.exp(-.5 * ((x-a2)/w)**2) + a1 * numpy.exp(-.5 * (((x-(a2+s))/w)**2) )
-	print a0, a1, a2
 	return y
 
 
@@ -40,6 +41,8 @@ if __name__ == "__main__":
 	parser.add_argument('-nu', type=float, help='Upper wavelength of the spectrum for the normalisation average. Required if ''-n'' is specified.')
 	parser.add_argument('-nl', type=float, help='Lower wavelength of the spectrum for the normalisation average. Required if ''-n'' is specified.')
 	parser.add_argument('--width', type=float, help='FWHM parameter for the Gaussian fit. If specified, this value will be fixed. ')
+	parser.add_argument('-o', '--objectname', type=str, help='[Optional] Object name for the output log file.')
+	
 	
 	 
 	arg = parser.parse_args()
@@ -106,8 +109,8 @@ if __name__ == "__main__":
 		for s in spectra:
 			s.trimWavelengthRange(arg.lower, arg.upper)	
 
-	trimLower = 8100
-	trimUpper = 8300
+	trimLower = 8150
+	trimUpper = 8240
 	print "Trimming out the region around 8190AA. [%d, %d]"%(trimLower, trimUpper)
 	for s in spectra:
 		s.trimWavelengthRange(trimLower, trimUpper)	
@@ -154,8 +157,8 @@ if __name__ == "__main__":
 		
 		# Grab the continuum from either side of the spectrum
 		
-		lowerCut = 8150
-		upperCut = 8240
+		lowerCut = 8170
+		upperCut = 8220
 		continuumSpectrum = copy.deepcopy(spectrum)
 		continuumSpectrum.snipWavelengthRange(lowerCut, upperCut)
 		ppgplot.pgsci(2)
@@ -212,7 +215,7 @@ if __name__ == "__main__":
 		results, covariance = scipy.optimize.curve_fit(gaussian, x_values, y_values, guess, y_errors)
 		errors = numpy.sqrt(numpy.diag(covariance))
 		print "gaussian result:", results
-		print "guassian errors:", errors
+		print "gaussian errors:", errors
 		a0 = results[0]
 		a1 = results[1]
 		a2 = results[2]
@@ -221,6 +224,74 @@ if __name__ == "__main__":
 		print "Width %f [%f]"%(a3, errors[3])
 		xFit = spectrum.wavelengths
 		yFit = gaussian(numpy.array(xFit), a0, a1, a2, a3)
+		
+		if not fixWidth:
+			width = a3
+		centroidWavelength = a2
+		depth = a1
+		constant = a0
 
 		ppgplot.pgsci(3)
 		ppgplot.pgline(xFit, yFit)
+
+		# Now fit the double gaussian with a fixed width and separation
+		a0 = constant    			# Constant term  
+		a1 = depth					# 'Depth' of the line
+		a2 = centroidWavelength		# Wavelength of the centre of the blueward line
+		guess = numpy.array([a0, a1, a2])
+		x_values = featureSpectrum.wavelengths
+		y_values = featureSpectrum.flux
+		y_errors = numpy.ones(len(featureSpectrum.flux))
+		results, covariance = scipy.optimize.curve_fit(doubleGaussian, x_values, y_values, guess, y_errors)
+		errors = numpy.sqrt(numpy.diag(covariance))
+		print "double gaussian result:", results
+		print "double gaussian errors:", errors
+		a0 = results[0]
+		a1 = results[1]
+		a2 = results[2]
+		wavelength = a2
+		wavelengthError = errors[2]
+		print "Centroid blueward wavelength %f [%f]"%(wavelength, wavelengthError)
+		velocity = (wavelength - 8183)/8183 * 3E5 
+		velocityError = 3E5 /8183 * wavelengthError
+		print "Velocity %f [%f]"%(velocity, velocityError)
+
+		xFit = spectrum.wavelengths
+		yFit = doubleGaussian(numpy.array(xFit), a0, a1, a2)
+		ppgplot.pgsci(4)
+		ppgplot.pgline(xFit, yFit)
+
+		ppgplot.pgsci(5)
+		ppgplot.pgsls(2)
+		ppgplot.pgline([8183, 8183], [lowerFlux, upperFlux])
+		ppgplot.pgsls(1)
+		
+		# Now record the RV in a log file
+		newLines = []
+		if arg.objectname is not None:
+			logFilename = arg.objectname + '.csv'
+		else: 
+			logFilename = spectrum.objectName + '.csv'
+		if os.path.exists(logFilename):
+			print "File exists!"
+			logFile = open(logFilename, 'rt')
+			loglines = []
+			for l in logFile:
+				print l
+				loglines.append(l)
+			logFile.close()
+			for l in loglines:
+				date = l.split()[0]
+				print date
+				newLine = "%f, %f, %f\n"%(spectrum.HJD, velocity, velocityError)
+				if date == spectrum.objectName: 
+					l = newLine
+					break
+				newLines.append(newLine)
+		logFile = open(logFilename, 'wt')
+		logFile.write("HJD, velocity, velocity_error\n")
+		for n in newLines:
+			logFile.write(n)
+			print n
+			
+		logFile.close()	
