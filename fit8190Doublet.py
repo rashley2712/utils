@@ -25,6 +25,37 @@ def doubleGaussian(x, a0, a1, a2):
 	y = a0 + a1 * numpy.exp(-.5 * ((x-a2)/w)**2) + a1 * numpy.exp(-.5 * (((x-(a2+s))/w)**2) )
 	return y
 
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "
+                             "(or 'y' or 'n').\n")
 
 if __name__ == "__main__":
 
@@ -266,6 +297,10 @@ if __name__ == "__main__":
 		ppgplot.pgline([8183, 8183], [lowerFlux, upperFlux])
 		ppgplot.pgsls(1)
 		
+		if not query_yes_no("Are you happy with the fit?"):
+			print "Not saving the value. Fit not good enough"
+			sys.exit()
+		
 		# Now record the RV in a log file
 		newLines = []
 		if arg.objectname is not None:
@@ -281,10 +316,13 @@ if __name__ == "__main__":
 				loglines.append(l)
 			logFile.close()
 			for l in loglines:
-				date = l.split()[0]
-				print date
+				fields = l.split()[0]
+				dateString =  fields.split(',')[0]
+				HJDString = "%f"%spectrum.HJD
+				print dateString, spectrum.HJD, HJDString
 				newLine = "%f, %f, %f\n"%(spectrum.HJD, velocity, velocityError)
-				if date == spectrum.objectName: 
+				if dateString == HJDString: 
+					print "duplicate line, overwriting"
 					l = newLine
 					break
 				newLines.append(newLine)
