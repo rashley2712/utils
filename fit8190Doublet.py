@@ -17,9 +17,10 @@ def gaussian(x, a0, a1, a2, a3):
 	return y	
 	
 # Lab wavelengths for Sodium doublet  8183 and 8195
+# 8183.2556 and 8194.7905   separation: 11.5349
 def doubleGaussian(x, a0, a1, a2):
 	global width
-	s = 11.0
+	s = 11.5349
 	w = 3.4
 	w = width
 	y = a0 + a1 * numpy.exp(-.5 * ((x-a2)/w)**2) + a1 * numpy.exp(-.5 * (((x-(a2+s))/w)**2) )
@@ -302,7 +303,8 @@ if __name__ == "__main__":
 			sys.exit()
 		
 		# Now record the RV in a log file
-		newLines = []
+		logLines = []
+		oldLines = []
 		if arg.objectname is not None:
 			logFilename = arg.objectname + '.csv'
 		else: 
@@ -310,25 +312,30 @@ if __name__ == "__main__":
 		if os.path.exists(logFilename):
 			print "File exists!"
 			logFile = open(logFilename, 'rt')
-			loglines = []
-			for l in logFile:
-				print l
-				loglines.append(l)
+			for index, l in enumerate(logFile):
+				if index != 0:
+					oldLines.append(l)
 			logFile.close()
-			for l in loglines:
-				fields = l.split()[0]
-				dateString =  fields.split(',')[0]
-				HJDString = "%f"%spectrum.HJD
-				print dateString, spectrum.HJD, HJDString
-				newLine = "%f, %f, %f\n"%(spectrum.HJD, velocity, velocityError)
-				if dateString == HJDString: 
-					print "duplicate line, overwriting"
-					l = newLine
-					break
-				newLines.append(newLine)
+			
+		newLine = "%f, %f, %f\n"%(spectrum.HJD, velocity, velocityError)
+
+		logLines.append(newLine)
+		HJDString = "%f"%spectrum.HJD
+		for l in oldLines:
+			fields = l.split()[0]
+			dateString =  fields.split(',')[0]
+			
+			if dateString == HJDString: 
+				print "duplicate line, overwriting"
+			else:
+				logLines.append(l)
+				
 		logFile = open(logFilename, 'wt')
 		logFile.write("HJD, velocity, velocity_error\n")
-		for n in newLines:
+
+		logLines = sorted(logLines, reverse = False)
+		print logLines
+		for n in logLines:
 			logFile.write(n)
 			print n
 			
