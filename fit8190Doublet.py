@@ -58,6 +58,38 @@ def query_yes_no(question, default="yes"):
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
+class dataLog:
+	def __init__(self):
+		self.measurements = []
+
+	def addMeasurement(self, HJD, velocity, velocityError):
+		measurement = {}
+		measurement['HJD'] = HJD
+		measurement['velocity'] = velocity
+		measurement['velocityError'] = velocityError
+		self.measurements.append(measurement)
+		
+	def writeToFile(self, filename):
+		logFile = open(filename, 'wt')
+		logFile.write("HJD, velocity, velocity_error\n")
+		for n in logLines: logFile.write(n)
+		logFile.close()	
+		
+	def sortByHJD(self):
+		self.measurements =  sorted(self.measurements, key=lambda object: object['HJD'], reverse = False)
+		
+	def loadFromFile(self, filename):
+		inputFile = open(filename, 'rt')
+		for line in inputFile:
+			parts = line.strip().split(',')
+			if parts[0].strip(',') == 'HJD': continue 
+			HJD = float(parts[0].strip(','))
+			velocity = float(parts[1].strip(','))
+			velocityError = float(parts[2].strip(','))
+			self.addMeasurement(HJD, velocity, velocityError)
+		inputFile.close()
+			
+
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Loads a spectrum JSON file and fits a double gaussian to the 8190 Na doublet.')
@@ -164,6 +196,20 @@ if __name__ == "__main__":
 	
 	
 	
+	pgPlotTransform = [0, 1, 0, 0, 0, 1]
+		
+	# Load any existing data from the dataLog file
+	recordedData = dataLog()
+	if arg.objectname is not None:
+		logFilename = arg.objectname + '.csv'
+		recordedData.loadFromFile(logFilename)
+		
+	recordedData.sortByHJD()
+	print recordedData.measurements
+	
+	# sys.exit()
+	
+	
 	mainPGPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(True)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
@@ -172,8 +218,6 @@ if __name__ == "__main__":
 	
 	fitPGPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(True)
-	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-		
 	
 	for spectrum in spectra:
 		ppgplot.pgslct(mainPGPlotWindow)
