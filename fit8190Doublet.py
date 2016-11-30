@@ -67,7 +67,16 @@ class dataLog:
 		measurement['HJD'] = HJD
 		measurement['velocity'] = velocity
 		measurement['velocityError'] = velocityError
-		self.measurements.append(measurement)
+		# Check if the measurement is a duplicate (ie same HJD)
+		found = -1
+		for index, m in enumerate(self.measurements):
+			if m['HJD'] == HJD: 
+				found = index
+				m['velocity'] = velocity
+				m['velocityError'] = velocityError
+		if found == -1:
+			self.measurements.append(measurement)
+	
 		
 	def writeToFile(self, filename):
 		logFile = open(filename, 'wt')
@@ -79,6 +88,7 @@ class dataLog:
 		self.measurements =  sorted(self.measurements, key=lambda object: object['HJD'], reverse = False)
 		
 	def loadFromFile(self, filename):
+		if not os.path.exists(filename): return
 		inputFile = open(filename, 'rt')
 		for line in inputFile:
 			parts = line.strip().split(',')
@@ -346,41 +356,5 @@ if __name__ == "__main__":
 			print "Not saving the value. Fit not good enough"
 			sys.exit()
 		
-		# Now record the RV in a log file
-		logLines = []
-		oldLines = []
-		if arg.objectname is not None:
-			logFilename = arg.objectname + '.csv'
-		else: 
-			logFilename = spectrum.objectName + '.csv'
-		if os.path.exists(logFilename):
-			print "File exists!"
-			logFile = open(logFilename, 'rt')
-			for index, l in enumerate(logFile):
-				if index != 0:
-					oldLines.append(l)
-			logFile.close()
-			
-		newLine = "%f, %f, %f\n"%(spectrum.HJD, velocity, velocityError)
 
-		logLines.append(newLine)
-		HJDString = "%f"%spectrum.HJD
-		for l in oldLines:
-			fields = l.split()[0]
-			dateString =  fields.split(',')[0]
-			
-			if dateString == HJDString: 
-				print "duplicate line, overwriting"
-			else:
-				logLines.append(l)
-				
-		logFile = open(logFilename, 'wt')
-		logFile.write("HJD, velocity, velocity_error\n")
-
-		logLines = sorted(logLines, reverse = False)
-		print logLines
-		for n in logLines:
-			logFile.write(n)
-			print n
-			
-		logFile.close()	
+		recordedData.addMeasurement(spectrum.HJD, velocity, velocityError)
