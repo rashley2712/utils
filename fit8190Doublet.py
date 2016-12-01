@@ -67,6 +67,9 @@ class dataLog:
 		measurement['HJD'] = HJD
 		measurement['velocity'] = velocity
 		measurement['velocityError'] = velocityError
+		measurement['fwhm'] = fwhm
+		measurement['wavelength'] = wavelength
+		
 		# Check if the measurement is a duplicate (ie same HJD)
 		found = -1
 		for index, m in enumerate(self.measurements):
@@ -81,8 +84,20 @@ class dataLog:
 	def writeToFile(self, filename):
 		logFile = open(filename, 'wt')
 		logFile.write("HJD, velocity, velocity_error\n")
-		for n in logLines: logFile.write(n)
+		for m in self.measurements: 
+			outString = "%10.10f, %10.10f, %10.10f\n"%(m['HJD'], m['velocity'], m['velocityError'])
+			logFile.write(outString)
 		logFile.close()	
+		
+	def getSavedValues(self, HJD):
+		print "Looking any previous measurements for", HJD
+		for m in self.measurements:
+			if (float(m['HJD']) == float(HJD)): 
+				print "Found"
+				return (m['velocity'], m['velocityError'])
+			print "%10.10f %10.10f"%(float(m['HJD']), float(HJD))
+		
+		return (-1, -1)
 		
 	def sortByHJD(self):
 		self.measurements =  sorted(self.measurements, key=lambda object: object['HJD'], reverse = False)
@@ -101,7 +116,8 @@ class dataLog:
 			
 
 if __name__ == "__main__":
-
+	NA_labwavelength = 8183.2556
+	
 	parser = argparse.ArgumentParser(description='Loads a spectrum JSON file and fits a double gaussian to the 8190 Na doublet.')
 	parser.add_argument('inputFiles', type=str, nargs='+', help='JSON files containing the spectra')
 	parser.add_argument('-e', type=str, help='Optional ephemeris file')
@@ -292,8 +308,12 @@ if __name__ == "__main__":
 		# Now fit a single gaussian to the Na doublet blue line 
 		a0 = 1.0    	# Constant term  
 		a1 = -0.5		# 'Depth' of the line
-		a2 = 8183.0		# Wavelength of the centre of the line
+		a2 = NA_labwavelength		# Wavelength of the centre of the line
 		a3 = 3.0		# Width of the line
+		
+		# Check if there is a guess value to use for the wavelength and the width of the fit
+		wavelength, width = recordedData.get
+		
 		guess = numpy.array([a0, a1, a2, a3])
 		x_values = featureSpectrum.wavelengths
 		y_values = featureSpectrum.flux
@@ -338,8 +358,8 @@ if __name__ == "__main__":
 		wavelength = a2
 		wavelengthError = errors[2]
 		print "Centroid blueward wavelength %f [%f]"%(wavelength, wavelengthError)
-		velocity = (wavelength - 8183)/8183 * 3E5 
-		velocityError = 3E5 /8183 * wavelengthError
+		velocity = (wavelength - NA_labwavelength)/NA_labwavelength * 3E5 
+		velocityError = 3E5 /NA_labwavelength * wavelengthError
 		print "Velocity %f [%f]"%(velocity, velocityError)
 
 		xFit = spectrum.wavelengths
@@ -349,12 +369,14 @@ if __name__ == "__main__":
 
 		ppgplot.pgsci(5)
 		ppgplot.pgsls(2)
-		ppgplot.pgline([8183, 8183], [lowerFlux, upperFlux])
+		ppgplot.pgline([NA_labwavelength, NA_labwavelength], [lowerFlux, upperFlux])
 		ppgplot.pgsls(1)
 		
 		if not query_yes_no("Are you happy with the fit?"):
 			print "Not saving the value. Fit not good enough"
 			sys.exit()
 		
-
 		recordedData.addMeasurement(spectrum.HJD, velocity, velocityError)
+		
+		
+		recordedData.writeToFile(logFilename)
