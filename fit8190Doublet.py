@@ -62,7 +62,7 @@ class dataLog:
 	def __init__(self):
 		self.measurements = []
 
-	def addMeasurement(self, HJD, velocity, velocityError):
+	def addMeasurement(self, HJD, velocity, velocityError, fwhm, wavelength):
 		measurement = {}
 		measurement['HJD'] = HJD
 		measurement['velocity'] = velocity
@@ -77,25 +77,24 @@ class dataLog:
 				found = index
 				m['velocity'] = velocity
 				m['velocityError'] = velocityError
+				m['fwhm'] = fwhm
+				m['wavelength'] = wavelength
 		if found == -1:
 			self.measurements.append(measurement)
 	
 		
 	def writeToFile(self, filename):
 		logFile = open(filename, 'wt')
-		logFile.write("HJD, velocity, velocity_error\n")
+		logFile.write("HJD, velocity, velocity_error, fwhm, wavelength\n")
 		for m in self.measurements: 
-			outString = "%10.10f, %10.10f, %10.10f\n"%(m['HJD'], m['velocity'], m['velocityError'])
+			outString = "%10.10f, %10.10f, %10.10f, %10.10f, %10.10f\n"%(m['HJD'], m['velocity'], m['velocityError'], m['fwhm'], m['wavelength'])
 			logFile.write(outString)
 		logFile.close()	
 		
 	def getSavedValues(self, HJD):
-		print "Looking any previous measurements for", HJD
 		for m in self.measurements:
 			if (float(m['HJD']) == float(HJD)): 
-				print "Found"
-				return (m['velocity'], m['velocityError'])
-			print "%10.10f %10.10f"%(float(m['HJD']), float(HJD))
+				return (m['wavelength'], m['fwhm'])
 		
 		return (-1, -1)
 		
@@ -111,9 +110,17 @@ class dataLog:
 			HJD = float(parts[0].strip(','))
 			velocity = float(parts[1].strip(','))
 			velocityError = float(parts[2].strip(','))
-			self.addMeasurement(HJD, velocity, velocityError)
+			fwhm = float(parts[3].strip(','))
+			wavelength = float(parts[4].strip(','))
+			self.addMeasurement(HJD, velocity, velocityError, fwhm, wavelength)
 		inputFile.close()
-			
+		
+	def __str__(self):
+		if len(self.measurements)==0: return
+		retStr = "HJD, velocity, velocityErr, fwhm, wavelength\n"
+		for m in self.measurements: 
+			retStr+="%10.10f, %f, %f, %f, %f\n"%(m['HJD'], m['velocity'], m['velocityError'], m['fwhm'], m['wavelength'])
+		return retStr
 
 if __name__ == "__main__":
 	NA_labwavelength = 8183.2556
@@ -140,8 +147,8 @@ if __name__ == "__main__":
 	
 	if arg.width is not None:
 		fixWidth = True
-		width = arg.width
-		print "Fixing line width to %f AA."%width
+		fixedWidth = arg.width
+		print "Fixing line width to %f AA."%fixedWidth
 	else:
 		fixWidth = False
 		
@@ -231,19 +238,16 @@ if __name__ == "__main__":
 		recordedData.loadFromFile(logFilename)
 		
 	recordedData.sortByHJD()
-	print recordedData.measurements
-	
-	# sys.exit()
-	
+	# print recordedData
 	
 	mainPGPlotWindow = ppgplot.pgopen(arg.device)	
-	ppgplot.pgask(True)
+	ppgplot.pgask(False)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	yUpper = 2.5
 	yLower = -0.5
 	
 	fitPGPlotWindow = ppgplot.pgopen(arg.device)	
-	ppgplot.pgask(True)
+	ppgplot.pgask(False)
 	
 	for spectrum in spectra:
 		ppgplot.pgslct(mainPGPlotWindow)
@@ -277,8 +281,8 @@ if __name__ == "__main__":
 		y_errors = numpy.ones(len(continuumSpectrum.flux))
 		results, covariance = scipy.optimize.curve_fit(quad, x_values, y_values, guess, )
 		errors = numpy.sqrt(numpy.diag(covariance))
-		print "quadratic result:", results
-		print "quadratic errors:", errors
+		# print "quadratic result:", results
+		# print "quadratic errors:", errors
 		a0 = results[0]
 		a1 = results[1]
 		a2 = results[2]
@@ -302,43 +306,60 @@ if __name__ == "__main__":
 		ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
 		ppgplot.pgsci(1)
 		ppgplot.pgbin(normalisedSpectrum.wavelengths, normalisedSpectrum.flux)
+		ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "flux [%s]"%spectrum.fluxUnits, "%s [%s]"%(spectrum.objectName, spectrum.loadedFromFilename))
 		
 		featureSpectrum = copy.deepcopy(normalisedSpectrum)
 		featureSpectrum.trimWavelengthRange(lowerCut, upperCut)
-		# Now fit a single gaussian to the Na doublet blue line 
-		a0 = 1.0    	# Constant term  
-		a1 = -0.5		# 'Depth' of the line
-		a2 = NA_labwavelength		# Wavelength of the centre of the line
-		a3 = 3.0		# Width of the line
 		
 		# Check if there is a guess value to use for the wavelength and the width of the fit
-		wavelength, width = recordedData.get
+		wavelength, fwhm = recordedData.getSavedValues(spectrum.HJD)
+		if (wavelength!=-1):
+			centroidWavelength = wavelength
+			width = fwhm
+			print "Found previously saved values for %10.10f: wavelength = %fAA and fwhm = %fAA"%(spectrum.HJD, centroidWavelength, fwhm)
+			constant = 1.0
+			depth = -0.5
+		else: 
 		
-		guess = numpy.array([a0, a1, a2, a3])
-		x_values = featureSpectrum.wavelengths
-		y_values = featureSpectrum.flux
-		y_errors = numpy.ones(len(featureSpectrum.flux))
-		results, covariance = scipy.optimize.curve_fit(gaussian, x_values, y_values, guess, y_errors)
-		errors = numpy.sqrt(numpy.diag(covariance))
-		print "gaussian result:", results
-		print "gaussian errors:", errors
-		a0 = results[0]
-		a1 = results[1]
-		a2 = results[2]
-		a3 = results[3]
-		print "Centroid wavelength %f [%f]"%(a2, errors[2])
-		print "Width %f [%f]"%(a3, errors[3])
-		xFit = spectrum.wavelengths
-		yFit = gaussian(numpy.array(xFit), a0, a1, a2, a3)
 		
-		if not fixWidth:
-			width = a3
-		centroidWavelength = a2
-		depth = a1
-		constant = a0
+			# Fit a single gaussian to the Na doublet blue line 
+			a0 = 1.0    	# Constant term  
+			a1 = -0.5		# 'Depth' of the line
+			a2 = NA_labwavelength		# Wavelength of the centre of the line
+			a3 = 1.5		# Width of the line
+		
+			if fixWidth:
+				a3 = fixedWidth
+		
+			guess = numpy.array([a0, a1, a2, a3])
+			x_values = featureSpectrum.wavelengths
+			y_values = featureSpectrum.flux
+			y_errors = numpy.ones(len(featureSpectrum.flux))
+			results, covariance = scipy.optimize.curve_fit(gaussian, x_values, y_values, guess, y_errors)
+			errors = numpy.sqrt(numpy.diag(covariance))
+			# print "gaussian result:", results
+			# print "gaussian errors:", errors
+			a0 = results[0]
+			a1 = results[1]
+			a2 = results[2]
+			a3 = results[3]
+			print "Centroid wavelength %f [%f]"%(a2, errors[2])
+			print "Width %f [%f]"%(a3, errors[3])
+			xFit = spectrum.wavelengths
+			yFit = gaussian(numpy.array(xFit), a0, a1, a2, a3)
+		
+			if not fixWidth:
+				width = a3
+			else:
+				width = fixedWidth
+			centroidWavelength = a2
+			depth = a1
+			constant = a0
 
-		ppgplot.pgsci(3)
-		ppgplot.pgline(xFit, yFit)
+			currentColour = ppgplot.pgqci()
+			ppgplot.pgsci(3)
+			ppgplot.pgline(xFit, yFit)
+			ppgplot.pgsci(currentColour)
 
 		# Now fit the double gaussian with a fixed width and separation
 		a0 = constant    			# Constant term  
@@ -350,8 +371,8 @@ if __name__ == "__main__":
 		y_errors = numpy.ones(len(featureSpectrum.flux))
 		results, covariance = scipy.optimize.curve_fit(doubleGaussian, x_values, y_values, guess, y_errors)
 		errors = numpy.sqrt(numpy.diag(covariance))
-		print "double gaussian result:", results
-		print "double gaussian errors:", errors
+		# print "double gaussian result:", results
+		# print "double gaussian errors:", errors
 		a0 = results[0]
 		a1 = results[1]
 		a2 = results[2]
@@ -376,7 +397,6 @@ if __name__ == "__main__":
 			print "Not saving the value. Fit not good enough"
 			sys.exit()
 		
-		recordedData.addMeasurement(spectrum.HJD, velocity, velocityError)
-		
-		
+		recordedData.addMeasurement(spectrum.HJD, velocity, velocityError, width, wavelength)
+		recordedData.sortByHJD()
 		recordedData.writeToFile(logFilename)
