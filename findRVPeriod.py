@@ -9,7 +9,12 @@ import copy
 import ppgplot
 
 def sine(x, a0, a1):
-    y = a0 * numpy.sin(2.*math.pi*x + a1)
+    y = a0 * numpy.sin(2.*math.pi*(x + a1))
+    return y
+	
+def sineFreqPhase(x, f, p):
+    global amplitude
+    y = amplitude * numpy.sin(2.*math.pi*f*(x + p))
     return y
 
 def query_yes_no(question, default="yes"):
@@ -144,25 +149,22 @@ if __name__ == "__main__":
     ppgplot.pgslct(mainPGPlotWindow)
 		
     ppgplot.pgsci(1)
-    print dates
     reducedDates = [d - 2457000 for d in dates]
     startDate = min(reducedDates)
     endDate = max(reducedDates)
     maxVel = max(velocities)
     minVel = min(velocities)
     velRange = max([maxVel, abs(minVel)])
-    print startDate, endDate, velRange
+    print "Start date: %f, End date: %f, Velocity range: %f km/s"%(startDate, endDate, velRange)
     ppgplot.pgenv(startDate, endDate, -velRange, velRange, 0, 0)
     ppgplot.pgpt(reducedDates, velocities)
     ppgplot.pglab("HJD - 2457000", "Radial velocity km/s", arg.inputfile)
 
     x = numpy.array(reducedDates)
     y = numpy.array(velocities)
-    f = numpy.arange(0.01, 20, 0.01)
-    print f
+    f = numpy.arange(0.1, 20, 0.01)
     import scipy.signal as signal
     pgram = signal.lombscargle(x, y, f)
-    print pgram
     
     pgramPGPlotWindow = ppgplot.pgopen(arg.device)	
     ppgplot.pgask(False)
@@ -171,7 +173,7 @@ if __name__ == "__main__":
     ppgplot.pgslct(pgramPGPlotWindow)
     ppgplot.pgenv(min(f), max(f), 0, max(pgram), 0, 0)
     ppgplot.pgline(f, pgram)
-    ppgplot.pglab("Frequency cycles/day", "Amplitude", arg.inputfile)
+    ppgplot.pglab("Frequency cycles/day", "Amplitude", "Lomb-Scargle: " + arg.inputfile)
 	
     bestFreq = f[numpy.argmax(pgram)]
     bestPeriod = 24.*1.0/ bestFreq
@@ -198,9 +200,10 @@ if __name__ == "__main__":
     ppgplot.pgerrb(4, phases, velocityPlot, velocityErrorPlot, 0)
     ppgplot.pglab("Phase", "Radial velocity km/s", arg.inputfile)
     
+    # sys.exit()
     # Try a bit more of a brute force approach
     frequency = bestFreq
-    frequencyRange = numpy.arange(0.01, 20.0, 0.01)
+    frequencyRange = numpy.arange(1, 2, 0.001)
     testedFreq = []
     chiSqMeasures = []
     amplitudes = []
@@ -232,27 +235,28 @@ if __name__ == "__main__":
         chiSqMeasures.append(chiSq)
         amplitudes.append(amplitude)
         phaseMeasure.append(phase)
-        print frequency, chiSq, amplitude, phase
+        # print frequency, chiSq, amplitude, phase
     
         
     index = numpy.argmin(chiSqMeasures)
     bestFrequency = testedFreq[index]
     bestAmplitude = amplitudes[index]
     bestPhase = phaseMeasure[index]
-    
+    print "Least squares result: Amplitude: %f km/s, Frequency: %f cycles/day, Phase offset: %f"%(bestAmplitude, bestFrequency, bestPhase)
     
     chiSqPGPlotWindow = ppgplot.pgopen(arg.device)	
     ppgplot.pgask(False)
     pgPlotTransform = [0, 1, 0, 0, 0, 1]
-
     ppgplot.pgslct(chiSqPGPlotWindow)
     ppgplot.pgenv(min(testedFreq), max(testedFreq), 0, max(chiSqMeasures), 0, 0)
     ppgplot.pgline(testedFreq, chiSqMeasures)
+    ppgplot.pglab("Frequency cycles/day", "Chi-squared", "Least squares: " + arg.inputfile)
 	
     period = 1.0/bestFrequency
     t0 = reducedDates[0]
     phases = [((d - t0) % period) / period for d in reducedDates]
     extraPhases = [p + 1.0 for p in phases]
+    
 
     ppgplot.pgslct(mainPGPlotWindow)
     ppgplot.pgsci(1)
@@ -274,6 +278,73 @@ if __name__ == "__main__":
     ppgplot.pgsci(2)
     ppgplot.pgline(lineX, lineY)
    
+    #################################################################################################
+    if not query_yes_no("Ready to refine the fit?"):
+        sys.exit()
+    print "Starting with frequency of %f cycles/day and at a phase of %f."%(bestFrequency, bestPhase)
+		
+    x_values = reducedDates
+    y_values = velocities
+    y_errors = velErrors
+        
+    guess = [bestFrequency, 0]
+    amplitude = bestAmplitude
+    results, covariance = scipy.optimize.curve_fit(sineFreqPhase, x_values, y_values, guess, y_errors)
+    errors = numpy.sqrt(numpy.diag(covariance))
+        
+    print results
+    finalFrequency = results[0]
+    t1 = results[1]
+	# print x_values, y_values, velErrors
+	
+    period = 1.0/finalFrequency
+    t0 = reducedDates[0]
+    phases = [(d + t1) % period / period  for d in reducedDates]
+    extraPhases = [p + 1.0 for p in phases]
+
+    ppgplot.pgslct(mainPGPlotWindow)
+    ppgplot.pgsci(1)
+    ppgplot.pgeras()
+    ppgplot.pgenv(0, 2.0, -1.2*velRange, 1.2*velRange, 0, 0)
+    ppgplot.pgpt(phases, velocityPlot)
+    ppgplot.pgerrb(2, phases, velocityPlot, velocityErrorPlot, 0)
+    ppgplot.pgerrb(4, phases, velocityPlot, velocityErrorPlot, 0)
+    ppgplot.pgpt(extraPhases, velocityPlot)
+    ppgplot.pgerrb(2, extraPhases, velocityPlot, velocityErrorPlot, 0)
+    ppgplot.pgerrb(4, extraPhases, velocityPlot, velocityErrorPlot, 0)
+    ppgplot.pglab("Phase", "Radial velocity km/s", arg.inputfile + " %f hours"%(24.0 * period))
+    
+    lineX = numpy.arange(0, 2, 0.01)
+    lineY = sine(lineX, amplitude, 0)
+    
+    print "Fit: %f km/s, %f cycles/day, %f days, %f hours"%(bestAmplitude, finalFrequency, period, 24. * period)
+    
+    ppgplot.pgsci(2)
+    ppgplot.pgline(lineX, lineY)
+    
+    
+    # Now write it to a PS file.
+    psPlot = ppgplot.pgopen("fit.ps/ps")	
+    ppgplot.pgask(False)
+    pgPlotTransform = [0, 1, 0, 0, 0, 1]
+    	
+    ppgplot.pgsci(1)
+    ppgplot.pgenv(0, 2.0, -1.2*velRange, 1.2*velRange, 0, 0)
+    ppgplot.pgpt(phases, velocityPlot)
+    ppgplot.pgerrb(2, phases, velocityPlot, velocityErrorPlot, 0)
+    ppgplot.pgerrb(4, phases, velocityPlot, velocityErrorPlot, 0)
+    ppgplot.pgpt(extraPhases, velocityPlot)
+    ppgplot.pgerrb(2, extraPhases, velocityPlot, velocityErrorPlot, 0)
+    ppgplot.pgerrb(4, extraPhases, velocityPlot, velocityErrorPlot, 0)
+    ppgplot.pglab("Phase", "Radial velocity km/s", arg.inputfile + " %f hours"%(24.0 * period))
+    
+    lineX = numpy.arange(0, 2, 0.01)
+    lineY = sine(lineX, amplitude, 0)
+        
+    ppgplot.pgsci(2)
+    ppgplot.pgline(lineX, lineY)
+		
+    ppgplot.pgend()
     
         
     
