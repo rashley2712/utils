@@ -210,9 +210,11 @@ class spectrumObject:
 		self.galLatitude = headers['Gal latitude']
 		self.galLongitude = headers['Gal longitude']
 		self.extractPosition = headers['Extract position']
+		self.comment = str(headers['COMMENT'])
 		
 		return self.objectName
 
+	
 	def appendDataAtNewWavelengths(self, wavelengths, flux):
 		currentWavelengthRange = self.wavelengthRange
 		newWavelengthsRange = (min(wavelengths), max(wavelengths))
