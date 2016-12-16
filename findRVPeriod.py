@@ -12,9 +12,8 @@ def sine(x, a0, a1):
     y = a0 * numpy.sin(2.*math.pi*(x + a1))
     return y
 	
-def sineFreqPhase(x, f, p):
-    global amplitude
-    y = amplitude * numpy.sin(2.*math.pi*f*(x + p))
+def sineFreqPhase(x, gamma, amplitude, f, p):
+    y = gamma + (amplitude * numpy.sin(2.*math.pi*f*(x + p)))
     return y
 
 def query_yes_no(question, default="yes"):
@@ -107,11 +106,16 @@ class dataLog:
         for line in inputFile:
             parts = line.strip().split(',')
             if parts[0].strip(',') == 'HJD': continue 
-            HJD = float(parts[0].strip(','))
-            velocity = float(parts[1].strip(','))
-            velocityError = float(parts[2].strip(','))
-            fwhm = float(parts[3].strip(','))
-            wavelength = float(parts[4].strip(','))
+            try:
+                HJD = float(parts[0].strip(','))
+                velocity = float(parts[1].strip(','))
+                velocityError = float(parts[2].strip(','))
+                fwhm = float(parts[3].strip(','))
+                wavelength = float(parts[4].strip(','))
+            except ValueError:
+                print "Warning: Could not convert one of the values in line.. ", parts
+                fwhm = 0
+                wavelength = 0
             self.addMeasurement(HJD, velocity, velocityError, fwhm, wavelength)
         inputFile.close()
         
@@ -162,7 +166,7 @@ if __name__ == "__main__":
 
     x = numpy.array(reducedDates)
     y = numpy.array(velocities)
-    f = numpy.arange(0.1, 20, 0.01)
+    f = numpy.arange(0.1, 50, 0.01)
     import scipy.signal as signal
     pgram = signal.lombscargle(x, y, f)
     
@@ -182,7 +186,7 @@ if __name__ == "__main__":
     
     # Now plot a folded RV curve
     t0 = reducedDates[0]
-    phaseFirst = [((d - t0) % bestPeriod) / bestPeriod for d in reducedDates]
+    phaseFirst = [((d - t0) % periodDays) / periodDays for d in reducedDates]
     velocityPlot = copy.deepcopy(velocities)
     velocityErrorPlot = copy.deepcopy(velErrors)
     phases = copy.deepcopy(phaseFirst)
@@ -190,20 +194,18 @@ if __name__ == "__main__":
         phases.append(p + 1.0)
         velocityPlot.append(velocities[index])
         velocityErrorPlot.append(velErrors[index])
-    print phases
-
+    
     ppgplot.pgslct(mainPGPlotWindow)
     ppgplot.pgsci(1)
-    ppgplot.pgenv(0, 2.0, -velRange, velRange, 0, 0)
+    ppgplot.pgenv(0, 2.0, -velRange*1.2, velRange*1.2, 0, 0)
     ppgplot.pgpt(phases, velocityPlot)
     ppgplot.pgerrb(2, phases, velocityPlot, velocityErrorPlot, 0)
     ppgplot.pgerrb(4, phases, velocityPlot, velocityErrorPlot, 0)
     ppgplot.pglab("Phase", "Radial velocity km/s", arg.inputfile)
     
-    # sys.exit()
     # Try a bit more of a brute force approach
     frequency = bestFreq
-    frequencyRange = numpy.arange(1, 2, 0.001)
+    frequencyRange = numpy.arange(1, 5, 0.001)
     testedFreq = []
     chiSqMeasures = []
     amplitudes = []
@@ -239,11 +241,13 @@ if __name__ == "__main__":
     
         
     index = numpy.argmin(chiSqMeasures)
+    lowestChiSquared = chiSqMeasures[index]
+    reducedChiSquared = lowestChiSquared / (len(reducedDates)-2)
     bestFrequency = testedFreq[index]
     bestAmplitude = amplitudes[index]
     bestPhase = phaseMeasure[index]
     print "Least squares result: Amplitude: %f km/s, Frequency: %f cycles/day, Phase offset: %f"%(bestAmplitude, bestFrequency, bestPhase)
-    
+    print "Reduced Chi squared: ", reducedChiSquared
     chiSqPGPlotWindow = ppgplot.pgopen(arg.device)	
     ppgplot.pgask(False)
     pgPlotTransform = [0, 1, 0, 0, 0, 1]
@@ -287,17 +291,25 @@ if __name__ == "__main__":
     y_values = velocities
     y_errors = velErrors
         
-    guess = [bestFrequency, 0]
+    guess = [0, bestAmplitude, bestFrequency, 0]
     amplitude = bestAmplitude
     results, covariance = scipy.optimize.curve_fit(sineFreqPhase, x_values, y_values, guess, y_errors)
     errors = numpy.sqrt(numpy.diag(covariance))
         
     print results
-    finalFrequency = results[0]
-    t1 = results[1]
-	# print x_values, y_values, velErrors
-	
+    gamma = results[0]
+    gammaError = errors[0]
+    finalAmplitude = results[1]
+    amplitudeError = errors[1]
+    finalFrequency = results[2]
+    frequencyError = errors[2]
+    t1 = results[3]
+    chiSq = 0
+    for index, d in enumerate(reducedDates):
+        chiSq+= (velocities[index] - sineFreqPhase(d, gamma, finalAmplitude, finalFrequency, t1))**2 / velErrors[index]**2
+    reducedChiSq = chiSq/(len(reducedDates) -4)
     period = 1.0/finalFrequency
+    periodError = period * frequencyError/finalFrequency
     t0 = reducedDates[0]
     phases = [(d + t1) % period / period  for d in reducedDates]
     extraPhases = [p + 1.0 for p in phases]
@@ -317,8 +329,9 @@ if __name__ == "__main__":
     lineX = numpy.arange(0, 2, 0.01)
     lineY = sine(lineX, amplitude, 0)
     
-    print "Fit: %f km/s, %f cycles/day, %f days, %f hours"%(bestAmplitude, finalFrequency, period, 24. * period)
-    
+    print "Fit: %f[%f] km/s, %f cycles/day, %f[%f] days, %f[%f] hours"%(finalAmplitude, amplitudeError, finalFrequency, period, periodError, 24. * period, periodError*24.)
+    print "gamma velocity: %f[%f] km/s"%(gamma, gammaError)
+    print "Reduced ChiSquared:", reducedChiSq
     ppgplot.pgsci(2)
     ppgplot.pgline(lineX, lineY)
     
