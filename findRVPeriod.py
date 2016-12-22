@@ -205,7 +205,7 @@ if __name__ == "__main__":
     
     # Try a bit more of a brute force approach
     frequency = bestFreq
-    frequencyRange = numpy.arange(1, 5, 0.001)
+    frequencyRange = numpy.arange(5.5, 6.5, 0.001)
     testedFreq = []
     chiSqMeasures = []
     amplitudes = []
