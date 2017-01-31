@@ -23,7 +23,7 @@ def gaussian(x, a0, a1, a2, a3):
 def doubleGaussian(x, a0, a1, a2):
 	global width
 	s = 11.5349
-	w = 3.4
+	# w = 3.4
 	w = width
 	y = a0 + a1 * numpy.exp(-.5 * ((x-a2)/w)**2) + a1 * numpy.exp(-.5 * (((x-(a2+s))/w)**2) )
 	return y
@@ -139,8 +139,10 @@ if __name__ == "__main__":
 	parser.add_argument('-n', '--normalise', action='store_true', help='Perform a normalise on the spectra. Mean value will be taken from the first spectrum between the ''-nu'' ''-nl'' wavelengths.')
 	parser.add_argument('-nu', type=float, help='Upper wavelength of the spectrum for the normalisation average. Required if ''-n'' is specified.')
 	parser.add_argument('-nl', type=float, help='Lower wavelength of the spectrum for the normalisation average. Required if ''-n'' is specified.')
-	parser.add_argument('--width', type=float, help='FWHM parameter for the Gaussian fit. If specified, this value will be fixed. ')
+	parser.add_argument('--fixwidth', action='store_true', help='Use the width value that is stored in the Google sheet. ')
+	parser.add_argument('--skipgood', action='store_true', help='Don''t try to fit spectra that are marked as ''good'' in the sheet.')
 	parser.add_argument('-o', '--objectname', type=str, help='[Optional] Object name for the output log file.')
+	arg = parser.parse_args()
 	
 	# docsCredentials = gSheets.get_credentials()
 	# sampleData = gSheets.getSampleData("1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms")
@@ -148,19 +150,18 @@ if __name__ == "__main__":
 	docInstance = gSheets.gSheetObject()
 	docInstance.initCredentials()
 	docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
-	print docInstance.getSampleData()
-	# docInstance.writeSampleData()
-	docInstance.getReadingByHJD("2456678.55403")
-	arg = parser.parse_args()
-	# print arg
+	docInstance.setObjectName(arg.objectname)
+	docInstance.loadAllReadings()
+	# docInstance.createSheet("testname")
 	
-	if arg.width is not None:
-		fixWidth = True
-		fixedWidth = arg.width
-		print "Fixing line width to %f AA."%fixedWidth
-	else:
-		fixWidth = False
-		
+	
+	# print arg
+	defaultWidth = 1.0 # Default width of line in Angstrom
+	defaultWavelength = NA_labwavelength # Blueward doublet line in Angstrom
+	defaultVelocity = 0.0
+	defaultVelocityError = 0.0 
+	
+	
 	if arg.normalise:
 		if arg.nu is None or arg.nl is None:
 			print "We require a '-nu' value to perform the normalise function."
@@ -240,7 +241,7 @@ if __name__ == "__main__":
 	
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 		
-	# Load any existing data from the dataLog file
+	"""# Load any existing data from the dataLog file
 	recordedData = dataLog()
 	if arg.objectname is not None:
 		logFilename = arg.objectname + '.csv'
@@ -248,7 +249,7 @@ if __name__ == "__main__":
 		
 	recordedData.sortByHJD()
 	# print recordedData
-	
+	"""
 	mainPGPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(False)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
@@ -320,7 +321,7 @@ if __name__ == "__main__":
 		featureSpectrum = copy.deepcopy(normalisedSpectrum)
 		featureSpectrum.trimWavelengthRange(lowerCut, upperCut)
 		
-		# Check if there is a guess value to use for the wavelength and the width of the fit
+		"""# Check if there is a guess value to use for the wavelength and the width of the fit
 		wavelength, fwhm = recordedData.getSavedValues(spectrum.HJD)
 		if (wavelength!=-1):
 			centroidWavelength = wavelength
@@ -328,47 +329,61 @@ if __name__ == "__main__":
 			print "Found previously saved values for %10.10f: wavelength = %fAA and fwhm = %fAA"%(spectrum.HJD, centroidWavelength, fwhm)
 			constant = 1.0
 			depth = -0.5
+			"""
+		if (docInstance.hasReadingFor(spectrum.HJD)):
+			print "Found a previous fit for this spectrum %f"%spectrum.HJD 
+			(width, wavelength) = docInstance.getFitByHJD(spectrum.HJD)
+			if arg.skipgood and docInstance.getGoodFlag(spectrum.HJD):
+				print "Skipping spectrum as it is marked as a good fit"
+				continue
+			a0 = 1.0
+			a1 = -0.5
+			a2 = wavelength
+			a3 = width
+			print "Using width: %f and wavelength: %f"%(width, wavelength)
+			constant = a0
+			depth = a1
+			centroidWavelength = a2
+			fixWidth = width
+			
 		else: 
-		
-		
+			print "No previous fit found for this spectrum %f"%spectrum.HJD 
+			docInstance.addNewMeasurement(spectrum.HJD, defaultVelocity, defaultVelocityError, defaultWidth, defaultWavelength, False)
+			docInstance.writeAllReadings()
 			# Fit a single gaussian to the Na doublet blue line 
 			a0 = 1.0    	# Constant term  
 			a1 = -0.5		# 'Depth' of the line
-			a2 = NA_labwavelength		# Wavelength of the centre of the line
-			a3 = 1.5		# Width of the line
+			a2 = defaultWavelength		# Wavelength of the centre of the line
+			a3 = defaultWidth		# Width of the line
 		
-			if fixWidth:
-				a3 = fixedWidth
 		
-			guess = numpy.array([a0, a1, a2, a3])
-			x_values = featureSpectrum.wavelengths
-			y_values = featureSpectrum.flux
-			y_errors = numpy.ones(len(featureSpectrum.flux))
-			results, covariance = scipy.optimize.curve_fit(gaussian, x_values, y_values, guess, y_errors)
-			errors = numpy.sqrt(numpy.diag(covariance))
-			# print "gaussian result:", results
-			# print "gaussian errors:", errors
-			a0 = results[0]
-			a1 = results[1]
-			a2 = results[2]
-			a3 = results[3]
-			print "Centroid wavelength %f [%f]"%(a2, errors[2])
-			print "Width %f [%f]"%(a3, errors[3])
-			xFit = spectrum.wavelengths
-			yFit = gaussian(numpy.array(xFit), a0, a1, a2, a3)
+		guess = numpy.array([a0, a1, a2, a3])
+		x_values = featureSpectrum.wavelengths
+		y_values = featureSpectrum.flux
+		y_errors = numpy.ones(len(featureSpectrum.flux))
+		results, covariance = scipy.optimize.curve_fit(gaussian, x_values, y_values, guess, y_errors)
+		errors = numpy.sqrt(numpy.diag(covariance))
+		a0 = results[0]
+		a1 = results[1]
+		a2 = results[2]
+		a3 = results[3]
+		print "Centroid wavelength %f [%f]"%(a2, errors[2])
+		print "Width %f [%f]"%(a3, errors[3])
+		xFit = spectrum.wavelengths
+		yFit = gaussian(numpy.array(xFit), a0, a1, a2, a3)
 		
-			if not fixWidth:
-				width = a3
-			else:
-				width = fixedWidth
-			centroidWavelength = a2
-			depth = a1
-			constant = a0
+		width = a3
+		if arg.fixwidth:
+			print "Using the width as specified in the sheet ... %f angstrom"%fixWidth
+			width = fixWidth
+		centroidWavelength = a2
+		depth = a1
+		constant = a0
 
-			currentColour = ppgplot.pgqci()
-			ppgplot.pgsci(3)
-			ppgplot.pgline(xFit, yFit)
-			ppgplot.pgsci(currentColour)
+		currentColour = ppgplot.pgqci()
+		ppgplot.pgsci(3)
+		ppgplot.pgline(xFit, yFit)
+		ppgplot.pgsci(currentColour)
 
 		# Now fit the double gaussian with a fixed width and separation
 		a0 = constant    			# Constant term  
@@ -403,9 +418,15 @@ if __name__ == "__main__":
 		ppgplot.pgsls(1)
 		
 		if not query_yes_no("Are you happy with the fit?"):
-			print "Not saving the value. Fit not good enough"
-			sys.exit()
-		
-		recordedData.addMeasurement(spectrum.HJD, velocity, velocityError, width, wavelength)
+			print "Saving the value with the flag raised."
+			docInstance.addNewMeasurement(spectrum.HJD, velocity, velocityError, width, wavelength, False)
+			docInstance.writeAllReadings()
+		else:
+			docInstance.addNewMeasurement(spectrum.HJD, velocity, velocityError, width, wavelength, True)
+			docInstance.writeAllReadings()
+		"""recordedData.addMeasurement(spectrum.HJD, velocity, velocityError, width, wavelength)
 		recordedData.sortByHJD()
 		recordedData.writeToFile(logFilename)
+		"""
+		
+		

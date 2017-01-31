@@ -72,13 +72,13 @@ if __name__ == "__main__":
 		decDegrees = args.dec
 		radiusDegrees = args.radius
 		if (args.ra is None):
-			print "Please specific an RA for the cone search."
+			print "Please specify an RA for the cone search."
 			sys.exit()
 		if (args.dec is None):
-			print "Please specific a DEC for the cone search."
+			print "Please specify a DEC for the cone search."
 			sys.exit()
 		if (args.radius is None):
-			print "Please specific a radius for the cone search."
+			print "Please specify a radius for the cone search."
 			sys.exit()
 	else:
 		coneSearch = False

@@ -61,9 +61,66 @@ class gSheetObject:
 		self.docID = ""
 		self.readings = []
 		self.sheetName = "object"
-		self.columns = ["HJD", "RV", "RV error"]
+		self.columns = ["HJD", "RV", "RV error", "width", "wavelength", "good"]
 		
-	def add
+	def setObjectName(self, objectname):
+		self.sheetName = objectname
+		
+	def hasReadingFor(self, HJD):
+		for s in self.readings:
+			if s['HJD'] == HJD: return True
+		return False
+		
+	def getGoodFlag(self, HJD):
+		for s in self.readings:
+			if s['HJD'] == HJD and s['good']==1: return True
+		return False
+	
+	def createSheet(self, objectname):
+		sheetProperties = { "title": "testsheet"}
+		sheetRequest = {
+			"properties": {
+				sheetProperties
+			}
+		}
+		createRequest = {
+			"addSheet": {
+				object(sheetRequest)
+			}}
+			
+		result = self.service.spreadsheets().create(body = createRequest).execute()
+	
+
+	def getFitByHJD(self, HJD):
+		for s in self.readings:
+			if s['HJD'] == HJD: return (s['width'], s['wavelength'])
+		return False
+
+
+	def addNewMeasurement(self, HJD, RV, RVerror, width, wavelength, good, overwrite=True):
+		reading = {}
+		reading['HJD'] = HJD
+		reading['RV'] = RV
+		reading['RV error'] = RVerror
+		reading['width'] = width
+		reading['wavelength'] = wavelength
+		if good: reading['good'] = 1
+		else: reading['good'] = 0
+		if overwrite:
+			index = -1
+			for i, s in enumerate(self.readings):
+				if s['HJD'] == HJD: index = i
+			if index!=-1:
+				self.readings[index] = reading
+				print "Overwriting existing reading"
+			else:
+				self.readings.append(reading)
+				print "Adding new reading"
+		else:
+			self.readings.append(reading)
+		
+		return len(self.readings)
+		
 		
 	def initCredentials(self):
 		self.credentials = get_credentials()
@@ -73,32 +130,53 @@ class gSheetObject:
 		
 	def setDocID(self, id):
 		self.docID = id
-		
-	def getSampleData(self):
-		http = self.credentials.authorize(httplib2.Http())
-		discoveryUrl = ('https://sheets.googleapis.com/$discovery/rest?''version=v4')
-		service = discovery.build('sheets', 'v4', http=http, discoveryServiceUrl=discoveryUrl)
-		spreadsheetId = self.docID
-		rangeName = 'Sheet1!A1:E10'
-		result = service.spreadsheets().values().get(spreadsheetId=spreadsheetId, range=rangeName).execute()
-		values = result.get('values', [])	
-		return values
-		
-	def appendRVReading(self, HJD, RV, RVerror):
-		values = [ [ HJD, RV, RVerror] ]
+
+	def writeAllReadings(self):
+		values = []
+		row = []
+		for c in self.columns:
+			row.append(c)
+		values.append(row)
+		for s in self.readings:
+			row = []
+			for c in self.columns:
+				row.append(s[c])
+			values.append(row)
 		body = { 'values': values }
-		result = self.service.spreadsheets().values().append( spreadsheetId=self.docID, range="Sheet1!A1:A3", valueInputOption="USER_ENTERED", body=body).execute()
-		
-	def getReadingByHJD(self, HJD):
-		rangeCells = self.sheetName + "!A:D"
-		
-		result = self.service.spreadsheets().values().get( spreadsheetId=self.docID, range=rangeCells).execute()
-		print "All values result"
+		rangeName = self.sheetName + "!A:F"
+		result = self.service.spreadsheets().values().update( spreadsheetId=self.docID, range=rangeName, valueInputOption="USER_ENTERED", body=body).execute()
 		print result
-		values = result.get('values', [])
-		for index, v in enumerate(values):
-			print index, v
+			
+	def loadAllReadings(self):
+		rangeCells = self.sheetName + "!A:F"
 		
+		result = self.service.spreadsheets().values().get( spreadsheetId=self.docID, range=rangeCells, valueRenderOption='UNFORMATTED_VALUE').execute()
+		values = result.get('values', [])
+		
+		numRows = len(values)
+		columns = values[0]
+		print "Columns are:", columns
+		print "There are %d rows."%numRows
+		newData = []
+		self.columns = [c.encode('ascii', 'ignore') for c in columns]
+		# self.columns = columns
+		print self.columns
+		for index in range(1, numRows):
+			row = values[index]
+			readingObject = {}
+			for j, columnName in enumerate(self.columns):
+				try: data = row[j]
+				except IndexError:
+					data = 0
+				try:
+					dataFloat = float(data)
+					readingObject[columnName] = dataFloat
+				except ValueError:
+					readingObject[columnName] = data
+			print readingObject
+			newData.append(readingObject)
+		self.readings = newData
+		return
 		
 		
 	def writeSampleData(self):	
