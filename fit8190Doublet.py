@@ -7,6 +7,8 @@ import spectrumClasses, timeClasses
 import scipy.optimize
 import copy
 import ppgplot
+import gSheets
+
 
 def quad(x, a0, a1, a2):
 	y = a2 * x * x + a1 *x + a0
@@ -48,14 +50,14 @@ def query_yes_no(question, default="yes"):
         raise ValueError("invalid default answer: '%s'" % default)
 
     while True:
-        sys.stdout.write(question + prompt)
-        choice = raw_input().lower()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' "
+		sys.stdout.write(question + prompt)
+		choice = raw_input().lower()
+		if default is not None and choice == '':
+			return valid[default]
+		elif choice in valid:
+			return valid[choice]
+		else:
+			sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
 class dataLog:
@@ -140,8 +142,15 @@ if __name__ == "__main__":
 	parser.add_argument('--width', type=float, help='FWHM parameter for the Gaussian fit. If specified, this value will be fixed. ')
 	parser.add_argument('-o', '--objectname', type=str, help='[Optional] Object name for the output log file.')
 	
+	# docsCredentials = gSheets.get_credentials()
+	# sampleData = gSheets.getSampleData("1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms")
 	
-	 
+	docInstance = gSheets.gSheetObject()
+	docInstance.initCredentials()
+	docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
+	print docInstance.getSampleData()
+	# docInstance.writeSampleData()
+	docInstance.getReadingByHJD("2456678.55403")
 	arg = parser.parse_args()
 	# print arg
 	

@@ -16,11 +16,18 @@ def getUsername():
 
 if __name__ == "__main__":
 	
-	parser = argparse.ArgumentParser(description='Copies files from local folder to destination folder based on matching FITS headers.')
+	parser = argparse.ArgumentParser(description='Copies files from local folder (or an input list of files) to destination folder based on matching FITS headers.')
 	parser.add_argument('destination', type=str, help="The destination folder.")
-	parser.add_argument('FITSheader', type=str, help="The FITS header to look for.")
-	parser.add_argument('FITSvalue', type=str, help="Value to match in the FITS header.")
+	parser.add_argument('--list', type=str, help="List of files to be checked.")
+	parser.add_argument('-fh', '--FITSheader', type=str, help="The FITS header to look for.")
+	parser.add_argument('-fv', '--FITSvalue', type=str, help="Value to match in the FITS header.")
 	parser.add_argument('--ext', type=str, default='.*.(fits|fits.gz|fits.fz|fit)', help="FITS file descriptor: Pattern to match in filenames. Default is '.*.(fits|fits.gz|fits.fz|fit)'")
+	parser.add_argument('--cone', action='store_true', help='Specify this option if you want a cone search.')
+	parser.add_argument('--radius', type=float, help="The cone search radius in minutes of arc")
+	parser.add_argument('--ra', type=float, help="The cone search RA value in degrees")
+	parser.add_argument('--dec', type=float, help="The cone search DEC value in degrees")
+	
+	
 	
 	args = parser.parse_args()
 	now = datetime.datetime.now()
@@ -29,21 +36,30 @@ if __name__ == "__main__":
 	
 	dirName = "."
 	
-	folders = os.walk(dirName)
+	if args.list is not None:
+		print "List specified:", args.list
+		FITSFilenames = []
+		# Load the list of files.
+		filename = args.list
+		fileList = open(filename, 'r')
+		for line in fileList:
+			FITSFilenames.append(str(line.strip()))
+	else:
+		
+		folders = os.walk(dirName)
 	
-	fileList = []
-	for root, dirs, files in folders:
-		if root == dirName:
-			fileList = files
+		fileList = []
+		for root, dirs, files in folders:
+			if root == dirName:
+				fileList = files
 			
-	# print "First level only:", fileList
 	
-	FITSFilenames = []
-	search_re = re.compile(args.ext)
-	for file in fileList:
-		m = search_re.match(file)
-		if (m): 
-			FITSFilenames.append(file)
+		FITSFilenames = []
+		search_re = re.compile(args.ext)
+		for file in fileList:
+			m = search_re.match(file)
+			if (m): 
+				FITSFilenames.append(file)
 	
 	if not os.path.exists(args.destination):
 		print "Output folder, %s, does not exist... Creating it."%args.destination
@@ -51,9 +67,25 @@ if __name__ == "__main__":
 	
 	# print "Found the following FITS files:", FITSFilenames
 	
-	desiredParameter = args.FITSheader
-	desiredValue = args.FITSvalue
 	
+	
+	if args.cone==True:
+		raDegrees = args.ra
+		decDegree = args.dec
+		coneSearch = True
+	else:
+		desiredParameter = args.FITSheader
+		desiredValue = args.FITSvalue
+		if desiredParameter is None: 
+			print "Please specify a FITS header to match"
+			sys.exit()
+		if desiredValue is None: 
+			print "Please specify a value for the FITS header %s to match"%desiredParameter
+			sys.exit()
+			
+		
+	
+	print "Searching for:", desiredParameter, " = ", desiredValue
 	
 	filesToCopy = []
 	for f in FITSFilenames:
