@@ -158,15 +158,21 @@ if __name__ == "__main__":
     endDate = max(reducedDates)
     maxVel = max(velocities)
     minVel = min(velocities)
-    velRange = max([maxVel, abs(minVel)])
+    velRange = 1.2 * max([maxVel, abs(minVel)])
     print "Start date: %f, End date: %f, Velocity range: %f km/s"%(startDate, endDate, velRange)
-    ppgplot.pgenv(startDate, endDate, -velRange, velRange, 0, 0)
-    ppgplot.pgpt(reducedDates, velocities)
-    ppgplot.pglab("HJD - 2457000", "Radial velocity km/s", arg.inputfile)
+    ppgplot.pgenv(0, len(dates), -velRange, velRange, 0, 0 )
+    #ppgplot.pgenv(startDate, endDate, -velRange, velRange, 0, 0)
+    
+    ppgplot.pgpt(range(len(dates)), velocities)
+    ppgplot.pgerrb(2, range(len(dates)), velocities, velErrors, 0)
+    ppgplot.pgerrb(4, range(len(dates)), velocities, velErrors, 0)
 
+    ppgplot.pglab("Point number", "Radial velocity km/s", arg.inputfile)
+    
+    
     x = numpy.array(reducedDates)
     y = numpy.array(velocities)
-    f = numpy.arange(0.1, 50, 0.01)
+    f = numpy.arange(0.1, 3, 0.001)
     import scipy.signal as signal
     pgram = signal.lombscargle(x, y, f)
     
@@ -183,6 +189,8 @@ if __name__ == "__main__":
     bestPeriod = 24.*1.0/ bestFreq
     periodDays = 1.0/bestFreq
     print "Best frequency: %f cycles/day\nBest period: %f hours"%(bestFreq, bestPeriod)
+    
+    sys.exit()
     
     # Now plot a folded RV curve
     t0 = reducedDates[0]
@@ -205,7 +213,7 @@ if __name__ == "__main__":
     
     # Try a bit more of a brute force approach
     frequency = bestFreq
-    frequencyRange = numpy.arange(5.5, 6.5, 0.001)
+    frequencyRange = numpy.arange(13.0, 17.0, 0.001)
     testedFreq = []
     chiSqMeasures = []
     amplitudes = []
