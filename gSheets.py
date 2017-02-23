@@ -160,7 +160,6 @@ class gSheetObject:
 		newData = []
 		self.columns = [c.encode('ascii', 'ignore') for c in columns]
 		# self.columns = columns
-		print self.columns
 		for index in range(1, numRows):
 			row = values[index]
 			readingObject = {}
@@ -173,7 +172,7 @@ class gSheetObject:
 					readingObject[columnName] = dataFloat
 				except ValueError:
 					readingObject[columnName] = data
-			print readingObject
+			#print readingObject
 			newData.append(readingObject)
 		self.readings = newData
 		return

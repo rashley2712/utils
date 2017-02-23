@@ -1,4 +1,4 @@
-import math, numpy, os
+import math, numpy, os, sys
 from PIL import Image,ImageDraw,ImageFont
 
 def percentiles(data, lo, hi):
@@ -14,6 +14,53 @@ def percentiles(data, lo, hi):
     data-= pLo
     data/=scale
     return data
+
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "
+                             "(or 'y' or 'n').\n")
+
+
+def formatValueError(value, error, significant = 1):
+	""" Returns two neatly formatted numbers (as strings) taking into account an appropriate number of significant figures based on the error. """
+	decimalPlaces = round(math.log10(error))
+	if decimalPlaces < 1:
+		decimalPlaces = abs(decimalPlaces) + (significant)
+		value = round(value * 10 ** decimalPlaces) / 10**decimalPlaces
+		error = round(error * 10 ** decimalPlaces) / 10**decimalPlaces
+	
+	valueStr = str(value)
+	errorStr = str(error)
+	
+	return valueStr, errorStr
+
 	
 def changeExtension(filename, extension):
 	return os.path.splitext(filename)[0] + "." + extension 
