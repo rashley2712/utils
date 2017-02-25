@@ -9,35 +9,74 @@ import copy
 import ppgplot
 import gSheets
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 def sine(x, a0, a1):
     y = a0 * numpy.sin(2.*math.pi*(x + a1))
     return y
     
 def sineFixedFreq(x, gamma, amplitude, phase):
-	global frequency
-	f = frequency
-	y = gamma + amplitude * numpy.sin(2. * numpy.pi * (f * x - t0)) 
-	return y
-	
+    global frequency
+    f = frequency
+    y = gamma + amplitude * numpy.sin(2. * numpy.pi * (f * x - t0)) 
+    return y
+    
 def sineFixedGammaAmplitude(x, period, phase):
-	global gamma, amplitude
-	w = 2. * numpy.pi / period
-	y = gamma + amplitude * numpy.sin(w * x + phase)
-	return y
-	
-	
+    global gamma, amplitude
+    w = 2. * numpy.pi / period
+    y = gamma + amplitude * numpy.sin(w * x + phase)
+    return y
+    
+    
 def sineFreqPhase(x, gamma, amplitude, f, p):
     y = gamma + (amplitude * numpy.sin(2.*math.pi*f*(x + p)))
     return y
     
    
 def sinePhase(x, gamma, amplitude, phase):
-	y = gamma + amplitude * numpy.sin(2. * numpy.pi * (x + phase)) 
-	return y
+    y = gamma + amplitude * numpy.sin(2. * numpy.pi * (x + phase)) 
+    return y
+
+def getPeriodogram(pgplotHandle, xdata, ydata, plo, phi):
+    x = numpy.array(xdata)
+    # Subtract the mean from the y-data
+    y_mean = numpy.mean(ydata)
+    y = numpy.array(ydata - y_mean)
+    periods = numpy.linspace(plo, phi, 8000)
+    ang_freqs = 2 * numpy.pi / periods
+    power = signal.lombscargle(x, y, ang_freqs)
+    # normalize the power
+    N = len(x)
+    power *= 2 / (N * y.std() ** 2)
+    print power
+    ppgplot.pgslct(pgplotHandle)
+    ppgplot.pgeras()
+    ppgplot.pgenv(min(periods), max(periods), 0, max(power), 0, 0)
+    ppgplot.pgline(periods, power)
+    ppgplot.pglab("Period (d)", "Amplitude", "Lomb-Scargle: " + arg.objectname)
+    bestPeriod = periods[numpy.argmax(power)]
+    lc = ppgplot.pgqci()
+    ls = ppgplot.pgqls()
+    ppgplot.pgsci(3)
+    ppgplot.pgsls(2)
+    ppgplot.pgline([bestPeriod, bestPeriod], [0, max(power)])
+    ppgplot.pgsci(lc)
+    ppgplot.pgsls(ls)
+    print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
+    
+
+    
 
 
-
-if __name__ == "__main__":	
+if __name__ == "__main__":  
     parser = argparse.ArgumentParser(description='Loads a CSV file containing HJDs and RVs and tries to fit a period and sinusoid to the data.')
     # parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
     parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
@@ -47,7 +86,9 @@ if __name__ == "__main__":
     parser.add_argument('objectname', type=str, help='Object name.')
     arg = parser.parse_args()
     # print arg
-	
+    plo = arg.plo
+    phi = arg.phi
+    
     # Load the fitted wavelength data from the Google Doc
     docInstance = gSheets.gSheetObject()
     docInstance.initCredentials()
@@ -61,18 +102,25 @@ if __name__ == "__main__":
     dates = []
     velocities = []
     velErrors = []
+    good = []
     print "HJD\t\tVelocity (km/s)\tVel error"
     for index, d in enumerate(data):
-        dates.append(d['HJD'])
-        velocities.append(d['RV'])
-        velErrors.append(d['RV error'])
-        print "%f\t%f\t%f"%(dates[-1], velocities[-1], velErrors[-1])
+        good = d['good']
+        if good==0: print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
+        else: 
+            print "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error'])
+            dates.append(d['HJD'])
+            velocities.append(d['RV'])
+            velErrors.append(d['RV error'])
+            
+    print len(dates)
     
-    mainPGPlotWindow = ppgplot.pgopen(arg.device)	
+    
+    phasePGPlotWindow = ppgplot.pgopen(arg.device)  
     ppgplot.pgask(False)
     pgPlotTransform = [0, 1, 0, 0, 0, 1]
     
-    ppgplot.pgslct(mainPGPlotWindow)	
+    ppgplot.pgslct(phasePGPlotWindow)   
     ppgplot.pgsci(1)
     xStart = 2457000
     xStart = dates[0]
@@ -100,14 +148,14 @@ if __name__ == "__main__":
     y = y - y_mean
     import scipy.signal as signal
     
-    periods = numpy.linspace(arg.plo, arg.phi, 8000)
+    periods = numpy.linspace(plo, phi, 1000)
     ang_freqs = 2 * numpy.pi / periods
     power = signal.lombscargle(x, y, ang_freqs)
     # normalize the power
     N = len(x)
     power *= 2 / (N * y.std() ** 2)
 
-    pgramPGPlotWindow = ppgplot.pgopen(arg.device)	
+    pgramPGPlotWindow = ppgplot.pgopen(arg.device)  
     ppgplot.pgask(False)
     pgPlotTransform = [0, 1, 0, 0, 0, 1]
 
@@ -116,9 +164,13 @@ if __name__ == "__main__":
     ppgplot.pgline(periods, power)
     ppgplot.pglab("Period (d)", "Amplitude", "Lomb-Scargle: " + arg.objectname)
     bestPeriod = periods[numpy.argmax(power)]
+    lc = ppgplot.pgqci()
+    ls = ppgplot.pgqls()
     ppgplot.pgsci(3)
     ppgplot.pgsls(2)
     ppgplot.pgline([bestPeriod, bestPeriod], [0, max(power)])
+    ppgplot.pgsci(lc)
+    ppgplot.pgsls(ls)
     print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
     
     # Now plot a folded RV curve
@@ -133,7 +185,7 @@ if __name__ == "__main__":
         velocityPlot.append(velocities[index])
         velocityErrorPlot.append(velErrors[index])
     
-    ppgplot.pgslct(mainPGPlotWindow)
+    ppgplot.pgslct(phasePGPlotWindow)
     ppgplot.pgsci(1)
     ppgplot.pgenv(0, 2.0, -velRange*1.2, velRange*1.2, 0, 0)
     ppgplot.pgpt(phases, velocityPlot)
@@ -172,12 +224,33 @@ if __name__ == "__main__":
     
     xFit = numpy.arange(0, 2, 0.02)
     yFit = gammaFit + amplitudeFit * numpy.sin(2*numpy.pi*(xFit + phaseFit))
+    lc = ppgplot.pgqci()
+    ls = ppgplot.pgqls()
         
     ppgplot.pgsci(2)
     ppgplot.pgline(xFit, yFit)
     ppgplot.pgsci(3)
     ppgplot.pgsls(2)
     ppgplot.pgline([0, 2], [gammaFit, gammaFit])
+    ppgplot.pgsci(lc)
+    ppgplot.pgsls(ls)
+    
+    loop = True
+    while loop:
+        print "Choice: [A] - Accept current period for least squares fit."
+        print "\t[Z] - Zoom in the periodogram."
+        print "\t[X] - Exit."
+        choice = sys.stdin.read(1)
+        if choice == 'x': sys.exit()
+        if choice == 'z':
+            print "Choose a period to zoom in by clicking on the periodogram."
+            ppgplot.pgslct(pgramPGPlotWindow)
+            (x1, y, char) = ppgplot.pgcurs(0, 0)
+            print "Zooming in on range %f days to ...."%x1, 
+            (x2, y, char) = ppgplot.pgband(4, 0, x1, y)
+            range = phi-plo
+            print x2, "days."
+            getPeriodogram(pgramPGPlotWindow, reducedDates, velocities, x1, x2)
     
     ppgplot.pgslct(pgramPGPlotWindow)
     (x, y, char) = ppgplot.pgcurs(0, 0)
@@ -212,8 +285,7 @@ if __name__ == "__main__":
         extendedVelocities = numpy.append(extendedVelocities, y_values[index])
         extendedVelocityErrors = numpy.append(extendedVelocityErrors, y_errors[index])
     
-    tweakedPeriodPlot = ppgplot.pgopen(arg.device)
-    ppgplot.pgslct(tweakedPeriodPlot)
+    ppgplot.pgslct(mainPGPlotWindow)
     ppgplot.pgask(False)
     ppgplot.pgenv(0, 2.0, -velRange*1.2, velRange*1.2, 0, 0)
     yMin = gamma - 1.2*amplitude
@@ -243,7 +315,8 @@ if __name__ == "__main__":
     ppgplot.pgsci(2)
     ppgplot.pgsls(1)
     ppgplot.pgline(xFit, yFit)
-	
+    
+    
     if not generalUtils.query_yes_no("Are you happy with this period?", default="no"):
         
         sys.exit()
