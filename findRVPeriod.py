@@ -56,7 +56,6 @@ def getPeriodogram(pgplotHandle, xdata, ydata, plo, phi):
     # normalize the power
     N = len(x)
     power *= 2 / (N * y.std() ** 2)
-    print power
     ppgplot.pgslct(pgplotHandle)
     ppgplot.pgeras()
     ppgplot.pgenv(min(periods), max(periods), 0, max(power), 0, 0)
@@ -70,10 +69,60 @@ def getPeriodogram(pgplotHandle, xdata, ydata, plo, phi):
     ppgplot.pgline([bestPeriod, bestPeriod], [0, max(power)])
     ppgplot.pgsci(lc)
     ppgplot.pgsls(ls)
-    print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
-    
+    return bestPeriod
 
+def phasePlot(plotHandle, period, xdata, ydata, yerrors):
+    print "Performing phase plot"
+    print period
+    t0 = xdata[0]
+    phaseFirst = [((d - t0) % period) / period for d in xdata]
+    yPlot = copy.deepcopy(ydata)
+    yErrors = copy.deepcopy(yerrors)
+    phases = copy.deepcopy(phaseFirst)
+    for index, p in enumerate(phaseFirst):
+        phases.append(p + 1.0)
+        yPlot.append(ydata[index])
+        yErrors.append(yerrors[index])
     
+    ppgplot.pgslct(plotHandle)
+    ppgplot.pgsci(1)
+    ppgplot.pgenv(0, 2.0, numpy.min(yPlot)*1.2, numpy.max(yPlot)*1.2, 0, 0)
+    ppgplot.pgpt(phases, yPlot)
+    ppgplot.pgerrb(2, phases, yPlot, velocityErrorPlot, 0)
+    ppgplot.pgerrb(4, phases, yPlot, yErrors, 0)
+    ppgplot.pglab("Phase", "Radial velocity km/s", "Period: %f days   %f hours"%(period, period*24))
+    
+    guess = [0, numpy.max(ydata), 0]
+    upperBounds = [100, 200, 1]
+    lowerBounds = [-100, 0 , 0]
+    bounds = (lowerBounds, upperBounds)
+    print "Guess: ", guess
+    results, covariance = scipy.optimize.curve_fit(sinePhase, phaseFirst, ydata, p0 = guess, sigma = yerrors, bounds= bounds)
+    errors = numpy.sqrt(numpy.diag(covariance))
+    print results
+    gammaFit = results[0]
+    gammaError = errors[0]
+    amplitudeFit = results[1]
+    amplitudeError = errors[1]
+    phaseFit = results[2]
+    phaseError = errors[2]
+    print "Result of curve fit: "
+    print "\tgamma velocity: \t%s[%s] km/s"%generalUtils.formatValueError(gammaFit, gammaError)
+    print "\tv sin i amplitude: \t%s[%s] km/s"%generalUtils.formatValueError(amplitudeFit, amplitudeError)
+    print "\tphase: \t\t\t%s[%s]"%generalUtils.formatValueError(phaseFit, phaseError)
+    
+    xFit = numpy.arange(0, 2, 0.02)
+    yFit = gammaFit + amplitudeFit * numpy.sin(2*numpy.pi*(xFit + phaseFit))
+    lc = ppgplot.pgqci()
+    ls = ppgplot.pgqls()
+        
+    ppgplot.pgsci(2)
+    ppgplot.pgline(xFit, yFit)
+    ppgplot.pgsci(3)
+    ppgplot.pgsls(2)
+    ppgplot.pgline([0, 2], [gammaFit, gammaFit])
+    ppgplot.pgsci(lc)
+    ppgplot.pgsls(ls)
 
 
 if __name__ == "__main__":  
@@ -235,12 +284,16 @@ if __name__ == "__main__":
     ppgplot.pgsci(lc)
     ppgplot.pgsls(ls)
     
+    period = periodDays
     loop = True
     while loop:
+        print "Current period = %s%f%s days or %f hours."%(bcolors.BOLD, period, bcolors.ENDC, period*24)
         print "Choice: [A] - Accept current period for least squares fit."
         print "\t[Z] - Zoom in the periodogram."
+        print "\t[R] - Reset the periodogram."
         print "\t[X] - Exit."
         choice = sys.stdin.read(1)
+        print "Choice", choice
         if choice == 'x': sys.exit()
         if choice == 'z':
             print "Choose a period to zoom in by clicking on the periodogram."
@@ -250,8 +303,15 @@ if __name__ == "__main__":
             (x2, y, char) = ppgplot.pgband(4, 0, x1, y)
             range = phi-plo
             print x2, "days."
-            getPeriodogram(pgramPGPlotWindow, reducedDates, velocities, x1, x2)
-    
+            period = getPeriodogram(pgramPGPlotWindow, reducedDates, velocities, x1, x2)
+            phasePlot(phasePGPlotWindow, period, reducedDates, velocities, velErrors)
+        if choice == 'r':
+            period = getPeriodogram(pgramPGPlotWindow, reducedDates, velocities, arg.plo, arg.phi)
+            phasePlot(phasePGPlotWindow, period, reducedDates, velocities, velErrors)
+        
+            
+	
+	
     ppgplot.pgslct(pgramPGPlotWindow)
     (x, y, char) = ppgplot.pgcurs(0, 0)
     print "Char: ", char
