@@ -71,7 +71,7 @@ def getPeriodogram(pgplotHandle, xdata, ydata, plo, phi):
     ppgplot.pgsls(ls)
     return bestPeriod
 
-def phasePlot(plotHandle, period, xdata, ydata, yerrors):
+def fitPhasePlot(plotHandle, period, xdata, ydata, yerrors):
     print "Performing phase plot"
     print period
     t0 = xdata[0]
@@ -90,7 +90,7 @@ def phasePlot(plotHandle, period, xdata, ydata, yerrors):
     ppgplot.pgpt(phases, yPlot)
     ppgplot.pgerrb(2, phases, yPlot, velocityErrorPlot, 0)
     ppgplot.pgerrb(4, phases, yPlot, yErrors, 0)
-    ppgplot.pglab("Phase", "Radial velocity km/s", "Period: %f days   %f hours"%(period, period*24))
+    ppgplot.pglab("Phase", "Radial velocity km/s", "Phase plot: period: %f days   %f hours"%(period, period*24))
     
     guess = [0, numpy.max(ydata), 0]
     upperBounds = [100, 200, 1]
@@ -123,7 +123,70 @@ def phasePlot(plotHandle, period, xdata, ydata, yerrors):
     ppgplot.pgline([0, 2], [gammaFit, gammaFit])
     ppgplot.pgsci(lc)
     ppgplot.pgsls(ls)
+    
+    return (gammaFit, amplitudeFit, phaseFit)
 
+def sineFreeParameters(x, period, gamma, amplitude, phase):
+    w = 2. * numpy.pi / period
+    y = gamma + amplitude * numpy.sin(w * x + phase)
+    return y
+
+def finalFit(period, gamma, amplitude, phase, xdata, ydata, yerrors):
+    print "Final fit, starting with guesses of:"
+    print "\tGamma velocity = %f km/s"%gamma
+    print "\tAmplitude = %f km/s"%amplitude
+    print "\tPeriod = %f days"%period
+    
+    guess = [period, gamma, amplitude, 0]
+    upperBounds = [arg.phi, 100, 200, 2*numpy.pi]
+    lowerBounds = [0, -100, 0 , 0]
+    bounds = (lowerBounds, upperBounds)
+    results, covariance = scipy.optimize.curve_fit(sineFreeParameters, xdata, ydata, p0 = guess, sigma = yerrors, bounds=bounds)
+    errors = numpy.sqrt(numpy.diag(covariance))
+    print "Final results", results
+    return zip(results, errors)
+    
+def phasePlot(plotData, plotHandle = -1):
+    # Calculate the phases for the xdata
+    global xStart
+    xdata = plotData['x']
+    ydata = plotData['y']
+    yerrors = plotData['yerrors']
+    t0 = xdata[0]
+    phases = [(d % plotData['period'])/plotData['period'] for d in xdata]
+    print phases
+    extendedPhases = numpy.asarray(phases)
+    extendedVelocities = numpy.asarray(ydata)
+    extendedVelocityErrors = numpy.asarray(yerrors)
+    for index, p in enumerate(phases):
+        extendedPhases = numpy.append(extendedPhases, p+1)
+        extendedVelocities = numpy.append(extendedVelocities, ydata[index])
+        extendedVelocityErrors = numpy.append(extendedVelocityErrors, yerrors[index])
+    
+    if plotHandle == -1:
+        plotHandle = ppgplot.pgopen(arg.device)
+    ppgplot.pgslct(plotHandle)
+    ppgplot.pgenv(0, 2.0, numpy.min(ydata)*1.2, numpy.max(ydata)*1.2, 0, 0)
+    periodHours = plotData['period'] * 24.
+    periodHoursError = plotData['periodError'] * 24.
+    ppgplot.pglab("Phase", "Radial velocity km/s", plotData['object']+ " period: %s[%s]d"%generalUtils.formatValueError(plotData['period'], plotData['periodError']) + " or %s[%s] hours."%generalUtils.formatValueError(periodHours, periodHoursError))
+    ppgplot.pgpt(extendedPhases, extendedVelocities, 0)
+    ppgplot.pgerrb(2, extendedPhases, extendedVelocities, extendedVelocityErrors, 0)
+    ppgplot.pgerrb(4, extendedPhases, extendedVelocities, extendedVelocityErrors, 0)
+    ppgplot.pgsci(3)
+    ppgplot.pgsls(2)
+    ppgplot.pgline([0, 2], [plotData['gamma'], plotData['gamma']])
+    ppgplot.pgsci(1)
+    ppgplot.pgsls(4)
+    ppgplot.pgline([0, 2], [0, 0])
+  
+    xFit = numpy.arange(0, 2, 0.01)
+    yFit = plotData['gamma'] + plotData['amplitude'] * numpy.sin(numpy.pi * 2.0 * xFit + plotData['phase'])
+    ppgplot.pgsci(2)
+    ppgplot.pgsls(1)
+    ppgplot.pgline(xFit, yFit)
+    return
+    
 
 if __name__ == "__main__":  
     parser = argparse.ArgumentParser(description='Loads a CSV file containing HJDs and RVs and tries to fit a period and sinusoid to the data.')
@@ -133,10 +196,16 @@ if __name__ == "__main__":
     parser.add_argument('--plo', type=float, default= 0.01, help='Period (days) to start the search. Default is 0.01 days.') 
     parser.add_argument('--phi', type=float, default= 10.0, help='Period (days) to stop the search. Default is 10 days.') 
     parser.add_argument('objectname', type=str, help='Object name.')
+    parser.add_argument('--ps', type=str, default='none', help='Output final plot to a .ps file, specify the name. Default is ''none''')
     arg = parser.parse_args()
     # print arg
     plo = arg.plo
     phi = arg.phi
+    if arg.ps!='none':
+        outputPS = True
+        psFilename = arg.ps
+    else:
+        outputPS = False
     
     # Load the fitted wavelength data from the Google Doc
     docInstance = gSheets.gSheetObject()
@@ -284,17 +353,22 @@ if __name__ == "__main__":
     ppgplot.pgsci(lc)
     ppgplot.pgsls(ls)
     
+    gamma = gammaFit
+    amplitude = amplitudeFit
+    phase = phaseFit
     period = periodDays
     loop = True
+    solutionFound = False
     while loop:
         print "Current period = %s%f%s days or %f hours."%(bcolors.BOLD, period, bcolors.ENDC, period*24)
-        print "Choice: [A] - Accept current period for least squares fit."
+        print "Choice: [A] - Accept current period for final least squares fit."
         print "\t[Z] - Zoom in the periodogram."
         print "\t[R] - Reset the periodogram."
         print "\t[X] - Exit."
         choice = sys.stdin.read(1)
-        print "Choice", choice
-        if choice == 'x': sys.exit()
+        if choice == 'x': 
+            loop = False
+            continue
         if choice == 'z':
             print "Choose a period to zoom in by clicking on the periodogram."
             ppgplot.pgslct(pgramPGPlotWindow)
@@ -304,84 +378,44 @@ if __name__ == "__main__":
             range = phi-plo
             print x2, "days."
             period = getPeriodogram(pgramPGPlotWindow, reducedDates, velocities, x1, x2)
-            phasePlot(phasePGPlotWindow, period, reducedDates, velocities, velErrors)
+            (gamma, amplitude, phase) = fitPhasePlot(phasePGPlotWindow, period, reducedDates, velocities, velErrors)
         if choice == 'r':
             period = getPeriodogram(pgramPGPlotWindow, reducedDates, velocities, arg.plo, arg.phi)
-            phasePlot(phasePGPlotWindow, period, reducedDates, velocities, velErrors)
-        
+            (gamma, amplitude, phase) = fitPhasePlot(phasePGPlotWindow, period, reducedDates, velocities, velErrors)
+        if choice == 'a':
+            fullResults = finalFit(period, gamma, amplitude, phase, reducedDates, velocities, velErrors)
+            print fullResults
+            period, periodError = fullResults[0]
+            gamma, gammaError = fullResults[1]
+            amplitude, amplitudeError = fullResults[2]
+            phase, phaseError = fullResults[3]
+            plotData = { 'period': period, 
+                         'periodError': periodError,
+                         'gamma' : gamma,
+                         'gammaError' : gammaError, 
+                         'amplitude' : amplitude, 
+                         'amplitudeError' : amplitudeError, 
+                         'phase' : phase,
+                         'phaseError' : phaseError, 
+                         'x': reducedDates,
+                         'y': velocities, 
+                         'yerrors': velErrors,
+                         'object': arg.objectname
+                        }
+            phasePlot(plotData)
+            t0 = - 2 * numpy.pi * phase / period 
+            t0Error = abs(t0 * numpy.sqrt( (periodError/period)**2 + (phaseError/phase)**2 ))
+            t0+= xStart
+            print "t0", t0, t0Error
+            solutionFound = True
             
-	
-	
-    ppgplot.pgslct(pgramPGPlotWindow)
-    (x, y, char) = ppgplot.pgcurs(0, 0)
-    print "Char: ", char
-    if char=='q':
-        periodGuess = bestPeriod
-    else:
-        periodGuess = x
-    
-    # Now try to tweak the period with a fixed amplitude and gamma velocity
-    phaseGuess = 0
-    guess = [periodGuess, phaseGuess]
-    print "Period starting point is:", periodGuess
-    gamma = gammaFit
-    amplitude = amplitudeFit
-    results, covariance = scipy.optimize.curve_fit(sineFixedGammaAmplitude, reducedDates, y_values, p0 = guess, sigma = y_errors)
-    errors = numpy.sqrt(numpy.diag(covariance))
-    
-    tweakedPeriod = results[0]
-    tweakedPeriodError = errors[0]
-    phase = results[1]
-    phaseError = errors[1]
-    print "Tweaked Period: %f[%f]"%(tweakedPeriod, tweakedPeriodError)
-    print "Tweaked Phase: %f[%f]"%(phase, phaseError)
-    
-    phases = [(d % tweakedPeriod)/tweakedPeriod for d in reducedDates]
-    extendedPhases = numpy.asarray(phases)
-    extendedVelocities = numpy.asarray(y_values)
-    extendedVelocityErrors = numpy.asarray(y_errors)
-    for index, p in enumerate(phases):
-        extendedPhases = numpy.append(extendedPhases, p+1)
-        extendedVelocities = numpy.append(extendedVelocities, y_values[index])
-        extendedVelocityErrors = numpy.append(extendedVelocityErrors, y_errors[index])
-    
-    ppgplot.pgslct(mainPGPlotWindow)
-    ppgplot.pgask(False)
-    ppgplot.pgenv(0, 2.0, -velRange*1.2, velRange*1.2, 0, 0)
-    yMin = gamma - 1.2*amplitude
-    yMax = gamma + 1.2*amplitude
-    ppgplot.pgenv(0, 2.0, yMin, yMax, 0, 0)
-    periodHours = tweakedPeriod * 24.
-    periodHoursError = tweakedPeriodError * 24.
-    ppgplot.pglab("Phase", "Radial velocity km/s", arg.objectname + " period: %s[%s]d"%generalUtils.formatValueError(tweakedPeriod, tweakedPeriodError) + " or %s[%s] hours."%generalUtils.formatValueError(periodHours, periodHoursError))
-    ppgplot.pgpt(extendedPhases, extendedVelocities, 0)
-    ppgplot.pgerrb(2, extendedPhases, extendedVelocities, extendedVelocityErrors, 0)
-    ppgplot.pgerrb(4, extendedPhases, extendedVelocities, extendedVelocityErrors, 0)
-    ppgplot.pgsci(3)
-    ppgplot.pgsls(2)
-    ppgplot.pgline([0, 2], [gammaFit, gammaFit])
-    ppgplot.pgsci(1)
-    ppgplot.pgsls(4)
-    ppgplot.pgline([0, 2], [0, 0])
-  
-    xFit = numpy.arange(0, 2, 0.01)
-    yFit = gamma + amplitude * numpy.sin(numpy.pi * 2.0 * xFit + phase)
-    x0 = - phase * 2 * numpy.pi / tweakedPeriod
-    print "x0", x0
-    print reducedDates
-    print dates
-    t0 = x0 + xStart
-    print "T0", t0
-    ppgplot.pgsci(2)
-    ppgplot.pgsls(1)
-    ppgplot.pgline(xFit, yFit)
-    
-    
-    if not generalUtils.query_yes_no("Are you happy with this period?", default="no"):
         
-        sys.exit()
-    
- 
+    if solutionFound:
+        logFile = open("findRVlog.csv", 'a')
+        logFile.write("%s, %f, %f, %f, %f, %f, %f, %f, %f\n"%(arg.objectname, period, periodError, gamma, gammaError, amplitude, amplitudeError, t0, t0Error))
+        logFile.close()        
+	
+	
     ppgplot.pgend()
     sys.exit()
     

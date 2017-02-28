@@ -50,7 +50,8 @@ def query_yes_no(question, default="yes"):
 
 def formatValueError(value, error, significant = 1):
 	""" Returns two neatly formatted numbers (as strings) taking into account an appropriate number of significant figures based on the error. """
-	decimalPlaces = round(math.log10(error))
+	if error==0: decimalPlaces = 1
+	else: decimalPlaces = round(math.log10(error))
 	if decimalPlaces < 1:
 		decimalPlaces = abs(decimalPlaces) + (significant)
 		value = round(value * 10 ** decimalPlaces) / 10**decimalPlaces
