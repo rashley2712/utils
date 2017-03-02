@@ -138,7 +138,7 @@ def finalFit(period, gamma, amplitude, phase, xdata, ydata, yerrors):
     print "\tPeriod = %f days"%period
     
     guess = [period, gamma, amplitude, 0]
-    upperBounds = [arg.phi, 100, 200, 2*numpy.pi]
+    upperBounds = [arg.phi, 100, 400, 2*numpy.pi]
     lowerBounds = [0, -100, 0 , 0]
     bounds = (lowerBounds, upperBounds)
     results, covariance = scipy.optimize.curve_fit(sineFreeParameters, xdata, ydata, p0 = guess, sigma = yerrors, bounds=bounds)
