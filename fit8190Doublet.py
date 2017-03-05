@@ -276,7 +276,7 @@ if __name__ == "__main__":
 		lowerCut = 8170
 		upperCut = 8220
 		continuumSpectrum = copy.deepcopy(spectrum)
-		continuumSpectrum.snipWavelengthRange(lowerCut, upperCut)
+		# continuumSpectrum.snipWavelengthRange(lowerCut, upperCut)
 		ppgplot.pgsci(2)
 		ppgplot.pgbin(continuumSpectrum.wavelengths, continuumSpectrum.flux)
 		
@@ -429,4 +429,12 @@ if __name__ == "__main__":
 		recordedData.writeToFile(logFilename)
 		"""
 		
+	# Write all to a CSV file
+	data = docInstance.readings
+	outputLog = open(arg.objectname + ".csv", "wt")
+	outputLog.write("HJD, Velocity, VelErr, Width, Wavelength, Good\n")
+	for d in data:
+		print d
+		outputLog.write("%f, %f, %f, %f, %f, %f\n"%(d['HJD'], d['RV'], d['RV error'], d['width'], d['wavelength'], d['good']))
+	outputLog.close()
 		

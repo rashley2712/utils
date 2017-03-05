@@ -42,7 +42,7 @@ def sineFreqPhase(x, gamma, amplitude, f, p):
     
    
 def sinePhase(x, gamma, amplitude, phase):
-    y = gamma + amplitude * numpy.sin(2. * numpy.pi * (x + phase)) 
+    y = gamma + amplitude * numpy.sin(2. * numpy.pi * x + phase) 
     return y
 
 def getPeriodogram(pgplotHandle, xdata, ydata, plo, phi):
@@ -92,7 +92,8 @@ def fitPhasePlot(plotHandle, period, xdata, ydata, yerrors):
     ppgplot.pgerrb(4, phases, yPlot, yErrors, 0)
     ppgplot.pglab("Phase", "Radial velocity km/s", "Phase plot: period: %f days   %f hours"%(period, period*24))
     
-    guess = [0, numpy.max(ydata), 0]
+    gammaGuess = numpy.mean(ydata)
+    guess = [gammaGuess, numpy.max(ydata), 0]
     upperBounds = [100, 200, 1]
     lowerBounds = [-100, 0 , 0]
     bounds = (lowerBounds, upperBounds)
@@ -146,7 +147,7 @@ def finalFit(period, gamma, amplitude, phase, xdata, ydata, yerrors):
     print "Final results", results
     return zip(results, errors)
     
-def phasePlot(plotData, plotHandle = -1):
+def phasePlot(plotData, plotHandle = -1, device='/xs'):
     # Calculate the phases for the xdata
     global xStart
     xdata = plotData['x']
@@ -154,7 +155,6 @@ def phasePlot(plotData, plotHandle = -1):
     yerrors = plotData['yerrors']
     t0 = xdata[0]
     phases = [(d % plotData['period'])/plotData['period'] for d in xdata]
-    print phases
     extendedPhases = numpy.asarray(phases)
     extendedVelocities = numpy.asarray(ydata)
     extendedVelocityErrors = numpy.asarray(yerrors)
@@ -164,7 +164,7 @@ def phasePlot(plotData, plotHandle = -1):
         extendedVelocityErrors = numpy.append(extendedVelocityErrors, yerrors[index])
     
     if plotHandle == -1:
-        plotHandle = ppgplot.pgopen(arg.device)
+        plotHandle = ppgplot.pgopen(device)
     ppgplot.pgslct(plotHandle)
     ppgplot.pgenv(0, 2.0, numpy.min(ydata)*1.2, numpy.max(ydata)*1.2, 0, 0)
     periodHours = plotData['period'] * 24.
@@ -247,7 +247,7 @@ if __name__ == "__main__":
     endDate = max(reducedDates)
     maxVel = max(velocities)
     minVel = min(velocities)
-    velRange = max([maxVel, abs(minVel)])
+    velRange = (maxVel - minVel)/2.0
     print "Start date: %f, End date: %f, Velocity range: %f km/s"%(startDate, endDate, velRange)
     ppgplot.pgenv(0, len(dates), - 1.2 * velRange, 1.2 * velRange, 0, 0 )
     #ppgplot.pgenv(startDate, endDate, -velRange, velRange, 0, 0)
@@ -258,6 +258,8 @@ if __name__ == "__main__":
 
     ppgplot.pglab("Point number", "Radial velocity km/s", arg.objectname)
     
+    print "Press Enter to continue..."
+    sys.stdin.read(1)
     
     x = numpy.array(reducedDates)
     y = numpy.array(velocities)
@@ -291,6 +293,8 @@ if __name__ == "__main__":
     ppgplot.pgsls(ls)
     print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
     
+    print "Press Enter to continue...."
+    sys.stdin.read(1)
     # Now plot a folded RV curve
     t0 = reducedDates[0]
     periodDays = bestPeriod
@@ -314,18 +318,20 @@ if __name__ == "__main__":
     # Now fit a sine wave with this period to the data...
     frequency = 1 / periodDays
     phase = 0
-    gamma = 0
+    gamma = numpy.mean(velocities)
     amplitude = velRange
     
     x_values = numpy.array(phaseFirst)
     y_values = numpy.array(velocities)
     y_errors = numpy.array(velErrors)
     
+    print x_values, y_values
+    
     guess = [gamma, amplitude, phase]
     upperBounds = [100, 200, 1]
     lowerBounds = [-100, 0 , 0]
     bounds = (lowerBounds, upperBounds)
-    print "Guess: ", guess
+    print "Guess for first fit: ", guess
     results, covariance = scipy.optimize.curve_fit(sinePhase, x_values, y_values, p0 = guess, sigma = y_errors, bounds = bounds)
     errors = numpy.sqrt(numpy.diag(covariance))
         
@@ -415,7 +421,11 @@ if __name__ == "__main__":
         logFile.write("%s, %f, %f, %f, %f, %f, %f, %f, %f\n"%(arg.objectname, period, periodError, gamma, gammaError, amplitude, amplitudeError, t0, t0Error))
         logFile.close()        
 	
-	
+	if outputPS and solutionFound:
+		print "Writing PS to ", psFilename
+		phasePlot(plotData, device=psFilename + "/ps")
+        
+    
     ppgplot.pgend()
     sys.exit()
     
