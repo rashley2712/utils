@@ -20,6 +20,7 @@ class Time(time.Time):
     def __init__(self,*args,**kwargs):
         super(Time, self).__init__(*args, **kwargs)
         self.height = kwargs.get('height',0.0)
+        # print "in __init__", kwargs
 
     def _pvobs(self):
         '''calculates position and velocity of the observatory

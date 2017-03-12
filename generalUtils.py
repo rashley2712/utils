@@ -106,6 +106,7 @@ def toSexagesimal(world):
 	decDegrees = int(dec)
 	if dec>0: decSign = "+"
 	else: decSign = "-"
+	dec = abs(dec)
 	decMinutes = (dec - int(dec)) * 60
 	decSeconds = (decMinutes - int(decMinutes)) * 60
 		
