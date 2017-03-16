@@ -146,38 +146,42 @@ if __name__ == "__main__":
 	# Periodograms 
 	##########################################################################################################################
 	plo = 0.01
-	phi = 10.00
-	pgramPGPlotWindow = ppgplot.pgopen(arg.device)  
-	ppgplot.pgask(True)
+	phi = 1.00
+	if arg.ps: device = "pgrams.ps/ps"
+	else: device = "/xs"
+	pgramPGPlotWindow = ppgplot.pgopen(device)  
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
 	ppgplot.pgslct(pgramPGPlotWindow)
 	for o in objects:
-		print o.id
-		x = numpy.array(o.HJD)
-		y = numpy.array(o.mag)
-		# Subtract the mean from the y-data
-		y_mean = numpy.mean(y)
-		y = y - y_mean
-		periods = numpy.linspace(plo, phi, 1000)
-		ang_freqs = 2 * numpy.pi / periods
-		power = signal.lombscargle(x, y, ang_freqs)
-		# normalize the power
-		N = len(x)
-		power *= 2 / (N * y.std() ** 2)
+		hasEphemeris = o.loadEphemeris()
+		if hasEphemeris:
+			x = numpy.array(o.HJD)
+			y = numpy.array(o.mag)
+			# Subtract the mean from the y-data
+			y_mean = numpy.mean(y)
+			y = y - y_mean
+			periods = numpy.linspace(plo, phi, 1000)
+			ang_freqs = 2 * numpy.pi / periods
+			power = signal.lombscargle(x, y, ang_freqs)
+			# normalize the power
+			N = len(x)
+			power *= 2 / (N * y.std() ** 2)
+	
+			ppgplot.pgenv(min(periods), max(periods), 0, max(power), 0, 0)
+			ppgplot.pgline(periods, power)
+			ppgplot.pglab("Period (d)", "Amplitude", "Lomb-Scargle: " + o.id)
+			bestPeriod = periods[numpy.argmax(power)]
+			lc = ppgplot.pgqci()
+			ls = ppgplot.pgqls()
+			ppgplot.pgsci(3)
+			ppgplot.pgsls(2)
+			ppgplot.pgline([bestPeriod, bestPeriod], [0, max(power)])
+			ppgplot.pgsci(lc)
+			ppgplot.pgsls(ls)
+			print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
 
-		ppgplot.pgenv(min(periods), max(periods), 0, max(power), 0, 0)
-		ppgplot.pgline(periods, power)
-		ppgplot.pglab("Period (d)", "Amplitude", "Lomb-Scargle: " + o.id)
-		bestPeriod = periods[numpy.argmax(power)]
-		lc = ppgplot.pgqci()
-		ls = ppgplot.pgqls()
-		ppgplot.pgsci(3)
-		ppgplot.pgsls(2)
-		ppgplot.pgline([bestPeriod, bestPeriod], [0, max(power)])
-		ppgplot.pgsci(lc)
-		ppgplot.pgsls(ls)
-		print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
-
+	ppgplot.pgclos()	
+	
 	##########################################################################################################################
 	# Phase Plots 
 	##########################################################################################################################
@@ -192,14 +196,14 @@ if __name__ == "__main__":
 	for o in objects:
 		hasEphemeris = o.loadEphemeris()
 		if hasEphemeris:
-			print o.id, o.ephemeris
+			"""print o.id, o.ephemeris
 			JD = [b + 2400000.5 for b in o.MJD]
 			correctHelio = timeClasses.heliocentric()
 			correctHelio.setTelescope('CSS') 
 			correctHelio.setTarget(o.ephemeris.ra, o.ephemeris.dec)
 			BMJD = correctHelio.convertMJD(o.MJD)
 			HJD = [b + 2400000.5 for b in BMJD]
-	
+			"""
 			phases = [o.ephemeris.getPhase(h) for h in o.HJD]
 			offsetPhases = []
 			for p in phases:

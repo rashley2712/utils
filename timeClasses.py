@@ -125,6 +125,6 @@ class ephemerisObject:
 		return raDegrees, decCalc
 			
 	def __str__(self):
-		outString = "T0: %7.8f [%7.8f] + E X %7.10f [%7.10f]"%(self.T0, self.T0_error, self.Period, self.Period_error)
+		outString = "T0: %7.8f [%7.8f] + E x %7.10f [%7.10f]"%(self.T0, self.T0_error, self.Period, self.Period_error)
 		return outString
 			
