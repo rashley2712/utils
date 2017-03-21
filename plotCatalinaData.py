@@ -24,11 +24,17 @@ class object:
 		self.mag = []
 		self.err = []
 		self.ephemeris = None
+		self.data = []
+		self.hasEphemeris = False
 		
-	def appendData(self, data):
-		self.MJD.append(data['MJD'])
-		self.mag.append(data['mag'])
-		self.err.append(data['err'])
+	def appendData(self, dataDict):
+		# self.MJD.append(data['MJD'])
+		# self.mag.append(data['mag'])
+		# self.err.append(data['err'])
+		self.data.append(dataDict)
+	
+	def getColumn(self, columnName):
+		return [d[columnName] for d in self.data]	
 		
 	def loadEphemeris(self):
 		# Look in the local directory for a file called 'id'-ephem.dat and load it
@@ -36,12 +42,29 @@ class object:
 		if os.path.exists(filename):
 			self.ephemeris = timeClasses.ephemerisObject()
 			self.ephemeris.loadFromFile(filename)
+			self.hasEphemeris = True
 			return True
 		
 		return False
 		
-	def setHJD(self, HJD):
-		self.HJD = HJD
+	def setHJDs(self, MJD, HJD):
+		keys = [d['MJD'] for d in self.data]
+		print keys
+		dates = zip(MJD, HJD)
+		for index, d in enumerate(dates):
+			self.data[index]['HJD'] = d[1]
+			
+		
+	def computeHJDs(self):
+		if self.hasEphemeris:
+			print o.id, o.ephemeris
+			MJD = o.getColumn('MJD')
+			correctHelio = timeClasses.heliocentric()
+			correctHelio.setTelescope('CSS') 
+			correctHelio.setTarget(o.ephemeris.ra, o.ephemeris.dec)
+			BMJD = correctHelio.convertMJD(MJD)
+			HJD = [b + 2400000.5 for b in BMJD]
+			self.setHJDs(MJD, HJD)
 		
 	
 if __name__ == "__main__":
@@ -67,22 +90,62 @@ if __name__ == "__main__":
 		hasEphemeris = False
 
 	
+	columns = [ {'name': 'ID',        'type':'str'}, 
+				{'name': 'CRTSID',    'type':'str'},
+                {'name': 'mag',       'type':'float'},
+                {'name': 'err',       'type':'float'},
+                {'name': 'ra',        'type':'float'},
+                {'name': 'dec',       'type':'float'},
+                {'name': 'MJD',       'type':'float'},
+                {'name': 'blend',     'type':'int'} ]
+	columnsLongForm = [ {'name': 'ID',        	'type':'str'}, 
+						{'name': 'MasterFrame', 'type':'str'},
+                		{'name': 'CRTSID',      'type':'float'},
+                		{'name': 'mag',       	'type':'float'},
+                		{'name': 'err',      	'type':'float'},
+                		{'name': 'ra',        	'type':'float'},
+                		{'name': 'dec',       	'type':'float'},
+                		{'name': 'FWHM',       	'type':'float'},
+                		{'name': 'var',       	'type':'float'},
+                		{'name': 'FrameID',     'type':'float'},
+                		{'name': 'MJD',       	'type':'float'},
+                		{'name': 'airmass',     'type':'float'},
+                		{'name': 'exposure',    'type':'float'},
+                		{'name': 'X',       	'type':'float'},
+                		{'name': 'Y',       	'type':'float'},
+                		{'name': 'Flux',       	'type':'float'},
+                		{'name': 'Area',       	'type':'float'},
+                		{'name': 'Flags',       'type':'int'},
+                		{'name': 'Theta',       'type':'float'},
+                		{'name': 'Elong',       'type':'float'},
+                		{'name': 'NuMax',       'type':'float'},
+                		{'name': 'blend',     	'type':'int'} ]
+				
 	columnNames = ['ID', 'CRTSID', 'mag', 'err', 'ra', 'dec', 'MJD', 'blend' ]
 	data = []
 	for fileIndex, f in enumerate(arg.inputFiles):
 		catalinaFile = open(f, 'rt')
 		headings = catalinaFile.readline()
+		if len(headings.split(',')) == 8:
+			longForm = False
+			print "Short form of Catalina data. Available columns are:", [c['name'] for c in columns]
+		elif len(headings.split(',')) == 22:
+			longForm = True
+			columns = columnsLongForm
+			print "Long form Catalina data. Available columns are:", [c['name'] for c in columns]
+		else:
+			print "Something is wrong with the input. CRTS data should have 8 cols (short form) or 22 cols (long form)."
+			sys.exit()
 		for line in catalinaFile:
 			fields = line.split(',')
 			d = {}
-			d['ID'] = fields[0].strip(' \t\n\r')
-			d['CRTSID'] = fields[1].strip(' \t\n\r')
-			d['mag'] = float(fields[2].strip(' \t\n\r'))
-			d['err'] = float(fields[3].strip(' \t\n\r'))
-			d['ra'] = float(fields[4].strip(' \t\n\r'))
-			d['dec'] = float(fields[5].strip(' \t\n\r'))
-			d['MJD'] = float(fields[6].strip(' \t\n\r'))
-			d['blend'] = fields[7].strip(' \t\n\r')
+			for index, column in enumerate(columns):
+				value = fields[index].strip(' \t\n\r')
+				if column['type']=='str': value = str(value)
+				if column['type']=='float': value = float(value)
+				if column['type']=='int': value = int(value)
+				d[column['name']] = value
+			print d
 			data.append(d)
 			
 
@@ -113,32 +176,29 @@ if __name__ == "__main__":
 	ppgplot.pgsci(1)
 	ppgplot.pgask(False)
 	for index, o in enumerate(objects):
-		startDate = numpy.min(o.MJD)
-		endDate = numpy.max(o.MJD)
-		magMax = numpy.max(o.mag) + o.err[numpy.argmax(o.mag)]
-		magMin = numpy.min(o.mag) - o.err[numpy.argmin(o.mag)]
-		meanError = numpy.mean(o.err)
+		MJD = o.getColumn('MJD')
+		mag = o.getColumn('mag')
+		err = o.getColumn('err')
+		startDate = numpy.min(MJD)
+		endDate = numpy.max(MJD)
+		magMax = numpy.max(mag) + err[numpy.argmax(mag)]
+		magMin = numpy.min(mag) - err[numpy.argmin(mag)]
+		meanError = numpy.mean(err)
 		print "%s Start date: %f, End date: %f"%(o.id, startDate, endDate)
 		ppgplot.pgenv(startDate, endDate, magMax + meanError*2, magMin - meanError*2, 0, 0)
-		ppgplot.pgpt(o.MJD, o.mag)
-		ppgplot.pgerrb(2, o.MJD, o.mag, o.err, 0)
-		ppgplot.pgerrb(4, o.MJD, o.mag, o.err, 0)
-		ppgplot.pglab("MJD", "CRTS mag", "%s [%d]"%(o.id, len(o.MJD)))
+		ppgplot.pgpt(MJD, mag)
+		ppgplot.pgerrb(2, MJD, mag, err, 0)
+		ppgplot.pgerrb(4, MJD, mag, err, 0)
+		ppgplot.pglab("MJD", "CRTS mag", "%s [%d]"%(o.id, len(MJD)))
 	
 	ppgplot.pgclos()	
 	
-
+	
 	# Compute HJDs for the observations
 	for o in objects:
 		hasEphemeris = o.loadEphemeris()
-		if hasEphemeris:
-			print o.id, o.ephemeris
-			correctHelio = timeClasses.heliocentric()
-			correctHelio.setTelescope('CSS') 
-			correctHelio.setTarget(o.ephemeris.ra, o.ephemeris.dec)
-			BMJD = correctHelio.convertMJD(o.MJD)
-			HJD = [b + 2400000.5 for b in BMJD]
-			o.setHJD(HJD)
+		if hasEphemeris: o.computeHJDs()
+	
 			
 
 	
@@ -153,10 +213,12 @@ if __name__ == "__main__":
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
 	ppgplot.pgslct(pgramPGPlotWindow)
 	for o in objects:
-		hasEphemeris = o.loadEphemeris()
-		if hasEphemeris:
-			x = numpy.array(o.HJD)
-			y = numpy.array(o.mag)
+		if o.hasEphemeris:
+			HJD = o.getColumn('HJD')
+			mag = o.getColumn('mag')
+			err = o.getColumn('err')
+			x = numpy.array(HJD)
+			y = numpy.array(mag)
 			# Subtract the mean from the y-data
 			y_mean = numpy.mean(y)
 			y = y - y_mean
@@ -194,32 +256,38 @@ if __name__ == "__main__":
 	ppgplot.pgask(True)
 	
 	for o in objects:
-		hasEphemeris = o.loadEphemeris()
-		if hasEphemeris:
-			"""print o.id, o.ephemeris
-			JD = [b + 2400000.5 for b in o.MJD]
-			correctHelio = timeClasses.heliocentric()
-			correctHelio.setTelescope('CSS') 
-			correctHelio.setTarget(o.ephemeris.ra, o.ephemeris.dec)
-			BMJD = correctHelio.convertMJD(o.MJD)
-			HJD = [b + 2400000.5 for b in BMJD]
-			"""
-			phases = [o.ephemeris.getPhase(h) for h in o.HJD]
+		if o.hasEphemeris:
+			HJD = o.getColumn('HJD')
+			mag = o.getColumn('mag')
+			err = o.getColumn('err')
+			phases = [o.ephemeris.getPhase(h) for h in HJD]
 			offsetPhases = []
 			for p in phases:
 				if p<0.5: offsetPhases.append(p + 1.0)
 				else: offsetPhases.append(p)
 			phases = offsetPhases
 			# print phases
-			magMax = numpy.max(o.mag) + o.err[numpy.argmax(o.mag)]
-			magMin = numpy.min(o.mag) - o.err[numpy.argmin(o.mag)]
-			meanError = numpy.mean(o.err)
+			magMax = numpy.max(mag) + err[numpy.argmax(mag)]
+			magMin = numpy.min(mag) - err[numpy.argmin(mag)]
+			meanError = numpy.mean(err)
 			ppgplot.pgenv(0.5 ,1.5 , magMax + meanError*2, magMin - meanError*2, 0, 0)
-			ppgplot.pgpt(phases, o.mag)
-			ppgplot.pgerrb(2, phases, o.mag, o.err, 0)
-			ppgplot.pgerrb(4, phases, o.mag, o.err, 0)
+			ppgplot.pgpt(phases, mag)
+			ppgplot.pgerrb(2, phases, mag, err, 0)
+			ppgplot.pgerrb(4, phases, mag, err, 0)
 			ppgplot.pglab("Phase", "CRTS mag", "Phase plot: %s [%d]"%(o.id, len(phases)) )
 
+			extraColumn = 'FWHM'
+			yHeight = (magMax + meanError*2) - (magMin - meanError*2)
+			additionalData = o.getColumn(extraColumn)
+			FWHMrange = numpy.max(additionalData) - numpy.min(additionalData)
+			ppgplot.pgpt(phases, additionalData)
+			print additionalData
+			print yHeight, FWHMrange
+			scaledData = [yHeight/FWHMrange * (fwhm - numpy.min(additionalData)) + numpy.min(mag) for fwhm in additionalData]
+			print scaledData
+			ppgplot.pgsci(2)
+			ppgplot.pgpt(phases, scaledData)
+			print "%s min: %f max: %f"%(extraColumn, numpy.min(additionalData), numpy.max(additionalData))
 	ppgplot.pgclos()
 	sys.exit()
 	
