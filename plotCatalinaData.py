@@ -49,7 +49,6 @@ class object:
 		
 	def setHJDs(self, MJD, HJD):
 		keys = [d['MJD'] for d in self.data]
-		print keys
 		dates = zip(MJD, HJD)
 		for index, d in enumerate(dates):
 			self.data[index]['HJD'] = d[1]
@@ -74,11 +73,16 @@ if __name__ == "__main__":
 	parser.add_argument('-e', type=str, help='Optional ephemeris file')
 	parser.add_argument('--device', type=str, default="/xs", help="Output device. Default is '/xs'")
 	parser.add_argument('--ps', action='store_true', help = "Dump plots to ps files instead of the screen.")
+	parser.add_argument('--column', type=str, help = "Plot an extra column of Catalina data.")
 	 
 	arg = parser.parse_args()
 	print arg
 	
 	print "Astropy version:", astropy.__version__
+	if arg.column is not None:
+		extraColumn = True
+		extraColumnName = arg.column
+	else: extraColumn = False
 	
 	if arg.e!=None:
 		# Load the ephemeris file
@@ -253,6 +257,8 @@ if __name__ == "__main__":
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	ppgplot.pgslct(phasePlotWindow)   
 	ppgplot.pgsci(1)
+	ppgplot.pgpap(12, 0.618)
+	if extraColumn: ppgplot.pgsubp(1, 2)
 	ppgplot.pgask(True)
 	
 	for o in objects:
@@ -261,33 +267,36 @@ if __name__ == "__main__":
 			mag = o.getColumn('mag')
 			err = o.getColumn('err')
 			phases = [o.ephemeris.getPhase(h) for h in HJD]
-			offsetPhases = []
+			extendPhases = copy.deepcopy(phases)
 			for p in phases:
-				if p<0.5: offsetPhases.append(p + 1.0)
-				else: offsetPhases.append(p)
-			phases = offsetPhases
+				extendPhases.append(p + 1.0)
+			phases = extendPhases
+			mag.extend(mag)
+			err.extend(err)
 			# print phases
 			magMax = numpy.max(mag) + err[numpy.argmax(mag)]
 			magMin = numpy.min(mag) - err[numpy.argmin(mag)]
 			meanError = numpy.mean(err)
-			ppgplot.pgenv(0.5 ,1.5 , magMax + meanError*2, magMin - meanError*2, 0, 0)
+			if extraColumn: ppgplot.pgsch(1.8)
+			ppgplot.pgenv(0. ,2.0 , magMax + meanError*2, magMin - meanError*2, 0, 0)
+			ppgplot.pglab("Phase", "CRTS mag", "Phase plot: %s [%d]"%(o.id, len(phases)/2) )
+			ppgplot.pgsch(1.0)
 			ppgplot.pgpt(phases, mag)
 			ppgplot.pgerrb(2, phases, mag, err, 0)
 			ppgplot.pgerrb(4, phases, mag, err, 0)
-			ppgplot.pglab("Phase", "CRTS mag", "Phase plot: %s [%d]"%(o.id, len(phases)) )
-
-			extraColumn = 'FWHM'
-			yHeight = (magMax + meanError*2) - (magMin - meanError*2)
-			additionalData = o.getColumn(extraColumn)
-			FWHMrange = numpy.max(additionalData) - numpy.min(additionalData)
-			ppgplot.pgpt(phases, additionalData)
-			print additionalData
-			print yHeight, FWHMrange
-			scaledData = [yHeight/FWHMrange * (fwhm - numpy.min(additionalData)) + numpy.min(mag) for fwhm in additionalData]
-			print scaledData
-			ppgplot.pgsci(2)
-			ppgplot.pgpt(phases, scaledData)
-			print "%s min: %f max: %f"%(extraColumn, numpy.min(additionalData), numpy.max(additionalData))
+			
+			if extraColumn:
+				additionalData = o.getColumn(extraColumnName)
+				additionalData.extend(additionalData)
+				dataRange = numpy.max(additionalData) - numpy.min(additionalData)
+				ppgplot.pgsch(1.8)
+				ppgplot.pgenv(0, 2, numpy.min(additionalData), numpy.max(additionalData), 0, 0)
+				ppgplot.pglab("Phase", extraColumnName, "")
+				ppgplot.pgsch(1.0)
+				ppgplot.pgsci(2)
+				ppgplot.pgpt(phases, additionalData)
+				ppgplot.pgsci(1)
+				print "%s min: %f max: %f"%(extraColumnName, numpy.min(additionalData), numpy.max(additionalData))
 	ppgplot.pgclos()
 	sys.exit()
 	
