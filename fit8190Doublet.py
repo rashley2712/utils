@@ -274,9 +274,9 @@ if __name__ == "__main__":
 		# Grab the continuum from either side of the spectrum
 		
 		lowerCut = 8170
-		upperCut = 8220
+		upperCut = 8210
 		continuumSpectrum = copy.deepcopy(spectrum)
-		# continuumSpectrum.snipWavelengthRange(lowerCut, upperCut)
+		continuumSpectrum.snipWavelengthRange(lowerCut, upperCut)
 		ppgplot.pgsci(2)
 		ppgplot.pgbin(continuumSpectrum.wavelengths, continuumSpectrum.flux)
 		
