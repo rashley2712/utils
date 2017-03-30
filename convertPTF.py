@@ -119,24 +119,52 @@ if __name__ == "__main__":
 		mag = o.getColumn('mag')
 		err = o.getColumn('err')
 		startDate = numpy.min(HJD)
+		dates = [ d - startDate for d in HJD]
 		endDate = numpy.max(HJD)
 		magMax = numpy.max(mag) + err[numpy.argmax(mag)]
 		magMin = numpy.min(mag) - err[numpy.argmin(mag)]
 		meanError = numpy.mean(err)
 		print "%s Start date: %f, End date: %f"%(o.id, startDate, endDate)
-		ppgplot.pgenv(startDate, endDate, magMax + meanError*2, magMin - meanError*2, 0, 0)
-		ppgplot.pgpt(HJD, mag)
-		ppgplot.pgerrb(2, HJD, mag, err, 0)
-		ppgplot.pgerrb(4, HJD, mag, err, 0)
-		ppgplot.pglab("HJD", "PTF mag", "%s [%d]"%(o.id, len(HJD)))
+		ppgplot.pgenv(0, numpy.max(dates), magMax + meanError*2, magMin - meanError*2, 0, 0)
+		ppgplot.pgpt(dates, mag)
+		ppgplot.pgerrb(2, dates, mag, err, 0)
+		ppgplot.pgerrb(4, dates, mag, err, 0)
+		ppgplot.pglab("Days since %f"%startDate, "PTF mag", "%s [%d]"%(o.id, len(HJD)))
 	
 	ppgplot.pgclos()	
 	
-	# Compute HJDs for the observations
+	# Load the ephemerides
 	for o in objects:
 		hasEphemeris = o.loadEphemeris()
 		print o.ephemeris
+	
 		
+	##########################################################################################################################
+	# Periodograms 
+	##########################################################################################################################
+	
+	from astropy.stats import LombScargle
+
+	if arg.ps: device = "periodograms.ps/ps"
+	else: device = "/xs"
+	pgramPlotWindow = ppgplot.pgopen(device)  
+	pgPlotTransform = [0, 1, 0, 0, 0, 1]
+	ppgplot.pgslct(pgramPlotWindow)   
+	ppgplot.pgask(True)
+
+	for o in objects:
+		HJD = o.getColumn('HJD')
+		mag = o.getColumn('mag')
+		err = o.getColumn('err')
+		frequency, power = LombScargle(HJD, mag, err).autopower(nyquist_factor=20)
+		bestFrequency = frequency[numpy.argmax(power)]
+		period = 1/bestFrequency
+		ppgplot.pgenv(numpy.min(frequency) ,numpy.max(frequency) , numpy.min(power), numpy.max(power), 0, 0)
+		ppgplot.pglab("Power", "frequency", "Periodogram: %s period: %f"%(o.id, period) )
+		ppgplot.pgline(frequency, power)
+		print "Best frequency for %s is %f cycles/day or a period of %f days."%(o.id, bestFrequency, period) 
+	ppgplot.pgclos()
+	
 	##########################################################################################################################
 	# Phase Plots 
 	##########################################################################################################################
@@ -159,15 +187,14 @@ if __name__ == "__main__":
 			for p in phases:
 				extendPhases.append(p + 1.0)
 			phases = extendPhases
-			mag.extend(mag)
-			err.extend(err)
-			# print phases
 			magMax = numpy.max(mag) + err[numpy.argmax(mag)]
 			magMin = numpy.min(mag) - err[numpy.argmin(mag)]
 			meanError = numpy.mean(err)
+			mag.extend(mag)
+			err.extend(err)
+			# print phases
 			ppgplot.pgenv(0. ,2.0 , magMax + meanError*2, magMin - meanError*2, 0, 0)
 			ppgplot.pglab("Phase", "PTF mag", "Phase plot: %s [%d]"%(o.id, len(phases)/2) )
-			ppgplot.pgsch(1.0)
 			ppgplot.pgpt(phases, mag)
 			ppgplot.pgerrb(2, phases, mag, err, 0)
 			ppgplot.pgerrb(4, phases, mag, err, 0)
