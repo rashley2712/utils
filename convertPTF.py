@@ -53,6 +53,20 @@ class object:
 		for index, d in enumerate(dates):
 			self.data[index]['HJD'] = d[1]
 			
+	def filterData(self, columnName, limit1, limit2):
+		newData = []
+		if limit1>limit2:
+			temp = limit1
+			limit1 = limit2
+			limit2 = temp
+		for d in self.data:
+			value = d[columnName]
+			if value>limit1 and value<limit2:
+				newData.append(d)
+			else:
+				print "Filtering out a point: %s %f not between %f and %f"%(columnName, value, limit1, limit2)
+		self.data = newData 
+			
 		
 	def computeHJDs(self):
 		if self.hasEphemeris:
@@ -71,16 +85,27 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Converts data from Paul''s PTF extraction into something more useable.')
 	parser.add_argument('object', type=str, nargs='+', help='Object name.')	
 	parser.add_argument('--ps', action='store_true', help = "Dump plots to ps files instead of the screen.")
+	parser.add_argument('-l', '--list', action='store_true', help="Object name is a list of objects.")
 	
 	
 	arg = parser.parse_args()
 	print arg
+	if arg.list: objectList = True
+	else: objectList = False
 	
 	print "Astropy version:", astropy.__version__
 
+	objectNames = []
+	if objectList:
+		nameFile = open(arg.object[0], 'rt')
+		for l in nameFile:
+			objectnames.append(l.strip())
+		nameFile.close()
+	else:
+		objectNames = arg.object
+        
 	objects = []
-	
-	for o in arg.object:
+	for o in objectNames:
 		target = object(o)
 		dataFilename = o + '_ptf.dat'
 		ptfFile = open(dataFilename, 'rt')
@@ -98,14 +123,17 @@ if __name__ == "__main__":
 				data['mag'] = float(fields[1])
 				data['err'] = float(fields[2])
 				target.appendData(data)
-
+		ptfFile.close()
 		objects.append(target)
+
 
 	
 
 	
 	print "%d targets loaded"%len(objects)
 
+	#for o in objects:
+	#	o.filterData('mag', 10, 16.5)
 
 	if arg.ps: device = "lightcurves.ps/ps"
 	else: device = "/xs"
@@ -160,7 +188,7 @@ if __name__ == "__main__":
 		bestFrequency = frequency[numpy.argmax(power)]
 		period = 1/bestFrequency
 		ppgplot.pgenv(numpy.min(frequency) ,numpy.max(frequency) , numpy.min(power), numpy.max(power), 0, 0)
-		ppgplot.pglab("Power", "frequency", "Periodogram: %s period: %f"%(o.id, period) )
+		ppgplot.pglab("Frequency (days\u-1\d)", "Power", "Periodogram: %s period: %f"%(o.id, period) )
 		ppgplot.pgline(frequency, power)
 		print "Best frequency for %s is %f cycles/day or a period of %f days."%(o.id, bestFrequency, period) 
 	ppgplot.pgclos()
@@ -174,7 +202,7 @@ if __name__ == "__main__":
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	ppgplot.pgslct(phasePlotWindow)   
 	ppgplot.pgsci(1)
-	ppgplot.pgpap(12, 0.618)
+	ppgplot.pgpap(10, 0.618)
 	ppgplot.pgask(True)
 	
 	for o in objects:
