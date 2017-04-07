@@ -47,6 +47,13 @@ class object:
 		
 		return False
 		
+	def computePhases(self):
+		if not self.hasEphemeris: return
+		for d in self.data:
+			d['phase'] = self.ephemeris.getPhase(d['HJD'])
+			print d['HJD'], d['phase']
+			
+		
 	def setHJDs(self, MJD, HJD):
 		keys = [d['MJD'] for d in self.data]
 		dates = zip(MJD, HJD)
@@ -66,7 +73,22 @@ class object:
 			else:
 				print "Filtering out a point: %s %f not between %f and %f"%(columnName, value, limit1, limit2)
 		self.data = newData 
-			
+	
+	def writeData(self, filename):
+		outputFile = open(filename, 'wt')
+		for d in self.data:
+			date = d['HJD']
+			phase = d['phase']
+			flux = 10**(d['mag'] / -2.5)
+			flux_error = flux * numpy.log(10) * d['err']
+			print date, phase, d['mag'], flux, flux_error
+			outputFile.write("%f 0 %E %E 1 1\n"%(phase, flux, flux_error))
+		
+		outputFile.close()
+		
+	def sortData(self, columnName):
+		print "Sorting data by:", columnName
+		sortedData = self.data.sort(key=lambda x:x[columnName])
 		
 	def computeHJDs(self):
 		if self.hasEphemeris:
@@ -166,6 +188,13 @@ if __name__ == "__main__":
 		hasEphemeris = o.loadEphemeris()
 		print o.ephemeris
 	
+	
+	# Write the object data to a textfile
+	for o in objects:
+		o.computePhases()
+		o.sortData('phase')
+		o.writeData(o.id + "_phases.dat")
+		
 		
 	##########################################################################################################################
 	# Periodograms 
