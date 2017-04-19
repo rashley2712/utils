@@ -164,14 +164,15 @@ if __name__ == "__main__":
 	phases = observedData.getColumn('phase')
 	flux = observedData.getColumn('flux')
 	flux_err = observedData.getColumn('flux_err')
+	flux_err = [f/10 for f in flux_err]
+	flux = [f * 3631E3 for f in flux]
+	flux_err = [f * 3631E3 for f in flux_err]
 	mag = observedData.getColumn('mag')
 	err = observedData.getColumn('err')
 	maxFlux = 0
 	for f, fe in zip(flux, flux_err):
 		if f + fe > maxFlux: maxFlux = f + fe
 	
-	
-	meanError = numpy.mean(flux_err)
 	# Duplicate data out to phase 2.0
 	extendedPhases = copy.deepcopy(phases)
 	for p in phases:
@@ -198,10 +199,9 @@ if __name__ == "__main__":
 	ppgplot.pgslw(7)
 	ppgplot.pgline(phases, model)
 	"""
-	flux_err = [f/10 for f in flux_err]
 	ppgplot.pgsch(1.6)
 	ppgplot.pgenv(0, 2, 0, maxFlux, 0, 0)
-	ppgplot.pglab("Phase", "PTF flux", "%s"%(arg.name))
+	ppgplot.pglab("Phase", "PTF flux (mJy)", "%s"%(arg.name))
 	ppgplot.pgsch(1.0)
 	ppgplot.pgpt(phases, flux)
 	ppgplot.pgerrb(2, phases, flux, flux_err, 0)
@@ -215,6 +215,7 @@ if __name__ == "__main__":
 	for p in modelPhases: temp.append(p + 1.0)
 	modelPhases = temp
 	model = modelledData.getColumn('flux')
+	model = [m * 3631E3 for m in model]
 	model.extend(model)
 	ppgplot.pgline(modelPhases, model) 	
 	ppgplot.pgsci(1)
@@ -246,8 +247,8 @@ if __name__ == "__main__":
 	print ppgplot.pgqwin(0)
 	xlower = (x1 + x2) / 2 + 0.05
 	xupper = x2 - 0.05
-	yupper = (y1 + y2) / 2 - 0.05
-	ylower = 0.20
+	yupper = (y1 + y2) / 2 
+	ylower = 0.22
 	ppgplot.pgsvp(xlower, xupper, ylower, yupper)
 	ppgplot.pgswin(startPhase, endPhase, 0, numpy.max(subFlux))
 	print ppgplot.pgqvp(0)
@@ -256,13 +257,15 @@ if __name__ == "__main__":
 	# ppgplot.pgpanl(2, 2)
 	# ppgplot.pgenv(startPhase, endPhase, 0, numpy.max(flux), 0, -1)
 	# ppgplot.pglab("Phase", "PTF flux", "%s"%(arg.name))
-	ppgplot.pgbox("GBC", 0, 0, "GBC", 0, 0)
+	ppgplot.pgbox("BCN", 0, 0, "BC", 0, 0)
 	ppgplot.pgpt(subPhases, subFlux)
 	ppgplot.pgerrb(2, subPhases, subFlux, subFluxErr, 0)
 	ppgplot.pgerrb(4, subPhases, subFlux, subFluxErr, 0)
 	
+	ppgplot.pgsls(2)
 	ppgplot.pgline(subModelPhases, subModel) 	
-	
+	ppgplot.pgsls(4)
+	ppgplot.pgline([1, 1], [0, numpy.max(subFlux)])
 	ppgplot.pgclos()	
 	
 
