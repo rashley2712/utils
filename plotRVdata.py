@@ -22,6 +22,10 @@ class bcolors:
 def sine(x, a0, a1):
     y = a0 * numpy.sin(2.*math.pi*(x + a1))
     return y
+	
+def sineGammaAmplitude(x, gamma, amplitude):
+	y = gamma + amplitude * numpy.sin(2. * numpy.pi * x)
+	return y
     
 def sineFixedFreq(x, gamma, amplitude, phase):
     global frequency
@@ -264,7 +268,8 @@ if __name__ == "__main__":
 		print "HJD\t\tVelocity (km/s)\tVel error"
 		for index, d in enumerate(data):
 			good = d['good']
-			if good==0: print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
+			if good==0: 
+				print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
 			else: 
 				print "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error'])
 				dates.append(d['HJD'])
@@ -288,8 +293,9 @@ if __name__ == "__main__":
 		phasePGPlotWindow = ppgplot.pgopen("/xs")
 		ppgplot.pgask(True)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	ppgplot.pgpap(12, 0.618 )
-	ppgplot.pgsubp(3, 4)
+	ppgplot.pgpap(12, 1.618 )
+	# ppgplot.pglab("x axis", "y axis", "heading")
+	ppgplot.pgsubp(3, 8)
 	# ppgplot.pgsch(4)
 		
 	for o in objects:	
@@ -303,22 +309,12 @@ if __name__ == "__main__":
 			extendedPhases.append(p + 1.0)
 			extendedVelocities.append(velocities[index])
 			extendedVelErrors.append(velErrors[index])
-		
-	 
-    
-		ppgplot.pgslct(phasePGPlotWindow)   
-		ppgplot.pgsci(1)
+		 
 		maxVel = max(velocities)
 		minVel = min(velocities)	
 		velRange = (maxVel - minVel)/2.0
     
-	  	
-		# Now fit a sine wave with this period to the data...
-		frequency = 1 / o.ephemeris.Period
-		phase = 0
-		gamma = numpy.mean(velocities)
-		amplitude = velRange
-   	 
+	  	# Fit an amplitude to this data
 		x_values = numpy.array(phases)
 		y_values = numpy.array(velocities)
 		y_errors = numpy.array(velErrors)
@@ -326,12 +322,12 @@ if __name__ == "__main__":
 		print "x:", x_values
 		print "y:", y_values
    	 
-		guess = [gamma, amplitude, phase]
-		upperBounds = [100, 200, 1]
-		lowerBounds = [-100, 0 , 0]
+		guess = [0, maxVel]
+		upperBounds = [100, 200]
+		lowerBounds = [-100, 0]
 		bounds = (lowerBounds, upperBounds)
-		print "Guess for first fit: ", guess
-		results, covariance = scipy.optimize.curve_fit(sinePhase, x_values, y_values, p0 = guess, sigma = y_errors, bounds = bounds)
+		print "%s ... guess for amplitude and gamma fit: %f, %f"%(o.id, guess[0], guess[1])
+		results, covariance = scipy.optimize.curve_fit(sineGammaAmplitude, x_values, y_values, p0 = guess, sigma = y_errors)
 		errors = numpy.sqrt(numpy.diag(covariance))
     
 		print results
@@ -339,44 +335,43 @@ if __name__ == "__main__":
 		gammaError = errors[0]
 		amplitudeFit = results[1]
 		amplitudeError = errors[1]
-		phaseFit = results[2]
-		phaseError = errors[2]
 		print "Result of curve fit: "
 		print "\tgamma velocity: \t%s[%s] km/s"%generalUtils.formatValueError(gammaFit, gammaError)
 		print "\tv sin i amplitude: \t%s[%s] km/s"%generalUtils.formatValueError(amplitudeFit, amplitudeError)
-		print "\tphase: \t\t\t%s[%s]"%generalUtils.formatValueError(phaseFit, phaseError)
 		
 		yMin = gammaFit - 1.2* amplitudeFit
 		yMax = gammaFit + 1.2* amplitudeFit
-	
-		ppgplot.pgenv(0, 2, yMin, yMax, 0, -1 )
-
-		ppgplot.pgsch(3)
+		ppgplot.pgslct(phasePGPlotWindow)   
+		ppgplot.pgenv(0, 2, yMin, yMax, 0, -2 )
+		ppgplot.pgsvp(.15, 1.0, 0, 1)
+		ppgplot.pgsch(2.8)
+		ppgplot.pgbox("BCTS", 0, 0, "BCNVTS", 0, 0)
+		ppgplot.pgsch(1.0)
+		ppgplot.pgsci(1)
 		ppgplot.pgpt(extendedPhases, extendedVelocities)
 		ppgplot.pgerrb(2, extendedPhases, extendedVelocities, extendedVelErrors, 0)
 		ppgplot.pgerrb(4, extendedPhases, extendedVelocities, extendedVelErrors, 0)
-		ppgplot.pgsch(1)
 		
+		ppgplot.pgsch(1)
 		#ppgplot.pglab("Phase", "Radial velocity km/s", "")
 		# o.id + " period: %f days"%o.ephemeris.Period
-		ppgplot.pgsch(4)
-		ppgplot.pgtext(0.5, gammaFit+0.8*amplitudeFit, o.id)
-		ppgplot.pgsch(3.8)
-		ppgplot.pgtext(0.5, gammaFit+0.3*amplitudeFit, "%2.2f days"%o.ephemeris.Period)
+		ppgplot.pgsch(3.4)
+		ppgplot.pgtext(0.4, gammaFit+0.8*amplitudeFit, o.id)
+		ppgplot.pgtext(1.6, gammaFit+0.8*amplitudeFit, "%2.2fd"%o.ephemeris.Period)
 		ppgplot.pgsch(1)
 		xFit = numpy.arange(0, 2, 0.02)
-		yFit = gammaFit + amplitudeFit * numpy.sin(2*numpy.pi*(xFit) + phaseFit)
+		yFit = gammaFit + amplitudeFit * numpy.sin(2*numpy.pi*(xFit))
 		lc = ppgplot.pgqci()
 		ls = ppgplot.pgqls()
         
 		ppgplot.pgsci(2)
 		ppgplot.pgline(xFit, yFit)
 		ppgplot.pgsci(3)
-		ppgplot.pgsls(2)
+		ppgplot.pgsls(4)
 		ppgplot.pgline([0, 2], [gammaFit, gammaFit])
 		ppgplot.pgsci(lc)
 		ppgplot.pgsls(ls)
-	
+		
 	
 	ppgplot.pgclos()
 	sys.exit()

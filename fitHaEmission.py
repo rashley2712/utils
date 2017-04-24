@@ -17,6 +17,12 @@ def quad(x, a0, a1, a2):
 def gaussian(x, a0, a1, a2, a3):
 	y = a0 + a1 * numpy.exp(-.5 * ((x-a2)/a3)**2)
 	return y	
+
+def gaussianFixedWidth(x, a0, a1, a2):
+	global width
+	y = a0 + a1 * numpy.exp(-.5 * ((x-a2)/width)**2)
+	return y	
+
 	
 # Lab wavelengths for Sodium doublet  8183 and 8195
 # 8183.2556 and 8194.7905   separation: 11.5349
@@ -329,7 +335,7 @@ if __name__ == "__main__":
 				print "Skipping spectrum as it is marked as a good fit"
 				continue
 			a0 = 1.0
-			a1 = -0.5
+			a1 = 0.5
 			a2 = wavelength
 			a3 = width
 			print "Using width: %f and wavelength: %f"%(width, wavelength)
@@ -344,7 +350,7 @@ if __name__ == "__main__":
 			docInstance.writeAllReadings()
 			# Fit a single gaussian to the Na doublet blue line 
 			a0 = 1.0    	# Constant term  
-			a1 = -0.5		# 'Height' of the line
+			a1 = 0.5		# 'Height' of the line
 			a2 = defaultWavelength		# Wavelength of the centre of the line
 			a3 = defaultWidth		# Width of the line
 		
@@ -353,7 +359,7 @@ if __name__ == "__main__":
 		x_values = featureSpectrum.wavelengths
 		y_values = featureSpectrum.flux
 		y_errors = numpy.ones(len(featureSpectrum.flux))
-		bounds = ( [ 0.5, -4.0, 6550, 0.1], [ 1.5, 0, 6570, 2] )
+		bounds = ( [ 0.5, 0.0, 6550, 0.1], [ 1.5, 2.0, 6570, 2] )
 		results, covariance = scipy.optimize.curve_fit(gaussian, x_values, y_values, guess, y_errors, bounds=bounds)
 		print "Results:", results
 		errors = numpy.sqrt(numpy.diag(covariance))
@@ -368,12 +374,22 @@ if __name__ == "__main__":
 		
 		width = a3
 		if arg.fixwidth:
-			print "Using the width as specified in the sheet ... %f angstrom"%fixWidth
+			print "Re-performing the fit but using a fixed width as specified in the sheet ... %f angstrom"%fixWidth
 			width = fixWidth
 		centroidWavelength = a2
 		depth = a1
 		constant = a0
-
+		# Re-perform the fit
+		guess = numpy.array([constant, depth, centroidWavelength])
+		bounds = ( [ 0.5, 0.0, 6550], [ 1.5, 2.0, 6570] )
+		results, covariance = scipy.optimize.curve_fit(gaussianFixedWidth, x_values, y_values, guess, y_errors, bounds=bounds)
+		print results
+		a0 = results[0]
+		a1 = results[1]
+		a2 = results[2]
+		a3 = fixWidth
+		yFit = gaussian(numpy.array(xFit), a0, a1, a2, a3)
+		
 		currentColour = ppgplot.pgqci()
 		ppgplot.pgsci(3)
 		ppgplot.pgline(xFit, yFit)

@@ -257,7 +257,7 @@ if __name__ == "__main__":
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
 	ppgplot.pgslct(phasePlotWindow)   
 	ppgplot.pgsci(1)
-	ppgplot.pgpap(12, 0.618)
+	# ppgplot.pgpap(3, 0.618)
 	if extraColumn: ppgplot.pgsubp(1, 2)
 	ppgplot.pgask(True)
 	
