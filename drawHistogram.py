@@ -94,13 +94,10 @@ if __name__ == "__main__":
 				print "No valid period for ", name
 	
 	logPeriods = [numpy.log10(p) for p in periods]
-	print zip(names, periods)
-	print zip(names, logPeriods)
-		
-	
+	# print zip(names, periods)
+	# print zip(names, logPeriods)
 	
 	print "%d targets loaded"%len(names)
-
 
 	if arg.ps: device = "histogram.ps/ps"
 	else: device = "/xs"
@@ -109,8 +106,12 @@ if __name__ == "__main__":
 	ppgplot.pgslct(PGPlotWindow)   
 	ppgplot.pgsci(1)
 	ppgplot.pgask(False)
-	ppgplot.pghist(logPeriods, -2, 2, 10, 0)
-	ppgplot.pglab("log(P)", "Count", "Period distribution")
+	ppgplot.pgsch(1.6)
+	ppgplot.pgenv(-1.5, 1.5, 0, 7, 0)
+	ppgplot.pglab("log\d10\u(P\dorb\u/days)", "N", "")
+	ppgplot.pgsch(1.0)
+	ppgplot.pgsvp(0.1, 0.9, 0.1, 0.9)
+	ppgplot.pghist(logPeriods, -1.5, 1.5, 9, 4)
 	
 	ppgplot.pgclos()	
 	

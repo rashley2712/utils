@@ -278,8 +278,10 @@ if __name__ == "__main__":
 			magMin = numpy.min(mag) - err[numpy.argmin(mag)]
 			meanError = numpy.mean(err)
 			if extraColumn: ppgplot.pgsch(1.8)
+			ppgplot.pgsch(1.6)
 			ppgplot.pgenv(0. ,2.0 , magMax + meanError*2, magMin - meanError*2, 0, 0)
-			ppgplot.pglab("Phase", "CRTS mag", "Phase plot: %s [%d]"%(o.id, len(phases)/2) )
+			# ppgplot.pglab("Phase", "CRTS mag", "Phase plot: %s [%d]"%(o.id, len(phases)/2) )
+			ppgplot.pglab("Phase", "CRTS mag", "%s"%o.id)
 			ppgplot.pgsch(1.0)
 			ppgplot.pgpt(phases, mag)
 			ppgplot.pgerrb(2, phases, mag, err, 0)
