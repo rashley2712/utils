@@ -110,8 +110,8 @@ if __name__ == "__main__":
 	ppgplot.pgenv(-1.5, 1.5, 0, 7, 0)
 	ppgplot.pglab("log\d10\u(P\dorb\u/days)", "N", "")
 	ppgplot.pgsch(1.0)
-	ppgplot.pgsvp(0.1, 0.9, 0.1, 0.9)
-	ppgplot.pghist(logPeriods, -1.5, 1.5, 9, 4)
+	# ppgplot.pgsvp(0.1, 0.9, 0.1, 0.9)
+	ppgplot.pghist(logPeriods, -1.5, 1.5, 9, 5)
 	
 	ppgplot.pgclos()	
 	
