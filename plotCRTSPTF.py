@@ -26,16 +26,42 @@ class object:
 		self.ephemeris = None
 		self.data = []
 		self.hasEphemeris = False
-		
+		self.PTFData = []
+
 	def appendData(self, dataDict):
 		# self.MJD.append(data['MJD'])
 		# self.mag.append(data['mag'])
 		# self.err.append(data['err'])
 		self.data.append(dataDict)
+
+	def appendPTFData(self, data):
+		print data['HJD'], data['mag']
+		self.PTFData.append(data)		
 	
 	def getColumn(self, columnName):
 		return [d[columnName] for d in self.data]	
-		
+	
+	def getPTFColumn(self, columnName):
+		return [d[columnName] for d in self.PTFData]	
+	
+	def meanError(self):
+		CRTSmean = numpy.mean([d['err'] for d in self.data])
+		PTFmean = numpy.mean([d['err'] for d in self.PTFData])
+		return (CRTSmean + PTFmean)/2.
+	
+	def magMax(self):
+		CRTSmax = max([d['mag'] for d in self.data])
+		PTFmax = max([d['mag'] for d in self.PTFData])
+		print PTFmax, CRTSmax
+		if CRTSmax>PTFmax: return CRTSmax
+		else: return PTFmax
+	
+	def magMin(self):
+		CRTSmin = min([d['mag'] for d in self.data])
+		PTFmin = min([d['mag'] for d in self.PTFData])
+		if CRTSmin<PTFmin: return CRTSmin
+		else: return PTFmin	
+
 	def loadEphemeris(self):
 		# Look in the local directory for a file called 'id'-ephem.dat and load it
 		filename = self.id + "-ephem.dat"
@@ -77,12 +103,6 @@ if __name__ == "__main__":
 	 
 	arg = parser.parse_args()
 	print arg
-	
-	print "Astropy version:", astropy.__version__
-	if arg.column is not None:
-		extraColumn = True
-		extraColumnName = arg.column
-	else: extraColumn = False
 	
 	if arg.e!=None:
 		# Load the ephemeris file
@@ -204,49 +224,28 @@ if __name__ == "__main__":
 		if hasEphemeris: o.computeHJDs()
 	
 			
-
-	
-	##########################################################################################################################
-	# Periodograms 
-	##########################################################################################################################
-	plo = 0.01
-	phi = 1.00
-	if arg.ps: device = "pgrams.ps/ps"
-	else: device = "/xs"
-	pgramPGPlotWindow = ppgplot.pgopen(device)  
-	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
-	ppgplot.pgslct(pgramPGPlotWindow)
+	# Load the PTF data
 	for o in objects:
-		if o.hasEphemeris:
-			HJD = o.getColumn('HJD')
-			mag = o.getColumn('mag')
-			err = o.getColumn('err')
-			x = numpy.array(HJD)
-			y = numpy.array(mag)
-			# Subtract the mean from the y-data
-			y_mean = numpy.mean(y)
-			y = y - y_mean
-			periods = numpy.linspace(plo, phi, 1000)
-			ang_freqs = 2 * numpy.pi / periods
-			power = signal.lombscargle(x, y, ang_freqs)
-			# normalize the power
-			N = len(x)
-			power *= 2 / (N * y.std() ** 2)
+		targetName = o.id
+		print "Loading PTF data for ", targetName
+		dataFilename = targetName + '_ptf.dat'
+		ptfFile = open(dataFilename, 'rt')
+		
+		for line in ptfFile:
+			line = line.strip()
+			if line[0]=='#': 
+				print "COMMENT: ", line[2:]
+				if 'Reference' in line:
+					startDate = float(line.split(':')[-1].strip(' '))
+			else:
+				fields = line.split(' ')
+				data = {}
+				data['HJD'] = startDate + float(fields[0])
+				data['mag'] = float(fields[1])
+				data['err'] = float(fields[2])
+				o.appendPTFData(data)
+		ptfFile.close()
 	
-			ppgplot.pgenv(min(periods), max(periods), 0, max(power), 0, 0)
-			ppgplot.pgline(periods, power)
-			ppgplot.pglab("Period (d)", "Amplitude", "Lomb-Scargle: " + o.id)
-			bestPeriod = periods[numpy.argmax(power)]
-			lc = ppgplot.pgqci()
-			ls = ppgplot.pgqls()
-			ppgplot.pgsci(3)
-			ppgplot.pgsls(2)
-			ppgplot.pgline([bestPeriod, bestPeriod], [0, max(power)])
-			ppgplot.pgsci(lc)
-			ppgplot.pgsls(ls)
-			print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
-
-	ppgplot.pgclos()	
 	
 	##########################################################################################################################
 	# Phase Plots 
@@ -258,7 +257,6 @@ if __name__ == "__main__":
 	ppgplot.pgslct(phasePlotWindow)   
 	ppgplot.pgsci(1)
 	# ppgplot.pgpap(3, 0.618)
-	if extraColumn: ppgplot.pgsubp(1, 2)
 	ppgplot.pgask(True)
 	
 	for o in objects:
@@ -274,31 +272,43 @@ if __name__ == "__main__":
 			mag.extend(mag)
 			err.extend(err)
 			# print phases
-			magMax = numpy.max(mag) + err[numpy.argmax(mag)]
-			magMin = numpy.min(mag) - err[numpy.argmin(mag)]
-			meanError = numpy.mean(err)
-			if extraColumn: ppgplot.pgsch(1.8)
 			ppgplot.pgsch(1.6)
+			meanError = o.meanError()
+			magMin = o.magMin()
+			magMax = o.magMax()
+			print "Max %f, min %f, error %f"%(magMax, magMin, meanError)
 			ppgplot.pgenv(0. ,2.0 , magMax + meanError*2, magMin - meanError*2, 0, 0)
 			# ppgplot.pglab("Phase", "CRTS mag", "Phase plot: %s [%d]"%(o.id, len(phases)/2) )
-			ppgplot.pglab("Phase", "CRTS mag", "WD%s"%o.id)
+			ppgplot.pglab("Phase", "CRTS/PTF mag", "WD%s"%o.id)
 			ppgplot.pgsch(1.0)
 			ppgplot.pgpt(phases, mag)
 			ppgplot.pgerrb(2, phases, mag, err, 0)
 			ppgplot.pgerrb(4, phases, mag, err, 0)
+
+			# Now plot the PTF data
+			HJD = o.getPTFColumn('HJD')
+			mag = o.getPTFColumn('mag')
+			err = o.getPTFColumn('err')
+			phases = [o.ephemeris.getPhase(h) for h in HJD]
+			print HJD, phases
+			extendPhases = copy.deepcopy(phases)
+			for p in phases:
+				extendPhases.append(p + 1.0)
+			phases = extendPhases
+			mag.extend(mag)
+			err.extend(err)
 			
-			if extraColumn:
-				additionalData = o.getColumn(extraColumnName)
-				additionalData.extend(additionalData)
-				dataRange = numpy.max(additionalData) - numpy.min(additionalData)
-				ppgplot.pgsch(1.8)
-				ppgplot.pgenv(0, 2, numpy.min(additionalData), numpy.max(additionalData), 0, 0)
-				ppgplot.pglab("Phase", extraColumnName, "")
-				ppgplot.pgsch(1.0)
-				ppgplot.pgsci(2)
-				ppgplot.pgpt(phases, additionalData)
-				ppgplot.pgsci(1)
-				print "%s min: %f max: %f"%(extraColumnName, numpy.min(additionalData), numpy.max(additionalData))
+			magMax = numpy.max(mag) + err[numpy.argmax(mag)]
+			magMin = numpy.min(mag) - err[numpy.argmin(mag)]
+			meanError = numpy.mean(err)
+			# ppgplot.pglab("Phase", "CRTS mag", "Phase plot: %s [%d]"%(o.id, len(phases)/2) )
+			# ppgplot.pglab("Phase", "PTF mag", "WD %s"%o.id)
+			ppgplot.pgsch(1.0)
+			ppgplot.pgsci(2)
+			ppgplot.pgpt(phases, mag, 4)
+			ppgplot.pgerrb(2, phases, mag, err, 0)
+			ppgplot.pgerrb(4, phases, mag, err, 0)
+			
 	ppgplot.pgclos()
 	sys.exit()
 	
