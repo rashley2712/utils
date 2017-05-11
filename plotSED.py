@@ -1,0 +1,149 @@
+#!/usr/bin/env python
+import sys, os
+import numpy, math
+import argparse
+import astropy.io.fits
+import astropy.stats
+import loadingSavingUtils, statsUtils
+import spectrumClasses, timeClasses
+import scipy.optimize
+import copy
+import ppgplot
+import scipy.signal as signal
+
+class object:
+	def __init__(self, id="unknown"):
+		self.objectID = id
+		self.magData = []
+		self.bandNames = None
+		self.wavelength = None
+		self.magnitudes = None
+		
+	def addData(self, mag, band):
+		dataPoint = {}
+		dataPoint['band'] = band
+		try:
+			dataPoint['mag'] = float(mag)
+			self.magData.append(dataPoint)
+		except ValueError:
+			print "No magnitude for %s band"%band
+		
+	def calculateFluxes(self):
+		for d in self.magData:
+			flux = 3631000 * 10**(d['mag']/-2.5) 	
+			d['flux'] = flux
+			# print d
+			
+	def addWavelengths(self, lookup):
+		for d in self.magData:
+			for w in lookup:
+				if d['band'] == w['band']: d['wavelength'] = w['wavelength']
+	
+	def getWavelengthsFluxesBands(self):
+		return [d['wavelength'] for d in self.magData] , [d['flux'] for d in self.magData], [d['band'] for d in self.magData]
+			
+	def __str__(self):
+		retStr = self.objectID + ": "
+		for d in self.magData:
+			retStr +=str(d)
+		return retStr
+
+if __name__ == "__main__":
+
+	parser = argparse.ArgumentParser(description='Loads CSV file and plots Spectral Energy distribution.')
+	parser.add_argument('filename', type=str, nargs='+', help='Filename of CSV file..')	
+	parser.add_argument('--device', type=str, default='/xs', help = "Dump plot to the following device.")
+	
+	
+	arg = parser.parse_args()
+	
+	files = arg.filename
+	bandNames = []
+	wavelengths = []
+	objects = []
+	state = "headers"
+	for f in files:
+		inputFile = open(f, 'rt')
+		for l in inputFile:
+			line = l.strip()
+			if len(line.strip()) == 0: continue
+			# print line
+			
+			if state == "bands":
+				bandNames = line.split(',')
+				bandNames = [b.strip() for b in bandNames]
+				print "Filter bands:", bandNames
+				state = "headers"
+				
+			if state == "wavelength":
+				wavelengths = line.split(',')
+				wavelengths = [float(w) for w in wavelengths]
+				print "Effective wavelengths:", wavelengths
+				state = "headers"
+				
+			if state == "magnitudes":
+				objectID = line.split(',')[0].strip()
+				newObject = object(objectID)
+				newObject.bandNames = bandNames
+				newObject.wavelengths = wavelengths
+				magnitudes = line.split(',')[1:]
+				if len(magnitudes)!=len(bandNames):
+					print "Wrong number of data points for %s. Fill in missing data with '-'"
+					continue
+				else:
+					for m, b in zip(magnitudes, bandNames):
+						print m, b
+						newObject.addData(m, b)
+				objects.append(newObject)
+				print newObject
+				
+			if "bands" in line:
+				state = "bands"
+			if "effective" in line:
+				state = "wavelength"
+			if "abmagnitudes" in line:
+				state = "magnitudes"
+				
+		inputFile.close()
+		
+	if len(wavelengths)!=len(bandNames):
+		print "You didn't specify the same number of effective wavelengths and names for the passbands."
+		sys.exit()
+	wavelengthLookup = []
+	for w, b in zip(wavelengths, bandNames):
+		wl = {'band': b, 'wavelength': w}
+		wavelengthLookup.append(wl)
+	print wavelengthLookup
+	
+		
+	print "%d targets loaded"%len(objects)
+
+	for o in objects:
+		o.calculateFluxes()
+		o.addWavelengths(wavelengthLookup)
+		print o
+
+	PGPlotWindow = ppgplot.pgopen(arg.device) 
+	pgPlotTransform = [0, 1, 0, 0, 0, 1]
+	ppgplot.pgslct(PGPlotWindow)   
+	ppgplot.pgsci(1)
+	ppgplot.pgask(True)
+	
+	for o in objects:
+		ppgplot.pgsch(1.6)
+		wavelengths, fluxes, bands = o.getWavelengthsFluxesBands()
+		print bands
+		fluxMax = max(fluxes)
+		fluxMin = min(fluxes)
+		wavelengthMin = min(wavelengths)
+		wavelengthMax = max(wavelengths)
+		ppgplot.pgenv(500,25000 , 0, fluxMax*1.2, 0)
+		ppgplot.pglab("wavelength [\A]", "f\d\gn\u [mJy]", o.objectID)
+		ppgplot.pgsch(1.0)
+		ppgplot.pgpt(wavelengths, fluxes)
+	
+	ppgplot.pgclos()	
+	
+	sys.exit()
+	
+	
