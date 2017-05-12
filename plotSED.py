@@ -11,6 +11,9 @@ import copy
 import ppgplot
 import scipy.signal as signal
 
+magOffsets = { 'fuv': 0, 'nuv': 0, 'u': 0, 'g': 0, 'r': 0, 'i' : 0, 'z': 0, 'j': 0.89, 'h': 1.37, 'k': 1.84 }
+
+
 class object:
 	def __init__(self, id="unknown"):
 		self.objectID = id
@@ -27,6 +30,13 @@ class object:
 			self.magData.append(dataPoint)
 		except ValueError:
 			print "No magnitude for %s band"%band
+			
+	def calculateOffsets(self):
+		for d in self.magData:
+			print d
+			print "Offset for %s is %f."%(d['band'], magOffsets[d['band']])
+			d['mag']+= magOffsets[d['band']]
+			
 		
 	def calculateFluxes(self):
 		for d in self.magData:
@@ -119,7 +129,9 @@ if __name__ == "__main__":
 	print "%d targets loaded"%len(objects)
 
 	for o in objects:
+		o.calculateOffsets()
 		o.calculateFluxes()
+		
 		o.addWavelengths(wavelengthLookup)
 		print o
 
