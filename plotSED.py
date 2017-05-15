@@ -22,26 +22,30 @@ class object:
 		self.wavelength = None
 		self.magnitudes = None
 		
-	def addData(self, mag, band):
+	def addData(self, band, mag, magerr):
 		dataPoint = {}
 		dataPoint['band'] = band
 		try:
 			dataPoint['mag'] = float(mag)
+			dataPoint['magerr'] = float(magerr)
 			self.magData.append(dataPoint)
 		except ValueError:
 			print "No magnitude for %s band"%band
 			
 	def calculateOffsets(self):
 		for d in self.magData:
-			print d
-			print "Offset for %s is %f."%(d['band'], magOffsets[d['band']])
 			d['mag']+= magOffsets[d['band']]
 			
 		
 	def calculateFluxes(self):
 		for d in self.magData:
 			flux = 3631000 * 10**(d['mag']/-2.5) 	
+			# fluxerr =  -2 * numpy.log(10) * 3631000 * d['magerr'] / (5 * 10**(2*d['mag']/5))
+			fluxerr = flux * numpy.log(10) * d['magerr'] / (-2.5)
+  
 			d['flux'] = flux
+			d['fluxerr'] = fluxerr
+			print d['flux'], d['fluxerr'], d['magerr']
 			# print d
 			
 	def addWavelengths(self, lookup):
@@ -49,8 +53,8 @@ class object:
 			for w in lookup:
 				if d['band'] == w['band']: d['wavelength'] = w['wavelength']
 	
-	def getWavelengthsFluxesBands(self):
-		return [d['wavelength'] for d in self.magData] , [d['flux'] for d in self.magData], [d['band'] for d in self.magData]
+	def getFluxData(self):
+		return [d['wavelength'] for d in self.magData] , [d['flux'] for d in self.magData], [d['fluxerr'] for d in self.magData], [d['band'] for d in self.magData]
 			
 	def __str__(self):
 		retStr = self.objectID + ": "
@@ -97,13 +101,14 @@ if __name__ == "__main__":
 				newObject.bandNames = bandNames
 				newObject.wavelengths = wavelengths
 				magnitudes = line.split(',')[1:]
-				if len(magnitudes)!=len(bandNames):
+				print magnitudes
+				if len(magnitudes)!=2 * len(bandNames):
 					print "Wrong number of data points for %s. Fill in missing data with '-'"
 					continue
 				else:
-					for m, b in zip(magnitudes, bandNames):
-						print m, b
-						newObject.addData(m, b)
+					for index, b in enumerate(bandNames):
+						print index, b, magnitudes[index*2], magnitudes[index*2 + 1]
+						newObject.addData(b,  magnitudes[index*2], magnitudes[index*2 + 1])
 				objects.append(newObject)
 				print newObject
 				
@@ -129,11 +134,11 @@ if __name__ == "__main__":
 	print "%d targets loaded"%len(objects)
 
 	for o in objects:
+		print "Calculating AB magnitude offsets for %s"%o.objectID
 		o.calculateOffsets()
 		o.calculateFluxes()
 		
 		o.addWavelengths(wavelengthLookup)
-		print o
 
 	PGPlotWindow = ppgplot.pgopen(arg.device) 
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
@@ -143,8 +148,7 @@ if __name__ == "__main__":
 	
 	for o in objects:
 		ppgplot.pgsch(1.6)
-		wavelengths, fluxes, bands = o.getWavelengthsFluxesBands()
-		print bands
+		wavelengths, fluxes, fluxerrors, bands = o.getFluxData()
 		fluxMax = max(fluxes)
 		fluxMin = min(fluxes)
 		wavelengthMin = min(wavelengths)
@@ -153,6 +157,8 @@ if __name__ == "__main__":
 		ppgplot.pglab("wavelength [\A]", "f\d\gn\u [mJy]", o.objectID)
 		ppgplot.pgsch(1.0)
 		ppgplot.pgpt(wavelengths, fluxes)
+		ppgplot.pgerrb(2, wavelengths, fluxes, fluxerrors, 0)
+		ppgplot.pgerrb(4, wavelengths, fluxes, fluxerrors, 0)
 	
 	ppgplot.pgclos()	
 	
