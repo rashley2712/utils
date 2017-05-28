@@ -216,39 +216,52 @@ if __name__ == "__main__":
 	pgramPGPlotWindow = ppgplot.pgopen(device)  
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]	
 	ppgplot.pgslct(pgramPGPlotWindow)
+	ppgplot.pgask(True)
+
+	from astropy.stats import LombScargle
+
 	for o in objects:
 		if o.hasEphemeris:
 			HJD = o.getColumn('HJD')
 			mag = o.getColumn('mag')
 			err = o.getColumn('err')
-			x = numpy.array(HJD)
-			y = numpy.array(mag)
+			frequency, power = LombScargle(HJD, mag, err).autopower(minimum_frequency=0.01,maximum_frequency=20, samples_per_peak = 10)
+			print len(frequency), "points in the periodogram"
+			#x = numpy.array(HJD)
+			#y = numpy.array(mag)
 			# Subtract the mean from the y-data
-			y_mean = numpy.mean(y)
-			y = y - y_mean
-			periods = numpy.linspace(plo, phi, 1000)
-			ang_freqs = 2 * numpy.pi / periods
-			power = signal.lombscargle(x, y, ang_freqs)
+			#y_mean = numpy.mean(y)
+			#y = y - y_mean
+			#periods = numpy.linspace(plo, phi, 1000)
+			#ang_freqs = 2 * numpy.pi / periods
+			#power = signal.lombscargle(x, y, ang_freqs)
 			# normalize the power
-			N = len(x)
-			power *= 2 / (N * y.std() ** 2)
+			#N = len(x)
+			# power *= 2 / (N * y.std() ** 2)
 	
-			ppgplot.pgenv(min(periods), max(periods), 0, max(power), 0, 0)
-			ppgplot.pgline(periods, power)
-			ppgplot.pglab("Period (d)", "Amplitude", "Lomb-Scargle: " + o.id)
-			bestPeriod = periods[numpy.argmax(power)]
+			ppgplot.pgenv(min(frequency), max(frequency), 0, max(power), 0, 0)
+			ppgplot.pgline(frequency, power)
+			
+			#ppgplot.pgenv(min(periods), max(periods), 0, max(power), 0, 0)
+			#ppgplot.pgline(periods, power)
+			ppgplot.pglab("Frequency (d\u-1\d)", "Amplitude", "Lomb-Scargle: " + o.id)
+			bestFrequency = frequency[numpy.argmax(power)]
 			lc = ppgplot.pgqci()
 			ls = ppgplot.pgqls()
 			ppgplot.pgsci(3)
 			ppgplot.pgsls(2)
-			ppgplot.pgline([bestPeriod, bestPeriod], [0, max(power)])
+			ppgplot.pgline([bestFrequency, bestFrequency], [0, max(power)])
 			ppgplot.pgsci(lc)
 			ppgplot.pgsls(ls)
-			print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
+			print "Best frequency: %f cycles per day"%bestFrequency
+			bestPeriod = 1/bestFrequency
+			print "%s Best period: %f days or %f hours"%(o.id, bestPeriod, bestPeriod * 24.)
+			print o.ephemeris
+			o.ephemeris.Period = bestPeriod
 
 	ppgplot.pgclos()	
 	
-	##########################################################################################################################
+##########################################################################################################################
 	# Phase Plots 
 	##########################################################################################################################
 	if arg.ps: device = "phaseplots.ps/ps"
@@ -282,6 +295,7 @@ if __name__ == "__main__":
 			ppgplot.pgenv(0. ,2.0 , magMax + meanError*2, magMin - meanError*2, 0, 0)
 			# ppgplot.pglab("Phase", "CRTS mag", "Phase plot: %s [%d]"%(o.id, len(phases)/2) )
 			ppgplot.pglab("Phase", "CRTS mag", "WD%s"%o.id)
+			ppgplot.pgtext(0.1, magMax + meanError*2 - 0.01, "%.2f d"%(o.ephemeris.Period))
 			ppgplot.pgsch(1.0)
 			ppgplot.pgpt(phases, mag)
 			ppgplot.pgerrb(2, phases, mag, err, 0)
