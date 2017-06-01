@@ -42,6 +42,12 @@ class sampleObservations:
 			print t['name'], len(t['HJD']), 'observations'
 			print t['HJD']	
 		
+	def getNumber(self):
+		return len(self.targets)	
+		
+	def getObs(self, index):
+		return self.targets[index]
+	
 
 if __name__ == "__main__":
 
@@ -142,28 +148,12 @@ if __name__ == "__main__":
 	
 	
 	
-	K2sini = []
+	K2s = []
 	for p,i in zip(periods, inclinations):
-		K2sini.append(massFunction(0.6, 0.2, p, i))
-		print "Period: %f [days], inclination: %f [deg], K2sini: %f"%(p, i/numpy.pi*180, K2sini[-1]) 
+		K2s.append(massFunction(0.6, 0.2, p, i))
+		print "Period: %f [days], inclination: %f [deg], K2: %f km/s"%(p, i/numpy.pi*180, K2s[-1]) 
 		
-	count = 0
-	nonDetectedPeriods = []
-	for p, k in zip(periods, K2sini):
-		if k<30: 
-			count+=1
-			nonDetectedPeriods.append(p)
-		
-	print "%f%% less than 30 km/s"%(float(count)/float(len(K2sini))*100.)
-
-	figure4 = plt.figure()
-	n, bins, patches = plt.hist(numpy.log10(nonDetectedPeriods), 14, facecolor='green', alpha=0.75, normed=False, cumulative=False)
-	plt.xlabel('$log_{10}(P_{orb})$ [d]')
-	plt.ylabel('N')
-	plt.title('Non-detected periods')
-	plt.grid(True)
-	plt.show(block=False)
-	
+	phases = numpy.random.rand(len(K2s))
 	
 	# Load the sample times from the sample times file
 	sampleTargets = []
@@ -183,7 +173,55 @@ if __name__ == "__main__":
 	
 	observations.dumpTargets()
 	
-	generalUtils.query_yes_no("Continue?")
+	def rv(K2, period, phase, date):
+		return K2 * numpy.sin(2*numpy.pi/period*date + 2*numpy.pi*phase)
 	
+	rvSTDs = []
+	for period, K2, phase in zip(periods, K2s, phases):
+		index = int(numpy.random.rand() * observations.getNumber())
+		obs = observations.getObs(index)
+		print "Random values are: %2.2f days and %.f km/s"%(period, K2)
+		print "Chosen observation is number %d which was %s."%(index, obs['name'])
+		measuredRVs = []
+		for date in obs['HJD']:
+			measuredRV = rv(K2, period, phase, date)
+			# print date, measuredRV
+			measuredRVs.append(measuredRV)
+			
+		rvScatter = numpy.std(measuredRVs)
+		
+		print "RV scatter is ", rvScatter 
+		rvSTDs.append(rvScatter)
+	
+	detected = []
+	not_detected = []
+	for p, rv in zip(periods, rvSTDs):
+		if rv< 30:
+			# print "Not detected", p, rv
+			not_detected.append(p)
+		else:
+			# print "Detected", p, rv
+			detected.append(p)
+	
+	percentageNotDetected = float(len(not_detected))/float(len(detected)) * 100.
+	print "Detected %d, Not detected %d  - ratio: %f"%(len(detected), len(not_detected), percentageNotDetected)
+	
+	figure4 = plt.figure()
+	n, bins, patches = plt.hist(numpy.log10(not_detected), 14, facecolor='red', alpha=0.75, normed=False, cumulative=False)
+	plt.xlabel('$log_{10}(P_{orb})$ [d]')
+	plt.ylabel('N')
+	plt.title('Non-detected periods')
+	plt.grid(True)
+	plt.show(block=False)
+	
+	figure5 = plt.figure()
+	n, bins, patches = plt.hist(numpy.log10(detected), 14, facecolor='green', alpha=0.75, normed=False, cumulative=False)
+	plt.xlabel('$log_{10}(P_{orb})$ [d]')
+	plt.ylabel('N')
+	plt.title('Detected periods')
+	plt.grid(True)
+	plt.show(block=False)
+	
+	generalUtils.query_yes_no("Continue?")
 	
 	
