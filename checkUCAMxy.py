@@ -49,7 +49,7 @@ if __name__ == "__main__":
 		for line in inputFile:
 			if line[0] != '#':
 				params = line.split()
-				print params
+				# print params
 				CCD = int(params[ccdIndex])
 				if CCD == desiredCCD:
 					xPosition = float(params[xIndex])
@@ -138,7 +138,7 @@ if __name__ == "__main__":
 		
 		matplotlib.pyplot.draw()
 		matplotlib.pyplot.show(block = False)
-		
+		matplotlib.pyplot.pause(0.001)
 		time.sleep(sleep)
 		
 	sys.exit()
