@@ -41,12 +41,30 @@ class sampleObservations:
 		for t in self.targets:
 			print t['name'], len(t['HJD']), 'observations'
 			print t['HJD']	
+			
+	def getExtremes(self):
+		for index, t in enumerate(self.targets):
+			earliest = numpy.min(t['HJD'])
+			latest = numpy.max(t['HJD'])
+			if index==0:
+				minTime = earliest
+				maxTime = latest
+			if earliest<minTime:
+				minTime = earliest
+			if latest>maxTime:
+				maxTime = latest
+		return minTime, maxTime
+			
 		
 	def getNumber(self):
 		return len(self.targets)	
 		
 	def getObs(self, index):
 		return self.targets[index]
+		
+	def getObsByName(self, name):
+		for t in self.targets:
+			if t['name'] == name: return t
 	
 
 if __name__ == "__main__":
@@ -57,6 +75,7 @@ if __name__ == "__main__":
 	parser.add_argument('--input', type=str, help='File containing a sample of periods to use as a period distribution.')
 	parser.add_argument('-n', type=int, default=100, help='Number of random periods to generate. Default is 100.')
 	parser.add_argument('-o', '--observations', type=str, help='Observation times')
+	parser.add_argument('--fake', type=int, help='Fake [n] observations evenly spaced over baseline of all observations. Specify [n].')
 	
 	arg = parser.parse_args()
 
@@ -102,9 +121,10 @@ if __name__ == "__main__":
 			samplePeriods.append(period)
 
 	else:
-		flatDistribution = numpy.random.rand(arg.n) * 2 - 1
+		flatDistribution = numpy.random.rand(arg.n) * 4 - 1
 		samplePeriods = 10**(flatDistribution)
-	
+		logSamplePeriods = numpy.log10(samplePeriods)
+		
 	periods = samplePeriods
 	logPeriods = numpy.log10(periods)	
 	# periods = numpy.random.rand(1000)
@@ -171,7 +191,18 @@ if __name__ == "__main__":
 			observations.addDataToTarget(name, HJD)
 		sampleTimesFile.close()
 	
+	if arg.fake is not None:
+		earliestObs, latestObs = observations.getExtremes()
+		obsLength = latestObs - earliestObs
+		numObs = arg.fake
+		fakeObs = [earliestObs + obsLength/30 * o for o in range(30)]
+		observations.addTarget('fake')
+		for f in fakeObs:
+			observations.addDataToTarget('fake', f)
+	
 	observations.dumpTargets()
+	
+		
 	
 	def rv(K2, period, phase, date):
 		return K2 * numpy.sin(2*numpy.pi/period*date + 2*numpy.pi*phase)
@@ -180,6 +211,8 @@ if __name__ == "__main__":
 	for period, K2, phase in zip(periods, K2s, phases):
 		index = int(numpy.random.rand() * observations.getNumber())
 		obs = observations.getObs(index)
+		if arg.fake is not None:
+			obs = observations.getObsByName('fake')
 		print "Random values are: %2.2f days and %.f km/s"%(period, K2)
 		print "Chosen observation is number %d which was %s."%(index, obs['name'])
 		measuredRVs = []
@@ -207,18 +240,35 @@ if __name__ == "__main__":
 	print "Detected %d, Not detected %d  - ratio: %f"%(len(detected), len(not_detected), percentageNotDetected)
 	
 	figure4 = plt.figure()
-	n, bins, patches = plt.hist(numpy.log10(not_detected), 14, facecolor='red', alpha=0.75, normed=False, cumulative=False)
+	not_detectedDist, bins, patches = plt.hist(numpy.log10(not_detected), 14, facecolor='red', alpha=0.75, normed=False, cumulative=False)
 	plt.xlabel('$log_{10}(P_{orb})$ [d]')
 	plt.ylabel('N')
-	plt.title('Non-detected periods')
+	plt.title('Non-detected periods (total sample size: %d)'%arg.n)
 	plt.grid(True)
 	plt.show(block=False)
 	
 	figure5 = plt.figure()
-	n, bins, patches = plt.hist(numpy.log10(detected), 14, facecolor='green', alpha=0.75, normed=False, cumulative=False)
+	detectedDist, bins, patches = plt.hist(numpy.log10(detected), 14, facecolor='green', alpha=0.75, normed=False, cumulative=False)
 	plt.xlabel('$log_{10}(P_{orb})$ [d]')
 	plt.ylabel('N')
-	plt.title('Detected periods')
+	plt.title('Detected periods (%d of total sample size: %d)'%(len(detected), arg.n))
+	plt.grid(True)
+	plt.show(block=False)
+	
+	index = 0
+	
+	percentages = []
+	for n, d in zip(not_detectedDist, detectedDist):
+		print n, d, bins[index], bins[index+1], n/d*100
+		percentages.append(n/d)
+		index+=1
+		
+	figure6 = plt.figure()
+	width = bins[1] - bins[0]
+	plt.bar(bins[:-1], percentages, width = width)
+	plt.xlabel('$log_{10}(P_{orb})$ [d]')
+	plt.ylabel('p(logP)')
+	plt.title('Probability of missing an RV detection')
 	plt.grid(True)
 	plt.show(block=False)
 	

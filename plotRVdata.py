@@ -8,6 +8,7 @@ import scipy.optimize
 import copy
 import ppgplot
 import gSheets
+import matplotlib
 
 class bcolors:
     HEADER = '\033[95m'
@@ -151,6 +152,7 @@ def finalFit(period, gamma, amplitude, phase, xdata, ydata, yerrors):
     print "Final results", results
     return zip(results, errors)
     
+    
 def phasePlot(plotData, plotHandle = -1, device='/xs'):
     # Calculate the phases for the xdata
     global xStart
@@ -293,7 +295,7 @@ if __name__ == "__main__":
 		phasePGPlotWindow = ppgplot.pgopen("/xs")
 		ppgplot.pgask(True)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	ppgplot.pgpap(12, 1.618 )
+	ppgplot.pgpap(5, 1.618 )
 	# ppgplot.pglab("x axis", "y axis", "heading")
 	ppgplot.pgsubp(3, 8)
 	# ppgplot.pgsch(4)

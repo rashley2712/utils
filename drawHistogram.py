@@ -8,7 +8,7 @@ import loadingSavingUtils, statsUtils
 import spectrumClasses, timeClasses
 import scipy.optimize
 import copy
-import ppgplot
+import matplotlib.pyplot
 import scipy.signal as signal
 
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Loads CSV file and plots histogram.')
 	parser.add_argument('filename', type=str, nargs='+', help='Filename of CSV file..')	
-	parser.add_argument('--ps', action='store_true', help = "Dump plots to ps files instead of the screen.")
+	parser.add_argument('--save', type=str, help = "Dump the plot to file. Specify the filename with an extension.")
 	
 	
 	arg = parser.parse_args()
@@ -99,7 +99,21 @@ if __name__ == "__main__":
 	
 	print "%d targets loaded"%len(names)
 
-	if arg.ps: device = "histogram.ps/ps"
+	# Draw the histogram of the input data
+	figure1 = matplotlib.pyplot.figure()
+	n, bins, patches = matplotlib.pyplot.hist(logPeriods, 7, facecolor='green', alpha=0.75, cumulative=False)
+	print n, bins, patches
+	print "Total in bins:", sum(n)
+	matplotlib.pyplot.xlabel('$P_{orb}$ [d]')
+	matplotlib.pyplot.ylabel('N')
+	matplotlib.pyplot.title('Observed period distribution')
+	matplotlib.pyplot.grid(True)
+
+	matplotlib.pyplot.show()
+	if arg.save is not None:
+		figure1.savefig(arg.save, bbox_inches='tight')
+
+	"""if arg.ps: device = "histogram.ps/ps"
 	else: device = "/xs"
 	PGPlotWindow = ppgplot.pgopen(device) 
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
@@ -114,7 +128,7 @@ if __name__ == "__main__":
 	ppgplot.pghist(logPeriods, -1.5, 1.5, 9, 5)
 	
 	ppgplot.pgclos()	
-	
+	"""
 	sys.exit()
 	
 	
