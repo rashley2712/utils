@@ -65,6 +65,21 @@ class object:
 			HJD = [b + 2400000.5 for b in BMJD]
 			self.setHJDs(MJD, HJD)
 		
+		
+class population:
+	def __init__(self, name):
+		self.periods = []
+		self.objectNames = []
+		self.studyname = name
+		self.plotColour = 'g'
+		
+	def addPeriod(self, objectName, period):
+		self.periods.append(period)
+		self.objectNames.append(objectName)
+		
+	def getLogPeriods(self):
+		return [numpy.log10(p) for p in self.periods]
+		
 	
 if __name__ == "__main__":
 
@@ -78,8 +93,10 @@ if __name__ == "__main__":
 	files = arg.filename
 	names = []
 	periods = []
-	
+	study = []
+	populations = []
 	for f in files:
+		p = population(f)
 		inputFile = open(f, 'rt')
 		headers = inputFile.readline().strip()
 		print headers
@@ -87,26 +104,36 @@ if __name__ == "__main__":
 			fields = line.strip().split(",")
 			try:
 				name = str(fields[0])
-				period = float(fields[1])
+				period = float(fields[-1])
 				periods.append(period)
 				names.append(name)
-			except ValueError as e:
+				study.append(f)
+				p.addPeriod(name, period)
+			except (ValueError, IndexError) as e:
 				print "No valid period for ", name
-	
+		populations.append(p)
+	print zip(names, periods, study)
 	logPeriods = [numpy.log10(p) for p in periods]
-	# print zip(names, periods)
 	# print zip(names, logPeriods)
+	
+	populations[1].plotColour = 'r'
+	
+	for p in populations:
+		print p.studyname, p.getLogPeriods()
 	
 	print "%d targets loaded"%len(names)
 
 	# Draw the histogram of the input data
-	figure1 = matplotlib.pyplot.figure()
-	n, bins, patches = matplotlib.pyplot.hist(logPeriods, 7, facecolor='green', alpha=0.75, cumulative=False)
-	print n, bins, patches
+	figure1 = matplotlib.pyplot.figure(figsize=(7,10))
+	for p in populations:
+		binwidth=0.5
+		data = p.getLogPeriods()
+		n, bins, patches = matplotlib.pyplot.hist(p.getLogPeriods(), bins=numpy.arange(min(data), max(data) + binwidth, binwidth), facecolor=p.plotColour, alpha=0.75, cumulative=False)
+		print n, bins, patches
 	print "Total in bins:", sum(n)
-	matplotlib.pyplot.xlabel('$P_{orb}$ [d]')
-	matplotlib.pyplot.ylabel('N')
-	matplotlib.pyplot.title('Observed period distribution')
+	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=18)
+	matplotlib.pyplot.ylabel('N',fontsize=18)
+	matplotlib.pyplot.title('Observed period distribution',fontsize=18)
 	matplotlib.pyplot.grid(True)
 
 	matplotlib.pyplot.show()
