@@ -73,6 +73,8 @@ if __name__ == "__main__":
 	#parser.add_argument('filename', type=str, nargs='+', help='Filename of CSV file..')	
 	parser.add_argument('--device', type=str, default='/xs', help = "Dump to the following device. Default is '/xs'.")
 	parser.add_argument('--input', type=str, help='File containing a sample of periods to use as a period distribution.')
+	parser.add_argument('-p', '--probability', type=str, help='File containing a probability distribution in log P.')
+	
 	parser.add_argument('-n', type=int, default=100, help='Number of random periods to generate. Default is 100.')
 	parser.add_argument('-o', '--observations', type=str, help='Observation times')
 	parser.add_argument('--fake', type=int, help='Fake [n] observations evenly spaced over baseline of all observations. Specify [n].')
@@ -84,6 +86,8 @@ if __name__ == "__main__":
 	samplePeriods = []
 	if arg.input is not None:
 		inputFile = open(arg.input, 'rt')
+		headers = inputFile.readline().strip()
+		
 		for line in inputFile:
 			values = line.strip().split('\t')
 			names.append(values[0])
@@ -128,6 +132,43 @@ if __name__ == "__main__":
 	periods = samplePeriods
 	logPeriods = numpy.log10(periods)	
 	# periods = numpy.random.rand(1000)
+
+	if arg.probability is not None:
+		inputFile = open(arg.probability, 'rt')
+		headers = inputFile.readline().strip()
+		bins = []
+		probabilities = []
+		for line in inputFile:
+			fields = line.strip().split('\t')
+			print fields
+			try:
+				bin = float(fields[0])
+				probability = float(fields[1])
+				bins.append(bin)
+				probabilities.append(probability)
+			except (ValueError, IndexError):
+				print "Could not parse a line in the file"
+		binWidth = bins[1] - bins[0]	
+		probabilities = numpy.array(probabilities) / sum(probabilities)
+		samplePeriods = []	
+		for i in range(arg.n):
+			testPeriod = numpy.random.choice(bins, p = probabilities)	
+			delta = numpy.random.rand() * binWidth
+			print testPeriod, delta
+			period = 10**(testPeriod + delta)
+			print "Sample period: ", period
+			samplePeriods.append(period)
+			
+		probabilityFigure = plt.figure()
+		plt.step(bins, probabilities)
+		periods = samplePeriods
+		logPeriods = numpy.log10(samplePeriods)	
+		# plt.hist(logPeriods, normed = True, alpha=0.5, color = 'g')
+		plt.draw()
+		plt.show(block = False)
+	
+	generalUtils.query_yes_no("Continue?")
+	
 
 	figure2 = plt.figure()		
 	n, bins, patches = plt.hist(logPeriods, 14, facecolor='grey', alpha=0.75, cumulative=False)
