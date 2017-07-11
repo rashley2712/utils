@@ -179,9 +179,6 @@ if __name__ == "__main__":
 	periods = samplePeriods
 	logPeriods = numpy.log10(periods)	
 	
-	generalUtils.query_yes_no("Continue?")
-	
-
 	figure2 = plt.figure()		
 	n, bins, patches = plt.hist(logPeriods, 14, facecolor='grey', alpha=0.75, cumulative=False)
 	print n, bins, patches
@@ -267,7 +264,7 @@ if __name__ == "__main__":
 		measuredRVs = []
 		for date in obs['HJD']:
 			measuredRV = rv(K2, period, phase, date)
-			print date, measuredRV
+			# print date, measuredRV
 			measuredRVs.append(measuredRV)
 			
 		rvScatter = numpy.std(measuredRVs)
@@ -278,7 +275,7 @@ if __name__ == "__main__":
 	detected = []
 	not_detected = []
 	for p, rv in zip(periods, rvSTDs):
-		if rv< 30:
+		if rv< 15:
 			# print "Not detected", p, rv
 			not_detected.append(p)
 		else:
@@ -322,6 +319,20 @@ if __name__ == "__main__":
 	plt.title('Probability of missing an RV detection')
 	plt.grid(True)
 	plt.show(block=False)
+	
+	figure7 = plt.figure()
+	plt.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=16)
+	plt.ylabel('p(logP)',fontsize=16)
+	plt.title('Detections: Willems & Kolb input distribution', fontsize=18)
+	weights = numpy.ones_like(logPeriods)/float(len(logPeriods))
+		
+	inputDist, bins, patches = plt.hist(logPeriods, 20, facecolor='red', alpha=0.5, normed=False, cumulative=False, weights = weights, label='input probability')
+	weights = numpy.ones_like(numpy.log10(detected))/float(len(logPeriods))
+	detectedDist, bins, patches = plt.hist(numpy.log10(detected), 20, facecolor='green', alpha=1.0, normed=False, cumulative=False, weights = weights, label='detection rate')
+	plt.grid(True)
+	plt.legend(loc='lower left')
+	plt.show(block=False)
+	plt.savefig('comparison.pdf')
 	
 	generalUtils.query_yes_no("Continue?")
 	
