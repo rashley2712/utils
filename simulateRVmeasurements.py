@@ -150,22 +150,34 @@ if __name__ == "__main__":
 				print "Could not parse a line in the file"
 		binWidth = bins[1] - bins[0]	
 		probabilities = numpy.array(probabilities) / sum(probabilities)
+		print bins
+		print probabilities
+		print sum(probabilities)
+		generalUtils.query_yes_no("Continue?")
+	
 		samplePeriods = []	
 		for i in range(arg.n):
 			testPeriod = numpy.random.choice(bins, p = probabilities)	
 			delta = numpy.random.rand() * binWidth
-			print testPeriod, delta
+			print testPeriod, delta, testPeriod + delta
 			period = 10**(testPeriod + delta)
 			print "Sample period: ", period
 			samplePeriods.append(period)
 			
 		probabilityFigure = plt.figure()
-		plt.step(bins, probabilities)
-		periods = samplePeriods
+		plt.step(bins, probabilities, where='post')
 		logPeriods = numpy.log10(samplePeriods)	
-		# plt.hist(logPeriods, normed = True, alpha=0.5, color = 'g')
+		weights = numpy.ones_like(logPeriods)/float(len(logPeriods))
+		n, newbins, patches = plt.hist(logPeriods, weights=weights, bins = bins, normed = False, alpha=0.5, color = 'g')
+		print zip(n, newbins)
+		plt.xlabel('$P_{orb}$ [d]')
+		plt.ylabel('Probability')
+		plt.title('Input period distribution')
 		plt.draw()
 		plt.show(block = False)
+	
+	periods = samplePeriods
+	logPeriods = numpy.log10(periods)	
 	
 	generalUtils.query_yes_no("Continue?")
 	
@@ -206,11 +218,8 @@ if __name__ == "__main__":
 	plt.show(block=False)
 	"""
 	
-	
-	
-	
 	K2s = []
-	for p,i in zip(periods, inclinations):
+	for p, i in zip(periods, inclinations):
 		K2s.append(massFunction(0.6, 0.2, p, i))
 		print "Period: %f [days], inclination: %f [deg], K2: %f km/s"%(p, i/numpy.pi*180, K2s[-1]) 
 		
@@ -242,8 +251,7 @@ if __name__ == "__main__":
 			observations.addDataToTarget('fake', f)
 	
 	observations.dumpTargets()
-	
-		
+	generalUtils.query_yes_no("Continue?")
 	
 	def rv(K2, period, phase, date):
 		return K2 * numpy.sin(2*numpy.pi/period*date + 2*numpy.pi*phase)
@@ -259,7 +267,7 @@ if __name__ == "__main__":
 		measuredRVs = []
 		for date in obs['HJD']:
 			measuredRV = rv(K2, period, phase, date)
-			# print date, measuredRV
+			print date, measuredRV
 			measuredRVs.append(measuredRV)
 			
 		rvScatter = numpy.std(measuredRVs)
@@ -299,14 +307,16 @@ if __name__ == "__main__":
 	index = 0
 	
 	percentages = []
+	probability_not_detection = []
 	for n, d in zip(not_detectedDist, detectedDist):
 		print n, d, bins[index], bins[index+1], n/d*100
-		percentages.append(n/d)
+		percentages.append(n/(d))
+		probability_not_detection.append(n/(n+d))
 		index+=1
 		
 	figure6 = plt.figure()
 	width = bins[1] - bins[0]
-	plt.bar(bins[:-1], percentages, width = width)
+	plt.bar(bins[:-1], probability_not_detection, width = width)
 	plt.xlabel('$log_{10}(P_{orb})$ [d]')
 	plt.ylabel('p(logP)')
 	plt.title('Probability of missing an RV detection')
