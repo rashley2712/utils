@@ -11,6 +11,7 @@ import copy
 import scipy.signal as signal
 
 import matplotlib.pyplot
+from matplotlib import rc
 
 		
 class population:
@@ -38,6 +39,13 @@ if __name__ == "__main__":
 	parser.add_argument('--save', type=str, help = "Dump the plot to file. Specify the filename with an extension.")
 	parser.add_argument('-p', '--probability', type=str,  help= 'File(s) containing an input population probability.')
 	
+	rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+	## for Palatino and other serif fonts use:
+	rc('font',**{'family':'serif','serif':['Palatino']})
+	rc('text', usetex=True)
+	figSize = 10
+	labelSize = 16
+	tickSize = 14
 	
 	arg = parser.parse_args()
 
@@ -64,6 +72,12 @@ if __name__ == "__main__":
 			p.periods = fixPeriods 
 			p.plotColour = 'k'
 			p.studyname = "Nebot et al (2014)"
+		if p.studyname == 'simulated_periods.tsv':
+			p.studyname = 'Willems \& Kolb (2004)'
+			p.plotColour = 'k'
+		if p.studyname == 'periods.tsv':
+			p.studyname = "This study"
+			p.plotColour = 'g'
 			
 	if arg.probability is not None:
 		print arg.probability 
@@ -89,23 +103,28 @@ if __name__ == "__main__":
 			
 	figure2 = matplotlib.pyplot.figure()
 	
+	binwidth=0.2
+	data = populations[0].getLogPeriods()
+	bins=numpy.arange(min(data), max(data) + binwidth, binwidth)
 	for p in populations:
 		print p
-		binwidth=0.2
 		data = p.getLogPeriods()
-		n, bins, patches = matplotlib.pyplot.hist(p.getLogPeriods(), facecolor=p.plotColour, alpha=0.75, cumulative=False, normed = True, histtype = 'step')
+		n, bins, patches = matplotlib.pyplot.hist(p.getLogPeriods(), facecolor=p.plotColour, bins=bins, alpha=0.5, cumulative=False, normed = True, label=p.studyname)
 		# n, bins, patches = matplotlib.pyplot.hist(p.getLogPeriods(), bins=numpy.arange(min(data), max(data) + binwidth, binwidth), facecolor=p.plotColour, alpha=0.75, cumulative=True, normed = True, histtype = 'step')
 		print n, bins, patches
 	
 		print "Total in bins:", sum(n)
-	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=18)
-	matplotlib.pyplot.ylabel('N',fontsize=18)
-	matplotlib.pyplot.title('Cumulative period distribution',fontsize=18)
+	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize= labelSize)
+	matplotlib.pyplot.ylabel('N',fontsize= labelSize)
+	matplotlib.pyplot.title('Normalised period distribution',fontsize=labelSize)
 	matplotlib.pyplot.grid(True)
-
+	matplotlib.pyplot.legend()
+	axes = matplotlib.pyplot.gca()
+	for label in (axes.get_xticklabels() + axes.get_yticklabels()):
+		label.set_fontsize(tickSize)
 	matplotlib.pyplot.show(block = False)
 	if arg.save is not None:
-		figure1.savefig(arg.save, bbox_inches='tight')
+		matplotlib.pyplot.savefig('hist_' + arg.save, bbox_inches='tight')
 
 	figure2 = matplotlib.pyplot.figure()
 	for p in populations:
@@ -121,15 +140,21 @@ if __name__ == "__main__":
 			xvalues.append(s)
 			yvalues.append(y)
 	
-		matplotlib.pyplot.step(xvalues, yvalues, color=p.plotColour)
+		matplotlib.pyplot.step(xvalues, yvalues, color=p.plotColour, label=p.studyname)
 	
 	
-	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=16)
-	matplotlib.pyplot.ylabel('$N_{>log_{10}(P_{orb})} / N_{total}$',fontsize=16)
-	matplotlib.pyplot.title('Cumulative period distribution',fontsize=16)
+	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=labelSize)
+	matplotlib.pyplot.ylabel('$N_{>log_{10}(P_{orb})} / N_{total}$',fontsize=labelSize)
+	matplotlib.pyplot.title('Cumulative period distribution',fontsize=labelSize)
 	# legend = figure2.legend( (line1), 'Nebot',  loc='upper left', shadow=True)
+	axes = matplotlib.pyplot.gca()
+	for label in (axes.get_xticklabels() + axes.get_yticklabels()):
+		label.set_fontsize(tickSize)
+	matplotlib.pyplot.legend()
 	matplotlib.pyplot.show(block = False)
-	
+	if arg.save is not None:
+		matplotlib.pyplot.savefig('cumulative_' + arg.save, bbox_inches='tight')
+
 	testPopulation = sorted(populations[0].getLogPeriods())
 	modelPopulation = sorted(populations[1].getLogPeriods())
 	print "Test population:", testPopulation

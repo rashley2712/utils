@@ -116,4 +116,11 @@ if __name__ == "__main__":
 """
 	outputFile.write(footer)	
 	outputFile.close()
+	
+	print "Writing raw ascii file too"
+	outputFile = open("dump.txt", 'wt')
+	for o in objects:
+		for hjd, v, verr in zip(o.HJD, o.velocities, o.velErrors):
+			outputFile.write("%s\t%f\t%4.1f\t%2.1f\n"%(o.id, hjd, v, verr))
+	outputFile.close()
 

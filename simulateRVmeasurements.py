@@ -13,6 +13,8 @@ import scipy.signal as signal
 
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
+from matplotlib import rc
+
 
 def massFunction(m1, m2, period, i):
 	Msol =  1.989e30  		# Solar mass (kg)
@@ -78,8 +80,19 @@ if __name__ == "__main__":
 	parser.add_argument('-n', type=int, default=100, help='Number of random periods to generate. Default is 100.')
 	parser.add_argument('-o', '--observations', type=str, help='Observation times')
 	parser.add_argument('--fake', type=int, help='Fake [n] observations evenly spaced over baseline of all observations. Specify [n].')
+	parser.add_argument('--baseline', type=float, help='Baseline in years over which to fake the observations.') 
+	parser.add_argument('-s', '--sigma', default=15.0,  type=float, help='Measurement error in km/s of a typical spectral line fit.') 
+	
 	
 	arg = parser.parse_args()
+
+	rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+	## for Palatino and other serif fonts use:
+	rc('font',**{'family':'serif','serif':['Palatino']})
+	rc('text', usetex=True)
+	figSize = 10
+	labelSize = 16
+	tickSize = 14
 
 	
 	names = []
@@ -163,7 +176,14 @@ if __name__ == "__main__":
 			period = 10**(testPeriod + delta)
 			print "Sample period: ", period
 			samplePeriods.append(period)
-			
+		
+		# Write out these periods as a sample
+		outfile = open('simulated_periods.tsv', 'wt')
+		outfile.write('Name\tperiod(d)\n')
+		for p in samplePeriods:
+			print p
+			outfile.write('sample\t%f\n'%(p))
+		outfile.close()	
 		probabilityFigure = plt.figure()
 		plt.step(bins, probabilities, where='post')
 		logPeriods = numpy.log10(samplePeriods)	
@@ -241,8 +261,10 @@ if __name__ == "__main__":
 	if arg.fake is not None:
 		earliestObs, latestObs = observations.getExtremes()
 		obsLength = latestObs - earliestObs
+		if arg.baseline is not None:
+			obsLength = arg.baseline * 365.
 		numObs = arg.fake
-		fakeObs = [earliestObs + obsLength/30 * o for o in range(30)]
+		fakeObs = [earliestObs + obsLength/numObs * o for o in range(numObs)]
 		observations.addTarget('fake')
 		for f in fakeObs:
 			observations.addDataToTarget('fake', f)
@@ -275,8 +297,8 @@ if __name__ == "__main__":
 	detected = []
 	not_detected = []
 	for p, rv in zip(periods, rvSTDs):
-		if rv< 15:
-			# print "Not detected", p, rv
+		if rv<arg.sigma:
+					# print "Not detected", p, rv
 			not_detected.append(p)
 		else:
 			# print "Detected", p, rv
@@ -321,9 +343,9 @@ if __name__ == "__main__":
 	plt.show(block=False)
 	
 	figure7 = plt.figure()
-	plt.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=16)
-	plt.ylabel('p(logP)',fontsize=16)
-	plt.title('Detections: Willems & Kolb input distribution', fontsize=18)
+	plt.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=labelSize)
+	plt.ylabel('p(logP)',fontsize=labelSize)
+	plt.title('Detections: Flat input distribution', fontsize=labelSize)
 	weights = numpy.ones_like(logPeriods)/float(len(logPeriods))
 		
 	inputDist, bins, patches = plt.hist(logPeriods, 20, facecolor='red', alpha=0.5, normed=False, cumulative=False, weights = weights, label='input probability')
@@ -331,6 +353,9 @@ if __name__ == "__main__":
 	detectedDist, bins, patches = plt.hist(numpy.log10(detected), 20, facecolor='green', alpha=1.0, normed=False, cumulative=False, weights = weights, label='detection rate')
 	plt.grid(True)
 	plt.legend(loc='lower left')
+	axes = plt.gca()
+	for label in (axes.get_xticklabels() + axes.get_yticklabels()):
+		label.set_fontsize(tickSize)
 	plt.show(block=False)
 	plt.savefig('comparison.pdf')
 	
