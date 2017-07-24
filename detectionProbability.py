@@ -23,7 +23,6 @@ def setMatplotlibDefaults():
 	rc('font',**{'family':'serif','serif':['Palatino']})
 	rc('text', usetex=True)
 	params = {	'axes.labelsize': 'x-large',
-				'axes.figsize': 'x-large', 
 				'xtick.labelsize': 'large',
 				'ytick.labelsize': 'large',
 			}
