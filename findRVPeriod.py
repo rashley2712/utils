@@ -8,6 +8,7 @@ import scipy.optimize
 import copy
 import ppgplot
 import gSheets
+import matplotlib.pyplot
 
 class bcolors:
     HEADER = '\033[95m'
@@ -235,10 +236,22 @@ if __name__ == "__main__":
 	print len(dates)
 	
 	from astropy.stats import LombScargle
-	frequency, power = LombScargle(dates, velocities, velErrors).autopower(minimum_frequency=0.01,maximum_frequency=20, samples_per_peak = 10)
+	frequency, power = LombScargle(dates, velocities, velErrors).autopower(minimum_frequency=0.01,maximum_frequency=5, samples_per_peak = 10)
 	print len(frequency), "points in the periodogram"
 	
+	bestFrequency = frequency[numpy.argmax(power)]
+	print "Best frequency: %f cycles per day"%bestFrequency
+	bestPeriod = 1/bestFrequency
+	print "%s Best period: %f days or %f hours"%(arg.objectname, bestPeriod, bestPeriod * 24.)
+	
+	
 	generalUtils.setMatplotlibDefaults()
+	
+	matplotlib.pyplot.plot(frequency, power)
+	
+	matplotlib.pyplot.show(block = False)
+	
+	generalUtils.query_yes_no("Continue?")
 	sys.exit()
     
 	"""
