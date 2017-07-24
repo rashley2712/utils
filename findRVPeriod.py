@@ -189,51 +189,59 @@ def phasePlot(plotData, plotHandle = -1, device='/xs'):
     
 
 if __name__ == "__main__":  
-    parser = argparse.ArgumentParser(description='Loads a CSV file containing HJDs and RVs and tries to fit a period and sinusoid to the data.')
-    # parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
-    parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
-    parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .CSV file.')
-    parser.add_argument('--plo', type=float, default= 0.01, help='Period (days) to start the search. Default is 0.01 days.') 
-    parser.add_argument('--phi', type=float, default= 10.0, help='Period (days) to stop the search. Default is 10 days.') 
-    parser.add_argument('objectname', type=str, help='Object name.')
-    parser.add_argument('--ps', type=str, default='none', help='Output final plot to a .ps file, specify the name. Default is ''none''')
-    arg = parser.parse_args()
-    # print arg
-    plo = arg.plo
-    phi = arg.phi
-    if arg.ps!='none':
-        outputPS = True
-        psFilename = arg.ps
-    else:
-        outputPS = False
+	parser = argparse.ArgumentParser(description='Loads a CSV file containing HJDs and RVs and tries to fit a period and sinusoid to the data.')
+	# parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
+	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
+	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .CSV file.')
+	parser.add_argument('--plo', type=float, default= 0.01, help='Period (days) to start the search. Default is 0.01 days.') 
+	parser.add_argument('--phi', type=float, default= 10.0, help='Period (days) to stop the search. Default is 10 days.') 
+	parser.add_argument('objectname', type=str, help='Object name.')
+	parser.add_argument('--ps', type=str, default='none', help='Output final plot to a .ps file, specify the name. Default is ''none''')
+	arg = parser.parse_args()
+	# print arg
+	plo = arg.plo
+	phi = arg.phi
+	if arg.ps!='none':
+		outputPS = True
+		psFilename = arg.ps
+	else:
+		outputPS = False
     
-    # Load the fitted wavelength data from the Google Doc
-    docInstance = gSheets.gSheetObject()
-    docInstance.initCredentials()
-    docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
-    docInstance.setObjectName(arg.objectname)
-    docInstance.loadAllReadings()
+	# Load the fitted wavelength data from the Google Doc
+	docInstance = gSheets.gSheetObject()
+	docInstance.initCredentials()
+	docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
+	docInstance.setObjectName(arg.objectname)
+	docInstance.loadAllReadings()
     
-    data = docInstance.readings
-    print "Loaded data for %s from the Google Doc."%arg.objectname
-    print "%d data points loaded."%len(data)
-    dates = []
-    velocities = []
-    velErrors = []
-    good = []
-    print "HJD\t\tVelocity (km/s)\tVel error"
-    for index, d in enumerate(data):
-        good = d['good']
-        if good==0: print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
-        else: 
-            print "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error'])
-            dates.append(d['HJD'])
-            velocities.append(d['RV'])
-            velErrors.append(d['RV error'])
+	data = docInstance.readings
+	print "Loaded data for %s from the Google Doc."%arg.objectname
+	print "%d data points loaded."%len(data)
+	dates = []
+	velocities = []
+	velErrors = []
+	good = []
+	print "HJD\t\tVelocity (km/s)\tVel error"
+	for index, d in enumerate(data):
+		good = d['good']
+		if good==0: 
+			print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
+		else: 
+			print "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error'])
+			dates.append(d['HJD'])
+			velocities.append(d['RV'])
+			velErrors.append(d['RV error'])
             
-    print len(dates)
+	print len(dates)
+	
+	from astropy.stats import LombScargle
+	frequency, power = LombScargle(dates, velocities, velErrors).autopower(minimum_frequency=0.01,maximum_frequency=20, samples_per_peak = 10)
+	print len(frequency), "points in the periodogram"
+	
+	generalUtils.setMatplotlibDefaults()
+	sys.exit()
     
-    
+	"""
     phasePGPlotWindow = ppgplot.pgopen(arg.device)  
     ppgplot.pgask(False)
     pgPlotTransform = [0, 1, 0, 0, 0, 1]
@@ -428,5 +436,5 @@ if __name__ == "__main__":
     
     ppgplot.pgend()
     sys.exit()
-    
+		"""
    
