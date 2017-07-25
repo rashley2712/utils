@@ -36,6 +36,9 @@ def sineFixedGammaAmplitude(x, period, phase):
     y = gamma + amplitude * numpy.sin(w * x + phase)
     return y
     
+def sineFit(x, gamma, k2, freq, phase):
+	y = gamma + k2 * numpy.sin(2.*numpy.pi * x * freq + phase)
+	return y
     
 def sineFreqPhase(x, gamma, amplitude, f, p):
     y = gamma + (amplitude * numpy.sin(2.*math.pi*f*(x + p)))
@@ -194,8 +197,8 @@ if __name__ == "__main__":
 	# parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
 	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .CSV file.')
-	parser.add_argument('--plo', type=float, default= 0.01, help='Period (days) to start the search. Default is 0.01 days.') 
-	parser.add_argument('--phi', type=float, default= 10.0, help='Period (days) to stop the search. Default is 10 days.') 
+	parser.add_argument('--plo', type=float, default= 0.1, help='Period (days) to start the search. Default is 0.01 days.') 
+	parser.add_argument('--phi', type=float, default= 50.0, help='Period (days) to stop the search. Default is 10 days.') 
 	parser.add_argument('objectname', type=str, help='Object name.')
 	parser.add_argument('--ps', type=str, default='none', help='Output final plot to a .ps file, specify the name. Default is ''none''')
 	arg = parser.parse_args()
@@ -235,15 +238,17 @@ if __name__ == "__main__":
             
 	print len(dates)
 	
+	minimumFrequency = 1/phi
+	maximumFrequency = 1/plo
+	
 	from astropy.stats import LombScargle
-	frequency, power = LombScargle(dates, velocities, velErrors).autopower(minimum_frequency=0.01,maximum_frequency=5, samples_per_peak = 10)
+	frequency, power = LombScargle(dates, velocities, velErrors).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak = 10)
 	print len(frequency), "points in the periodogram"
 	
 	bestFrequency = frequency[numpy.argmax(power)]
 	print "Best frequency: %f cycles per day"%bestFrequency
 	bestPeriod = 1/bestFrequency
 	print "%s Best period: %f days or %f hours"%(arg.objectname, bestPeriod, bestPeriod * 24.)
-	
 	
 	generalUtils.setMatplotlibDefaults()
 	
@@ -252,102 +257,49 @@ if __name__ == "__main__":
 	matplotlib.pyplot.show(block = False)
 	
 	generalUtils.query_yes_no("Continue?")
+	
+	x = numpy.array(dates)
+	y = numpy.array(velocities)
+	err = numpy.array(velErrors)
+	
+	x_values = numpy.array(dates)
+	y_values = numpy.array(velocities)
+	y_errors = numpy.array(velErrors)
+	
+	# print x_values, y_values, y_errors
+	
+	k2 = (max(y_values) - min(y_values)) / 2.0
+	gamma = numpy.mean(y_values)
+	phase = 0.0
+	guess = [gamma, k2, bestFrequency, phase]
+	print "Guess:", guess
+	upperBounds = [100, 200, maximumFrequency, 2.*numpy.pi ]
+	lowerBounds = [-100, 0 , minimumFrequency, 0.0 ]
+	bounds = (lowerBounds, upperBounds)
+	
+	results, covariance = scipy.optimize.curve_fit(sineFit, x_values, y_values, p0 = guess, sigma = y_errors, bounds = bounds)
+	errors = numpy.sqrt(numpy.diag(covariance))
+	gammaFit = results[0]
+	gammaError = errors[0]
+	k2Fit = results[1]
+	k2Error = errors[1]
+	frequencyFit = results[2]
+	frequencyError = errors[2]
+	phaseFit = results[3]
+	phaseError = errors[3]
+	periodFit = 1/frequencyFit
+	periodError = frequencyError/frequencyFit/frequencyFit
+	print "Result of curve fit: "
+	print "\tgamma velocity: \t%s[%s] km/s"%generalUtils.formatValueError(gammaFit, gammaError)
+	print "\tk2 amplitude: \t%s[%s] km/s"%generalUtils.formatValueError(k2Fit, k2Error)
+	print "\tfrequency: \t%s[%s] /d"%generalUtils.formatValueError(frequencyFit, frequencyError)
+	print "\tperiod: \t%s[%s] days"%generalUtils.formatValueError(periodFit, periodError)
+	print "\tphase: \t\t\t%s[%s]"%generalUtils.formatValueError(phaseFit, phaseError)
+	
 	sys.exit()
-    
+     
 	"""
-    phasePGPlotWindow = ppgplot.pgopen(arg.device)  
-    ppgplot.pgask(False)
-    pgPlotTransform = [0, 1, 0, 0, 0, 1]
-    
-    ppgplot.pgslct(phasePGPlotWindow)   
-    ppgplot.pgsci(1)
-    xStart = 2457000
-    xStart = dates[0]
-    reducedDates = [d - xStart for d in dates]
-    startDate = min(reducedDates)
-    endDate = max(reducedDates)
-    maxVel = max(velocities)
-    minVel = min(velocities)
-    velRange = (maxVel - minVel)/2.0
-    print "Start date: %f, End date: %f, Velocity range: %f km/s"%(startDate, endDate, velRange)
-    ppgplot.pgenv(0, len(dates), - 1.2 * velRange, 1.2 * velRange, 0, 0 )
-    #ppgplot.pgenv(startDate, endDate, -velRange, velRange, 0, 0)
-    
-    ppgplot.pgpt(range(len(dates)), velocities)
-    ppgplot.pgerrb(2, range(len(dates)), velocities, velErrors, 0)
-    ppgplot.pgerrb(4, range(len(dates)), velocities, velErrors, 0)
-
-    ppgplot.pglab("Point number", "Radial velocity km/s", arg.objectname)
-    
-    print "Press Enter to continue..."
-    sys.stdin.read(1)
-    
-    x = numpy.array(reducedDates)
-    y = numpy.array(velocities)
-    # Subtract the mean from the y-data
-    y_mean = numpy.mean(y)
-    y = y - y_mean
-    import scipy.signal as signal
-    
-    periods = numpy.linspace(plo, phi, 1000)
-    ang_freqs = 2 * numpy.pi / periods
-    power = signal.lombscargle(x, y, ang_freqs)
-    # normalize the power
-    N = len(x)
-    power *= 2 / (N * y.std() ** 2)
-
-    pgramPGPlotWindow = ppgplot.pgopen(arg.device)  
-    ppgplot.pgask(False)
-    pgPlotTransform = [0, 1, 0, 0, 0, 1]
-
-    ppgplot.pgslct(pgramPGPlotWindow)
-    ppgplot.pgenv(min(periods), max(periods), 0, max(power), 0, 0)
-    ppgplot.pgline(periods, power)
-    ppgplot.pglab("Period (d)", "Amplitude", "Lomb-Scargle: " + arg.objectname)
-    bestPeriod = periods[numpy.argmax(power)]
-    lc = ppgplot.pgqci()
-    ls = ppgplot.pgqls()
-    ppgplot.pgsci(3)
-    ppgplot.pgsls(2)
-    ppgplot.pgline([bestPeriod, bestPeriod], [0, max(power)])
-    ppgplot.pgsci(lc)
-    ppgplot.pgsls(ls)
-    print "Best period: %f days or %f hours"%(bestPeriod, bestPeriod * 24.)
-    
-    print "Press Enter to continue...."
-    sys.stdin.read(1)
-    # Now plot a folded RV curve
-    t0 = reducedDates[0]
-    periodDays = bestPeriod
-    phaseFirst = [((d - t0) % periodDays) / periodDays for d in reducedDates]
-    velocityPlot = copy.deepcopy(velocities)
-    velocityErrorPlot = copy.deepcopy(velErrors)
-    phases = copy.deepcopy(phaseFirst)
-    for index, p in enumerate(phaseFirst):
-        phases.append(p + 1.0)
-        velocityPlot.append(velocities[index])
-        velocityErrorPlot.append(velErrors[index])
-    
-    ppgplot.pgslct(phasePGPlotWindow)
-    ppgplot.pgsci(1)
-    ppgplot.pgenv(0, 2.0, -velRange*1.2, velRange*1.2, 0, 0)
-    ppgplot.pgpt(phases, velocityPlot)
-    ppgplot.pgerrb(2, phases, velocityPlot, velocityErrorPlot, 0)
-    ppgplot.pgerrb(4, phases, velocityPlot, velocityErrorPlot, 0)
-    ppgplot.pglab("Phase", "Radial velocity km/s", arg.objectname)
-    
-    # Now fit a sine wave with this period to the data...
-    frequency = 1 / periodDays
-    phase = 0
-    gamma = numpy.mean(velocities)
-    amplitude = velRange
-    
-    x_values = numpy.array(phaseFirst)
-    y_values = numpy.array(velocities)
-    y_errors = numpy.array(velErrors)
-    
-    print x_values, y_values
-    
+	
     guess = [gamma, amplitude, phase]
     upperBounds = [100, 200, 1]
     lowerBounds = [-100, 0 , 0]
