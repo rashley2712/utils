@@ -279,6 +279,7 @@ if __name__ == "__main__":
 	
 	results, covariance = scipy.optimize.curve_fit(sineFit, x_values, y_values, p0 = guess, sigma = y_errors, bounds = bounds)
 	errors = numpy.sqrt(numpy.diag(covariance))
+	print errors
 	gammaFit = results[0]
 	gammaError = errors[0]
 	k2Fit = results[1]
