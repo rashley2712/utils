@@ -20,6 +20,16 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
+def findAliases(n, f, p):
+	a = []
+	lp = copy.deepcopy(p)
+	for index in range(n):
+		a.append(f[numpy.argmax(lp)])
+		lp[numpy.argmax(lp)] = 0
+		print index+1, a[-1]
+	return a
+	
 def sine(x, a0, a1):
     y = a0 * numpy.sin(2.*math.pi*(x + a1))
     return y
@@ -40,6 +50,12 @@ def sineFit(x, gamma, k2, freq, phase):
 	y = gamma + k2 * numpy.sin(2.*numpy.pi * (x * freq + phase))
 	return y
     
+def sineFixedFreqFit(x, gamma, k2, phase):
+	global bestFrequency
+	freq = bestFrequency 
+	y = gamma + k2 * numpy.sin(2.*numpy.pi * (x * freq + phase))
+	return y
+
 def sineFreqPhase(x, gamma, amplitude, f, p):
     y = gamma + (amplitude * numpy.sin(2.*math.pi*f*(x + p)))
     return y
@@ -52,10 +68,9 @@ def sinePhase(x, gamma, amplitude, phase):
 if __name__ == "__main__":  
 	parser = argparse.ArgumentParser(description='Loads a CSV file containing HJDs and RVs and tries to fit a period and sinusoid to the data.')
 	# parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
-	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
-	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .CSV file.')
-	parser.add_argument('--plo', type=float, default= 0.1, help='Period (days) to start the search. Default is 0.01 days.') 
-	parser.add_argument('--phi', type=float, default= 50.0, help='Period (days) to stop the search. Default is 10 days.') 
+	parser.add_argument('--plo', type=float, default= 0.05, help='Period (days) to start the search. Default is 0.01 days.') 
+	parser.add_argument('--phi', type=float, default= 100.0, help='Period (days) to stop the search. Default is 10 days.') 
+	parser.add_argument('-n', '--nalias', type=int, default=1, help='Alias number for the fit. Default is 1.')
 	parser.add_argument('objectname', type=str, help='Object name.')
 	arg = parser.parse_args()
 	# print arg
@@ -91,7 +106,7 @@ if __name__ == "__main__":
 	maximumFrequency = 1/plo
 	
 	from astropy.stats import LombScargle
-	frequency, power = LombScargle(dates, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak = 10)
+	frequency, power = LombScargle(dates, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak=15)
 	# frequency, power = LombScargle(dates, velocities, velErrors).autopower()
 	print len(frequency), "points in the periodogram"
 	
@@ -100,34 +115,34 @@ if __name__ == "__main__":
 	bestPeriod = 1/bestFrequency
 	print "%s Best period: %f days or %f hours"%(arg.objectname, bestPeriod, bestPeriod * 24.)
 	
+	aliases = findAliases(10, frequency, power)
+	
+	if arg.nalias!=1:
+		bestFrequency = aliases[arg.nalias-1]
+		print "Choosing alias %d ... frequency: %f cycles/day."%(arg.nalias, bestFrequency)
+	
 	generalUtils.setMatplotlibDefaults()
 	
-	matplotlib.pyplot.plot(frequency, power, linewidth=1.0)
+	matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k')
+	for a in aliases:
+		matplotlib.pyplot.plot([a, a], [0, 1], linestyle='--')
 	
 	matplotlib.pyplot.show(block = False)
-	generalUtils.query_yes_no("Continue?")
-	
-	
-	x = numpy.array(dates)
-	y = numpy.array(velocities)
-	err = numpy.array(velErrors)
 	
 	x_values = numpy.array(dates)
 	y_values = numpy.array(velocities)
 	y_errors = numpy.array(velErrors)
-	
-	# print x_values, y_values, y_errors
-	
+		
 	k2 = (max(y_values) - min(y_values)) / 2.0
 	gamma = numpy.mean(y_values)
 	phase = 0.0
 	guess = [gamma, k2, bestFrequency, phase]
 	print "Guess:", guess
-	upperBounds = [100, 200, maximumFrequency, 1 ]
-	lowerBounds = [-100, 0 , minimumFrequency, 0.0 ]
+	upperBounds = [300, 400, maximumFrequency, 1.0 ]
+	lowerBounds = [-300, 0 , minimumFrequency, 0.0 ]
 	bounds = (lowerBounds, upperBounds)
 	
-	results, covariance = scipy.optimize.curve_fit(sineFit, x_values, y_values, p0 = guess, sigma = y_errors, bounds = bounds)
+	results, covariance = scipy.optimize.curve_fit(sineFit, x_values, y_values, p0 = guess, sigma = y_errors, bounds=bounds)
 	errors = numpy.sqrt(numpy.diag(covariance))
 	print "Result:", results
 	print "Errors:", errors
@@ -139,7 +154,7 @@ if __name__ == "__main__":
 	frequencyError = errors[2]
 	phaseFit = results[3]
 	phaseError = errors[3]
-	periodFit = 1/frequencyFit
+	periodFit = 1.0/frequencyFit
 	periodError = frequencyError/frequencyFit/frequencyFit
 	t0 = - phaseFit / (frequencyFit) 
 	print "Result of curve fit: "
@@ -170,7 +185,87 @@ if __name__ == "__main__":
 	matplotlib.pyplot.plot(curve, curveFit, color='k', linewidth=1.0)
 	matplotlib.pyplot.plot([0,2], [gammaFit, gammaFit], linewidth=1.0, linestyle='--', color='k', alpha=0.75)
 	matplotlib.pyplot.show(block = False)
+	
 	generalUtils.query_yes_no("Continue?")
+	
+	
+	# Refit gamma, phase and k2 with fixed frequency
+	
+	k2 = k2Fit
+	gamma = gammaFit
+	phase = phaseFit
+	guess = [gamma, k2, phase]
+	print "2nd pass guess:", guess
+	upperBounds = [300, 400, 1.0 ]
+	lowerBounds = [-300, 0 , 0.0 ]
+	bounds = (lowerBounds, upperBounds)
+	
+	results, covariance = scipy.optimize.curve_fit(sineFixedFreqFit, x_values, y_values, p0 = guess, sigma = y_errors, bounds=bounds)
+	errors = numpy.sqrt(numpy.diag(covariance))
+	print "Result:", results
+	print "Errors:", errors
+	gammaFit = results[0]
+	gammaError = errors[0]
+	k2Fit = results[1]
+	k2Error = errors[1]
+	phaseFit = results[2]
+	phaseError = errors[2]
+	t0 = - phaseFit / frequencyFit 
+	print "Result of curve fit: "
+	print "\tgamma velocity: \t%s[%s] km/s"%generalUtils.formatValueError(gammaFit, gammaError)
+	print "\tk2 amplitude: \t%s[%s] km/s"%generalUtils.formatValueError(k2Fit, k2Error)
+	print "\t*frequency: \t%s[%s] /d"%generalUtils.formatValueError(frequencyFit, frequencyError)
+	print "\t*period: \t%s[%s] days"%generalUtils.formatValueError(periodFit, periodError)
+	print "\tphase: \t\t\t%s[%s]"%generalUtils.formatValueError(phaseFit, phaseError)
+	print "T0:", t0
+	# Calculate phases
+	phases = []
+	for d in dates:
+		phase = ((d-t0) % periodFit)/periodFit 
+		phases.append(phase)
+	addphases = []
+	for p in phases:
+		addphases.append(p + 1.0)
+	phases.extend(addphases)
+
+	# Now do a stacked plot of pgram and folded RV curve
+	
+	stackedPlot = matplotlib.pyplot.figure()
+	ax1 = matplotlib.pyplot.subplot(2, 1, 1)
+	 
+	matplotlib.pyplot.errorbar(phases, velocities, color='k', yerr=velErrors, fmt='.', ecolor='0.75', capsize=0)
+
+	curve = numpy.arange(0, 2, 0.01)
+	curveFit = gammaFit + k2Fit * numpy.sin(2*math.pi*curve)
+	matplotlib.pyplot.plot(curve, curveFit, color='k', linewidth=1.0)
+	matplotlib.pyplot.plot([0,2], [gammaFit, gammaFit], linewidth=1.0, linestyle='--', color='k', alpha=0.75)
+	
+	ax2 = matplotlib.pyplot.subplot(2, 1, 2)
+	matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k', alpha=0.75)
+	zoomFraction = 0.1
+	matplotlib.pyplot.plot([bestFrequency*(1-zoomFraction), bestFrequency*(1-zoomFraction)], [0, 1], linestyle='--')
+	matplotlib.pyplot.plot([bestFrequency*(1+zoomFraction), bestFrequency*(1+zoomFraction)], [0, 1], linestyle='--')
+	
+	left, bottom, width, height = [0.75, 0.25, 0.14, 0.2]
+	ax3 = stackedPlot.add_axes([left, bottom, width, height])
+	zoomedFrequency = []
+	zoomedPower = []
+
+	for index, f in enumerate(frequency):
+		if (f > bestFrequency*(1-zoomFraction)) and (f < bestFrequency*(1+zoomFraction)):
+			zoomedFrequency.append(f)
+			zoomedPower.append(power[index])
+			
+	ax3.plot(zoomedFrequency, zoomedPower, linewidth=1.0, color='k', alpha=0.75)
+	ax3.plot([bestFrequency, bestFrequency], [0, 1], linestyle='--')
+	matplotlib.pyplot.yticks(visible=False)
+	matplotlib.pyplot.xticks(visible=False)
+		
+	matplotlib.pyplot.show(block = False)
+	
+	generalUtils.query_yes_no("Continue?")
+	
+	
 	sys.exit()
      
 	"""
