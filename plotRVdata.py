@@ -356,7 +356,7 @@ if __name__ == "__main__":
 		xFit = numpy.arange(0, 2, 0.02)
 		yFit = gammaFit + amplitudeFit * numpy.sin(2*numpy.pi*(xFit))
 			
-		matplotlib.pyplot.errorbar(extendedPhases, extendedVelocities, color='k', yerr=extendedVelErrors, fmt='.', ecolor='0.75', capsize=0)
+		matplotlib.pyplot.errorbar(extendedPhases, extendedVelocities, color='k', yerr=extendedVelErrors, fmt='.', capsize=0)
 		matplotlib.pyplot.plot(xFit, yFit, color='k', linewidth=1.0)
 		matplotlib.pyplot.plot([0, 2], [gammaFit, gammaFit], color='k', linestyle='--')
 		if plotIndex%2==0: matplotlib.pyplot.ylabel('$K_{sec}$ velocity (km/s)')
@@ -367,16 +367,19 @@ if __name__ == "__main__":
 
 		# Plot the periodograms	
 		from astropy.stats import LombScargle
-		frequency, power = LombScargle(o.HJD, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = flo, maximum_frequency = fhi, samples_per_peak=5)
+		frequency, power = LombScargle(o.HJD, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = flo, maximum_frequency = fhi, samples_per_peak=25, normalization='model', method='chi2')
 		print len(frequency), "points in the periodogram"
+		LSFrequency = frequency[numpy.argmax(power)]
+		print LSFrequency, ' period:', 1.0/LSFrequency
 		if plotIndex%2==0:
 			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 3))
 		else:
 			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 2))
 		
 		matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k', alpha=0.75)
-		matplotlib.pyplot.ylim([0, 1.2])
-		matplotlib.pyplot.plot([1/o.ephemeris.Period, 1/o.ephemeris.Period], [0, 1.2], linewidth=1.5, linestyle='--',  color='r', alpha=1)
+		matplotlib.pyplot.ylim([0, 1.2 * max(power)])
+		matplotlib.pyplot.plot([1/o.ephemeris.Period, 1/o.ephemeris.Period], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='r', alpha=1)
+		matplotlib.pyplot.plot([LSFrequency, LSFrequency], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='b', alpha=1)
 		
 		if plotIndex%2==0: matplotlib.pyplot.ylabel('Power')
 		matplotlib.pyplot.xlabel('Frequency [cycles/day]')
@@ -392,7 +395,8 @@ if __name__ == "__main__":
 				zoomedPower.append(power[index])
 			
 		ax3.plot(zoomedFrequency, zoomedPower, linewidth=1.0, color='k', alpha=1.0)
-		ax3.plot([bestFrequency, bestFrequency], [0, 1], color='r', linewidth=1.5, linestyle='--')
+		ax3.plot([bestFrequency, bestFrequency], [0, max(power)], color='r', linewidth=1.5, linestyle='--')
+		ax3.plot([LSFrequency, LSFrequency], [0, max(power)], color='b', linewidth=1.5, linestyle='--')
 		matplotlib.pyplot.yticks(visible=False)
 		matplotlib.pyplot.xticks(visible=False)
 

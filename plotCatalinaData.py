@@ -228,7 +228,7 @@ if __name__ == "__main__":
 			HJD = o.getColumn('HJD')
 			mag = o.getColumn('mag')
 			err = o.getColumn('err')
-			frequency, power = LombScargle(HJD, mag, err).autopower(minimum_frequency=0.01,maximum_frequency=20, samples_per_peak = 10)
+			frequency, power = LombScargle(HJD, mag, err, fit_mean=True).autopower(minimum_frequency=0.01,maximum_frequency=20, samples_per_peak = 10, normalization='standard')
 			print len(frequency), "points in the periodogram"
 			#x = numpy.array(HJD)
 			#y = numpy.array(mag)
@@ -261,6 +261,13 @@ if __name__ == "__main__":
 			print "%s Best period: %f days or %f hours"%(o.id, bestPeriod, bestPeriod * 24.)
 			print o.ephemeris
 			o.ephemeris.Period = bestPeriod
+
+			matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k', alpha=0.75)
+			matplotlib.pyplot.ylim([0, 1.2 * max(power)])
+			matplotlib.pyplot.plot([1/o.ephemeris.Period, 1/o.ephemeris.Period], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='r', alpha=1)
+			matplotlib.pyplot.plot([bestFrequency, bestFrequency], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='b', alpha=1)
+			matplotlib.pyplot.draw()
+			matplotlib.pyplot.show()	
 
 	ppgplot.pgclos()	
 	
