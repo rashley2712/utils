@@ -85,7 +85,7 @@ if __name__ == "__main__":
 			
 		
 	
-	print "Searching for:", desiredParameter, " = ", desiredValue
+	print "Searching for:", desiredParameter, " == ", desiredValue
 	
 	filesToCopy = []
 	for f in FITSFilenames:

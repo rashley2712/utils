@@ -14,7 +14,7 @@ shift
 set mask = $argv[1]
 shift
 
-foreach file ($argv)
+foreach file (`cat $argv`)
   echo $file:r >> flat.lis
 end
 medsky flat.lis mflat scaled=TRUE
