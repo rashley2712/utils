@@ -10,6 +10,9 @@ import scipy.optimize
 import copy
 import ppgplot
 import scipy.signal as signal
+import matplotlib.pyplot
+from matplotlib import rc
+		
 
 
 def quad(x, a1, a2, a3):
@@ -225,7 +228,7 @@ if __name__ == "__main__":
 			HJD = o.getColumn('HJD')
 			mag = o.getColumn('mag')
 			err = o.getColumn('err')
-			frequency, power = LombScargle(HJD, mag, err).autopower(minimum_frequency=0.01,maximum_frequency=20, samples_per_peak = 10)
+			frequency, power = LombScargle(HJD, mag, err, fit_mean=True).autopower(minimum_frequency=0.01,maximum_frequency=20, samples_per_peak = 10, normalization='standard')
 			print len(frequency), "points in the periodogram"
 			#x = numpy.array(HJD)
 			#y = numpy.array(mag)
@@ -259,6 +262,13 @@ if __name__ == "__main__":
 			print o.ephemeris
 			o.ephemeris.Period = bestPeriod
 
+			matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k', alpha=0.75)
+			matplotlib.pyplot.ylim([0, 1.2 * max(power)])
+			matplotlib.pyplot.plot([1/o.ephemeris.Period, 1/o.ephemeris.Period], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='r', alpha=1)
+			matplotlib.pyplot.plot([bestFrequency, bestFrequency], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='b', alpha=1)
+			matplotlib.pyplot.draw()
+			matplotlib.pyplot.show()	
+
 	ppgplot.pgclos()	
 	
 ##########################################################################################################################
@@ -274,6 +284,17 @@ if __name__ == "__main__":
 	if extraColumn: ppgplot.pgsubp(1, 2)
 	ppgplot.pgask(True)
 	
+	rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+	## for Palatino and other serif fonts use:
+	rc('font',**{'family':'serif','serif':['Palatino']})
+	rc('text', usetex=True)
+	figSize = 10
+	labelSize = 20
+	tickSize = 18
+	
+	matplotlib.pyplot.figure(figsize=(figSize, figSize / 1.618))
+
+
 	for o in objects:
 		if o.hasEphemeris:
 			HJD = o.getColumn('HJD')
@@ -300,7 +321,10 @@ if __name__ == "__main__":
 			ppgplot.pgpt(phases, mag)
 			ppgplot.pgerrb(2, phases, mag, err, 0)
 			ppgplot.pgerrb(4, phases, mag, err, 0)
-			
+			matplotlib.pyplot.xlabel("Phase", size = labelSize)
+			matplotlib.pyplot.ylabel('CRTS magnitude', size = labelSize)
+			matplotlib.pyplot.errorbar(phases, mag, color='k', yerr=err, fmt = '.', ecolor='0.75', capsize=0)
+
 			if extraColumn:
 				additionalData = o.getColumn(extraColumnName)
 				additionalData.extend(additionalData)
@@ -313,6 +337,14 @@ if __name__ == "__main__":
 				ppgplot.pgpt(phases, additionalData)
 				ppgplot.pgsci(1)
 				print "%s min: %f max: %f"%(extraColumnName, numpy.min(additionalData), numpy.max(additionalData))
+		axes = matplotlib.pyplot.gca()
+		for label in (axes.get_xticklabels() + axes.get_yticklabels()):
+			label.set_fontsize(tickSize)
+		matplotlib.pyplot.gca().invert_yaxis()
+		fig = matplotlib.pyplot.gcf()
+		matplotlib.pyplot.show()
+		fig.savefig('lightcurves.pdf',dpi=100, format='pdf')
+	
 	ppgplot.pgclos()
 	sys.exit()
 	

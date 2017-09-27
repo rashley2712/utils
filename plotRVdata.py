@@ -6,9 +6,13 @@ import loadingSavingUtils, generalUtils
 import spectrumClasses, timeClasses
 import scipy.optimize
 import copy
-import ppgplot
 import gSheets
 import matplotlib
+import matplotlib.pyplot
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+
 
 class bcolors:
     HEADER = '\033[95m'
@@ -228,21 +232,23 @@ if __name__ == "__main__":
     # parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
 	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .CSV file.')
-	parser.add_argument('--plo', type=float, default= 0.01, help='Period (days) to start the search. Default is 0.01 days.') 
-	parser.add_argument('--phi', type=float, default= 10.0, help='Period (days) to stop the search. Default is 10 days.') 
+	parser.add_argument('--flo', type=float, default= 0.01, help='Frequency (days^-1) for the Lomb-Scargle plot Default is 0.01 days^-1.') 
+	parser.add_argument('--fhi', type=float, default= 20.0, help='Frequency (days^-1) to the Lomb-Scargle plot. Default is 20 days^-1.') 
 	parser.add_argument('objects', type=str, help='Object name list')
-	parser.add_argument('--ps', type=str, default='none', help='Output final plot to a .ps file, specify the name. Default is ''none''')
+	parser.add_argument('--output', type=str, default='none', help='Output final plot to a .pdf file, specify the name. Default is ''none''')
 	arg = parser.parse_args()
 	# print arg
-	plo = arg.plo
-	phi = arg.phi
-	if arg.ps!='none':
-		outputPS = True
-		psFilename = arg.ps
-		print "Outputting plot to:", psFilename
-	else:
-		outputPS = False
-    
+	flo = arg.flo
+	fhi = arg.fhi
+  
+  	# Set up the matplotlib environment
+  	generalUtils.setMatplotlibDefaults()
+  	params = {	'axes.labelsize': 'large',
+				'xtick.labelsize': 'large',
+				'ytick.labelsize': 'large',
+			}
+	matplotlib.rcParams.update(params)
+
 	# Load the list objects we are going to plot
 	objects = []
 	objectFile = open(arg.objects, 'rt')
@@ -289,18 +295,21 @@ if __name__ == "__main__":
 			print "Warning. No ephemeris for id: ", o.id
 			sys.exit()
 			
-	if outputPS:
-		phasePGPlotWindow = ppgplot.pgopen(psFilename)
-	else:
-		phasePGPlotWindow = ppgplot.pgopen("/xs")
-		ppgplot.pgask(True)
-	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	ppgplot.pgpap(5, 1.618 )
-	# ppgplot.pglab("x axis", "y axis", "heading")
-	ppgplot.pgsubp(3, 8)
-	# ppgplot.pgsch(4)
-		
+	phasedFoldedLightCurves = matplotlib.pyplot.figure(figsize=(8, 11))
+	# fig, axes = matplotlib.pyplot.subplots(nrows=len(objects), ncols=2, figsize=(8, 11))
+	# fig.tight_layout()
+	
+	
+	plotsPerPage = 4
+	
+	plotIndex = 0	
+	pageNumber = 1
 	for o in objects:	
+		if plotIndex%2==0:
+			ax1 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2) + 1)
+		else:
+			ax1 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2))
+
 		phases = [o.ephemeris.getPhase(h) for h in o.HJD]
 		velocities = o.velocities
 		velErrors = o.velErrors
@@ -321,61 +330,93 @@ if __name__ == "__main__":
 		y_values = numpy.array(velocities)
 		y_errors = numpy.array(velErrors)
    	 
-		print "x:", x_values
-		print "y:", y_values
+		#print "x:", x_values
+		#print "y:", y_values
    	 
 		guess = [0, maxVel]
 		upperBounds = [100, 200]
 		lowerBounds = [-100, 0]
 		bounds = (lowerBounds, upperBounds)
-		print "%s ... guess for amplitude and gamma fit: %f, %f"%(o.id, guess[0], guess[1])
+		#print "%s ... guess for amplitude and gamma fit: %f, %f"%(o.id, guess[0], guess[1])
 		results, covariance = scipy.optimize.curve_fit(sineGammaAmplitude, x_values, y_values, p0 = guess, sigma = y_errors)
 		errors = numpy.sqrt(numpy.diag(covariance))
     
-		print results
+		#print results
 		gammaFit = results[0]
 		gammaError = errors[0]
 		amplitudeFit = results[1]
 		amplitudeError = errors[1]
+		print "Object: ", o.id
 		print "Result of curve fit: "
 		print "\tgamma velocity: \t%s[%s] km/s"%generalUtils.formatValueError(gammaFit, gammaError)
 		print "\tv sin i amplitude: \t%s[%s] km/s"%generalUtils.formatValueError(amplitudeFit, amplitudeError)
 		
 		yMin = gammaFit - 1.2* amplitudeFit
 		yMax = gammaFit + 1.2* amplitudeFit
-		ppgplot.pgslct(phasePGPlotWindow)   
-		ppgplot.pgenv(0, 2, yMin, yMax, 0, -2 )
-		ppgplot.pgsvp(.15, 1.0, 0, 1)
-		ppgplot.pgsch(2.8)
-		ppgplot.pgbox("BCTS", 0, 0, "BCNVTS", 0, 0)
-		ppgplot.pgsch(1.0)
-		ppgplot.pgsci(1)
-		ppgplot.pgpt(extendedPhases, extendedVelocities)
-		ppgplot.pgerrb(2, extendedPhases, extendedVelocities, extendedVelErrors, 0)
-		ppgplot.pgerrb(4, extendedPhases, extendedVelocities, extendedVelErrors, 0)
-		
-		ppgplot.pgsch(1)
-		#ppgplot.pglab("Phase", "Radial velocity km/s", "")
-		# o.id + " period: %f days"%o.ephemeris.Period
-		ppgplot.pgsch(3.4)
-		ppgplot.pgtext(0.4, gammaFit+0.8*amplitudeFit, o.id)
-		ppgplot.pgtext(1.6, gammaFit+0.8*amplitudeFit, "%2.2fd"%o.ephemeris.Period)
-		ppgplot.pgsch(1)
 		xFit = numpy.arange(0, 2, 0.02)
 		yFit = gammaFit + amplitudeFit * numpy.sin(2*numpy.pi*(xFit))
-		lc = ppgplot.pgqci()
-		ls = ppgplot.pgqls()
-        
-		ppgplot.pgsci(2)
-		ppgplot.pgline(xFit, yFit)
-		ppgplot.pgsci(3)
-		ppgplot.pgsls(4)
-		ppgplot.pgline([0, 2], [gammaFit, gammaFit])
-		ppgplot.pgsci(lc)
-		ppgplot.pgsls(ls)
+			
+		matplotlib.pyplot.errorbar(extendedPhases, extendedVelocities, color='k', yerr=extendedVelErrors, fmt='.', capsize=0)
+		matplotlib.pyplot.plot(xFit, yFit, color='k', linewidth=1.0)
+		matplotlib.pyplot.plot([0, 2], [gammaFit, gammaFit], color='k', linestyle='--')
+		if plotIndex%2==0: matplotlib.pyplot.ylabel('$K_{sec}$ velocity (km/s)')
+		matplotlib.pyplot.xlabel('Phase')
+		yPosition = ax1.get_ylim()[1] * 0.8
+		matplotlib.pyplot.text(0.22, .85, o.id, fontsize='x-large', transform = ax1.transAxes)
+		matplotlib.pyplot.text(0.8, 0.85, "%2.2fd"%o.ephemeris.Period, fontsize='x-large', transform = ax1.transAxes)
+
+		# Plot the periodograms	
+		from astropy.stats import LombScargle
+		frequency, power = LombScargle(o.HJD, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = flo, maximum_frequency = fhi, samples_per_peak=25, normalization='model', method='chi2')
+		print len(frequency), "points in the periodogram"
+		LSFrequency = frequency[numpy.argmax(power)]
+		print LSFrequency, ' period:', 1.0/LSFrequency
+		if plotIndex%2==0:
+			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 3))
+		else:
+			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 2))
 		
-	
-	ppgplot.pgclos()
+		matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k', alpha=0.75)
+		matplotlib.pyplot.ylim([0, 1.2 * max(power)])
+		matplotlib.pyplot.plot([1/o.ephemeris.Period, 1/o.ephemeris.Period], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='r', alpha=1)
+		matplotlib.pyplot.plot([LSFrequency, LSFrequency], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='b', alpha=1)
+		
+		if plotIndex%2==0: matplotlib.pyplot.ylabel('Power')
+		matplotlib.pyplot.xlabel('Frequency [cycles/day]')
+		
+		zoomFraction = 0.1
+		ax3 = inset_axes(ax2, width="30%", height="50%", loc=1)
+		zoomedFrequency = []
+		zoomedPower = []
+		bestFrequency = 1.0/o.ephemeris.Period
+		for index, f in enumerate(frequency):
+			if (f > bestFrequency*(1-zoomFraction)) and (f < bestFrequency*(1+zoomFraction)):
+				zoomedFrequency.append(f)
+				zoomedPower.append(power[index])
+			
+		ax3.plot(zoomedFrequency, zoomedPower, linewidth=1.0, color='k', alpha=1.0)
+		ax3.plot([bestFrequency, bestFrequency], [0, max(power)], color='r', linewidth=1.5, linestyle='--')
+		ax3.plot([LSFrequency, LSFrequency], [0, max(power)], color='b', linewidth=1.5, linestyle='--')
+		matplotlib.pyplot.yticks(visible=False)
+		matplotlib.pyplot.xticks(visible=False)
+
+		
+		plotIndex+= 1
+		
+		if plotIndex%plotsPerPage == 0:
+			print "End of page"
+			matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
+			matplotlib.pyplot.show(block=False)
+			if arg.output!='none': 
+				matplotlib.pyplot.savefig(arg.output + "_page_%d"%pageNumber + ".pdf")
+				pageNumber+= 1
+			plotIndex = 0
+			phasedFoldedLightCurves = matplotlib.pyplot.figure(figsize=(8, 11))
+			# matplotlib.pyplot.gcf().clear()
+			
+			
+	generalUtils.query_yes_no("Continue?")
+		
 	sys.exit()
 	
     

@@ -60,6 +60,30 @@ def removeZeroValues(photometry):
 		newPhotometry.append(d)
 	numRemoved = len(photometry) - len(newPhotometry)
 	return newPhotometry, numRemoved
+
+def loadLiverpoolTSV(filename):
+	photometry = {}
+	inputFile = open(filename, 'r')
+	headings = inputFile.readline()[1:].strip().split()
+	columnNames = []
+	for h in headings:
+		columnNames.append(h)
+		photometry[h] = []
+	for line in inputFile:
+		fields = line.strip().split()
+		for index, value in enumerate(fields):
+			v = float(value.strip())
+			photometry[columnNames[index]].append(v)
+	
+	inputFile.close()
+	
+	print "Loaded the following from %s:"%filename
+	for k in photometry.keys():
+		print "column:", k, '\t', len(photometry[k]), "points"
+			
+	
+	return columnNames, photometry
+
 		
 def loadNewCSV(filename):
 	photometry = {}

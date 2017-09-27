@@ -10,6 +10,9 @@ import scipy.optimize
 import copy
 import ppgplot
 import scipy.signal as signal
+import matplotlib.pyplot
+from matplotlib import rc
+
 
 
 def quad(x, a1, a2, a3):
@@ -259,6 +262,18 @@ if __name__ == "__main__":
 	# ppgplot.pgpap(3, 0.618)
 	ppgplot.pgask(True)
 	
+	figSize = 10
+	matplotlib.pyplot.figure(figsize=(figSize, figSize / 1.618))
+	rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+	## for Palatino and other serif fonts use:
+	rc('font',**{'family':'serif','serif':['Palatino']})
+	rc('text', usetex=True)
+
+
+	labelSize = 20
+	tickSize = 18
+	
+	
 	for o in objects:
 		if o.hasEphemeris:
 			HJD = o.getColumn('HJD')
@@ -284,7 +299,12 @@ if __name__ == "__main__":
 			ppgplot.pgpt(phases, mag)
 			ppgplot.pgerrb(2, phases, mag, err, 0)
 			ppgplot.pgerrb(4, phases, mag, err, 0)
-
+			
+			matplotlib.pyplot.xlabel("Phase", size = labelSize)
+			matplotlib.pyplot.ylabel('CRTS/PTF magnitude', size = labelSize)
+			matplotlib.pyplot.errorbar(phases, mag, color='k', yerr=err, fmt = '.', ecolor='0.75', capsize=0, label="CRTS")
+			
+			
 			# Now plot the PTF data
 			HJD = o.getPTFColumn('HJD')
 			mag = o.getPTFColumn('mag')
@@ -309,6 +329,20 @@ if __name__ == "__main__":
 			ppgplot.pgerrb(2, phases, mag, err, 0)
 			ppgplot.pgerrb(4, phases, mag, err, 0)
 			
+			matplotlib.pyplot.errorbar(phases, mag, color='k', yerr=err, fmt = '.', ecolor='0.75', capsize=0, label="PTF", marker='s')
+			
+			
+			axes = matplotlib.pyplot.gca()
+			for label in (axes.get_xticklabels() + axes.get_yticklabels()):
+			#label.set_fontname('Arial')
+				label.set_fontsize(tickSize)
+			
+			matplotlib.pyplot.legend()
+			matplotlib.pyplot.gca().invert_yaxis()
+			fig = matplotlib.pyplot.gcf()
+			matplotlib.pyplot.show()
+			fig.savefig('lightcurve.pdf',dpi=100, format='pdf')
+
 	ppgplot.pgclos()
 	sys.exit()
 	

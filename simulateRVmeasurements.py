@@ -13,6 +13,8 @@ import scipy.signal as signal
 
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
+from matplotlib import rc
+
 
 def massFunction(m1, m2, period, i):
 	Msol =  1.989e30  		# Solar mass (kg)
@@ -73,17 +75,32 @@ if __name__ == "__main__":
 	#parser.add_argument('filename', type=str, nargs='+', help='Filename of CSV file..')	
 	parser.add_argument('--device', type=str, default='/xs', help = "Dump to the following device. Default is '/xs'.")
 	parser.add_argument('--input', type=str, help='File containing a sample of periods to use as a period distribution.')
+	parser.add_argument('-p', '--probability', type=str, help='File containing a probability distribution in log P.')
+	
 	parser.add_argument('-n', type=int, default=100, help='Number of random periods to generate. Default is 100.')
 	parser.add_argument('-o', '--observations', type=str, help='Observation times')
 	parser.add_argument('--fake', type=int, help='Fake [n] observations evenly spaced over baseline of all observations. Specify [n].')
+	parser.add_argument('--baseline', type=float, help='Baseline in years over which to fake the observations.') 
+	parser.add_argument('-s', '--sigma', default=15.0,  type=float, help='Measurement error in km/s of a typical spectral line fit.') 
+	
 	
 	arg = parser.parse_args()
+
+	rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+	## for Palatino and other serif fonts use:
+	rc('font',**{'family':'serif','serif':['Palatino']})
+	rc('text', usetex=True)
+	figSize = 10
+	labelSize = 16
+	tickSize = 14
 
 	
 	names = []
 	samplePeriods = []
 	if arg.input is not None:
 		inputFile = open(arg.input, 'rt')
+		headers = inputFile.readline().strip()
+		
 		for line in inputFile:
 			values = line.strip().split('\t')
 			names.append(values[0])
@@ -129,6 +146,59 @@ if __name__ == "__main__":
 	logPeriods = numpy.log10(periods)	
 	# periods = numpy.random.rand(1000)
 
+	if arg.probability is not None:
+		inputFile = open(arg.probability, 'rt')
+		headers = inputFile.readline().strip()
+		bins = []
+		probabilities = []
+		for line in inputFile:
+			fields = line.strip().split('\t')
+			print fields
+			try:
+				bin = float(fields[0])
+				probability = float(fields[1])
+				bins.append(bin)
+				probabilities.append(probability)
+			except (ValueError, IndexError):
+				print "Could not parse a line in the file"
+		binWidth = bins[1] - bins[0]	
+		probabilities = numpy.array(probabilities) / sum(probabilities)
+		print bins
+		print probabilities
+		print sum(probabilities)
+		generalUtils.query_yes_no("Continue?")
+	
+		samplePeriods = []	
+		for i in range(arg.n):
+			testPeriod = numpy.random.choice(bins, p = probabilities)	
+			delta = numpy.random.rand() * binWidth
+			print testPeriod, delta, testPeriod + delta
+			period = 10**(testPeriod + delta)
+			print "Sample period: ", period
+			samplePeriods.append(period)
+		
+		# Write out these periods as a sample
+		outfile = open('simulated_periods.tsv', 'wt')
+		outfile.write('Name\tperiod(d)\n')
+		for p in samplePeriods:
+			print p
+			outfile.write('sample\t%f\n'%(p))
+		outfile.close()	
+		probabilityFigure = plt.figure()
+		plt.step(bins, probabilities, where='post')
+		logPeriods = numpy.log10(samplePeriods)	
+		weights = numpy.ones_like(logPeriods)/float(len(logPeriods))
+		n, newbins, patches = plt.hist(logPeriods, weights=weights, bins = bins, normed = False, alpha=0.5, color = 'g')
+		print zip(n, newbins)
+		plt.xlabel('$P_{orb}$ [d]')
+		plt.ylabel('Probability')
+		plt.title('Input period distribution')
+		plt.draw()
+		plt.show(block = False)
+	
+	periods = samplePeriods
+	logPeriods = numpy.log10(periods)	
+	
 	figure2 = plt.figure()		
 	n, bins, patches = plt.hist(logPeriods, 14, facecolor='grey', alpha=0.75, cumulative=False)
 	print n, bins, patches
@@ -165,11 +235,8 @@ if __name__ == "__main__":
 	plt.show(block=False)
 	"""
 	
-	
-	
-	
 	K2s = []
-	for p,i in zip(periods, inclinations):
+	for p, i in zip(periods, inclinations):
 		K2s.append(massFunction(0.6, 0.2, p, i))
 		print "Period: %f [days], inclination: %f [deg], K2: %f km/s"%(p, i/numpy.pi*180, K2s[-1]) 
 		
@@ -194,15 +261,16 @@ if __name__ == "__main__":
 	if arg.fake is not None:
 		earliestObs, latestObs = observations.getExtremes()
 		obsLength = latestObs - earliestObs
+		if arg.baseline is not None:
+			obsLength = arg.baseline * 365.
 		numObs = arg.fake
-		fakeObs = [earliestObs + obsLength/30 * o for o in range(30)]
+		fakeObs = [earliestObs + obsLength/numObs * o for o in range(numObs)]
 		observations.addTarget('fake')
 		for f in fakeObs:
 			observations.addDataToTarget('fake', f)
 	
 	observations.dumpTargets()
-	
-		
+	generalUtils.query_yes_no("Continue?")
 	
 	def rv(K2, period, phase, date):
 		return K2 * numpy.sin(2*numpy.pi/period*date + 2*numpy.pi*phase)
@@ -229,8 +297,8 @@ if __name__ == "__main__":
 	detected = []
 	not_detected = []
 	for p, rv in zip(periods, rvSTDs):
-		if rv< 30:
-			# print "Not detected", p, rv
+		if rv<arg.sigma:
+					# print "Not detected", p, rv
 			not_detected.append(p)
 		else:
 			# print "Detected", p, rv
@@ -258,19 +326,38 @@ if __name__ == "__main__":
 	index = 0
 	
 	percentages = []
+	probability_not_detection = []
 	for n, d in zip(not_detectedDist, detectedDist):
 		print n, d, bins[index], bins[index+1], n/d*100
-		percentages.append(n/d)
+		percentages.append(n/(d))
+		probability_not_detection.append(n/(n+d))
 		index+=1
 		
 	figure6 = plt.figure()
 	width = bins[1] - bins[0]
-	plt.bar(bins[:-1], percentages, width = width)
+	plt.bar(bins[:-1], probability_not_detection, width = width)
 	plt.xlabel('$log_{10}(P_{orb})$ [d]')
 	plt.ylabel('p(logP)')
 	plt.title('Probability of missing an RV detection')
 	plt.grid(True)
 	plt.show(block=False)
+	
+	figure7 = plt.figure()
+	plt.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=labelSize)
+	plt.ylabel('p(logP)',fontsize=labelSize)
+	plt.title('Detections: Flat input distribution', fontsize=labelSize)
+	weights = numpy.ones_like(logPeriods)/float(len(logPeriods))
+		
+	inputDist, bins, patches = plt.hist(logPeriods, 20, facecolor='red', alpha=0.5, normed=False, cumulative=False, weights = weights, label='input probability')
+	weights = numpy.ones_like(numpy.log10(detected))/float(len(logPeriods))
+	detectedDist, bins, patches = plt.hist(numpy.log10(detected), 20, facecolor='green', alpha=1.0, normed=False, cumulative=False, weights = weights, label='detection rate')
+	plt.grid(True)
+	plt.legend(loc='lower left')
+	axes = plt.gca()
+	for label in (axes.get_xticklabels() + axes.get_yticklabels()):
+		label.set_fontsize(tickSize)
+	plt.show(block=False)
+	plt.savefig('comparison.pdf')
 	
 	generalUtils.query_yes_no("Continue?")
 	

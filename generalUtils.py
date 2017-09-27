@@ -1,6 +1,19 @@
 import math, numpy, os, sys
 from PIL import Image,ImageDraw,ImageFont
 
+def setMatplotlibDefaults():
+	import matplotlib
+	
+	matplotlib.rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+	## for Palatino and other serif fonts use:
+	matplotlib.rc('font',**{'family':'serif','serif':['Palatino']})
+	matplotlib.rc('text', usetex=True)
+	params = {	'axes.labelsize': 'x-large',
+				'xtick.labelsize': 'large',
+				'ytick.labelsize': 'large',
+			}
+	matplotlib.rcParams.update(params)
+
 def percentiles(data, lo, hi):
     """ Returns a normalised array where lo percent of the pixels are 0 and hi percent of the pixels are 255
     """
