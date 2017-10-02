@@ -68,65 +68,124 @@ def sinePhase(x, gamma, amplitude, phase):
 if __name__ == "__main__":  
 	parser = argparse.ArgumentParser(description='Loads a CSV file containing HJDs and RVs and tries to fit a period and sinusoid to the data.')
 	# parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
-	parser.add_argument('--plo', type=float, default= 0.05, help='Period (days) to start the search. Default is 0.01 days.') 
-	parser.add_argument('--phi', type=float, default= 100.0, help='Period (days) to stop the search. Default is 10 days.') 
+	parser.add_argument('--flo', type=float, default= 0.1, help='Frequency (days^-1) to start the search. Default is 0.01 days^-1.') 
+	parser.add_argument('--fhi', type=float, default= 10.0, help='Frequency (days^-1) to stop the search. Default is 10 days^-1.') 
 	parser.add_argument('-n', '--nalias', type=int, default=1, help='Alias number for the fit. Default is 1.')
 	parser.add_argument('objectname', type=str, help='Object name.')
 	arg = parser.parse_args()
 	# print arg
-	plo = arg.plo
-	phi = arg.phi
-    
-	# Load the fitted wavelength data from the Google Doc
-	docInstance = gSheets.gSheetObject()
-	docInstance.initCredentials()
-	docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
-	docInstance.setObjectName(arg.objectname)
-	docInstance.loadAllReadings()
-    
-	data = docInstance.readings
-	print "Loaded data for %s from the Google Doc."%arg.objectname
-	print "%d data points loaded."%len(data)
+	
 	dates = []
 	velocities = []
 	velErrors = []
-	good = []
-	print "HJD\t\tVelocity (km/s)\tVel error"
-	for index, d in enumerate(data):
-		good = d['good']
-		if good==0: 
-			print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
-		else: 
-			print "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error'])
-			dates.append(d['HJD'])
-			velocities.append(d['RV'])
-			velErrors.append(d['RV error'])
-            
-	minimumFrequency = 1/phi
-	maximumFrequency = 1/plo
 	
+	rvAnal = {}
+	freq = []
+	chisq = []
+	# Look for output of Tom's rvanal pgram and load it
+	filename = arg.objectname + "_rvanal.dat"
+	rvAnalExists = False
+	if os.path.exists(filename):
+		rvAnalExists = True
+		print "Loading an rvanal periodgram at:", filename
+		rvAnalInput = open(filename, 'rt')
+		for line in rvAnalInput:
+			if line[0]=='#': continue
+			if len(line) < 3: continue
+			params = line.strip().split(' ')
+			freq.append(float(params[0]))
+			chisq.append(float(params[1]))
+			print "%f\t%f"%(freq[-1], chisq[-1])
+		rvAnalInput.close()
+		rvAnal['freq'] = freq
+		rvAnal['chisq'] = chisq
+	
+	# Look for a local copy of the rv data for this object
+	filename = "/tmp/" + arg.objectname + "_rv.dat"
+	print "Looking for a local copy of the rv data at: ", filename
+	if os.path.exists(filename): 
+		rvInput = open(filename, 'rt')
+		for line in rvInput:
+			if line[0]=='#': continue
+			if len(line) < 3: continue
+			params = line.strip().split(' ')
+			dates.append(float(params[0]))
+			velocities.append(float(params[1]))
+			velErrors.append(float(params[2]))
+			print "%f\t%f\t%f"%(dates[-1], velocities[-1], velErrors[-1])
+		rvInput.close()
+	
+	else:		
+		print "No local copy found... loading from Google Spreadsheet"
+		# Load the fitted wavelength data from the Google Doc
+		docInstance = gSheets.gSheetObject()
+		docInstance.initCredentials()
+		docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
+		docInstance.setObjectName(arg.objectname)
+		docInstance.loadAllReadings()
+    
+		data = docInstance.readings
+		print "Loaded data for %s from the Google Doc."%arg.objectname
+		print "%d data points loaded."%len(data)
+		print "HJD\t\tVelocity (km/s)\tVel error"
+		for index, d in enumerate(data):
+			good = d['good']
+			if good==0: 
+				print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
+			else: 
+				print "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error'])
+				dates.append(d['HJD'])
+				velocities.append(d['RV'])
+				velErrors.append(d['RV error'])
+            
+		# Now write a local copy to the tmp directory
+		rvOutput = open(filename, "wt")
+		for d, v, ve in zip(dates, velocities, velErrors):
+			rvOutput.write("%f %f %f\n"%(d, v, ve))
+		rvOutput.close()
+		
+	minimumFrequency = arg.flo
+	maximumFrequency = arg.fhi
+	# Plot the periodogram	
 	from astropy.stats import LombScargle
-	frequency, power = LombScargle(dates, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak=15)
-	# frequency, power = LombScargle(dates, velocities, velErrors).autopower()
+	# frequency, power = LombScargle(dates, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak=5, normalization='model', method='chi2')
+	frequency, power = LombScargle(dates, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak=20)
 	print len(frequency), "points in the periodogram"
 	
+	# Dump periodogram to a text file
+	filename = "/tmp/" + arg.objectname + "_ls.dat"
+	outLS = open(filename, 'wt')
+	for f, p in zip(frequency, power):
+		outLS.write("%f\t%f\n"%(f, p))
+	outLS.close()
+	
 	bestFrequency = frequency[numpy.argmax(power)]
+	bestPeriod = 1.0 / bestFrequency
 	print "Best frequency: %f cycles per day"%bestFrequency
-	bestPeriod = 1/bestFrequency
 	print "%s Best period: %f days or %f hours"%(arg.objectname, bestPeriod, bestPeriod * 24.)
 	
-	aliases = findAliases(10, frequency, power)
+	# sys.exit()
+	
+	# aliases = findAliases(10, frequency, power)
 	
 	if arg.nalias!=1:
 		bestFrequency = aliases[arg.nalias-1]
 		print "Choosing alias %d ... frequency: %f cycles/day."%(arg.nalias, bestFrequency)
 	
 	generalUtils.setMatplotlibDefaults()
-	
+	LombScarglePlot = matplotlib.pyplot.figure(figsize=(10, 6))
 	matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k')
-	for a in aliases:
-		matplotlib.pyplot.plot([a, a], [0, 1], linestyle='--')
+	#for a in aliases:
+	#	matplotlib.pyplot.plot([a, a], [0, 1], linestyle='--')
 	
+	if rvAnalExists:
+		rvAnalPlot = matplotlib.pyplot.figure(figsize=(10, 6))
+		yMax = numpy.max(rvAnal['chisq'])
+		normalised = [1.0 - y/yMax for y in rvAnal['chisq']]
+		matplotlib.pyplot.plot(rvAnal['freq'], rvAnal['chisq'], linewidth=1.0, color='r')
+		matplotlib.pyplot.figure(LombScarglePlot.number)
+		matplotlib.pyplot.plot(rvAnal['freq'], normalised, linewidth=1.0, color='r', alpha=0.5)
+		
 	matplotlib.pyplot.show(block = False)
 	
 	x_values = numpy.array(dates)
