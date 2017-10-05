@@ -62,7 +62,7 @@ def sineFreqPhase(x, gamma, amplitude, f, p):
     
    
 def sinePhase(x, gamma, amplitude, phase):
-    y = gamma + amplitude * numpy.sin(2. * numpy.pi * x + phase) 
+    y = gamma + amplitude * numpy.sin(2. * numpy.pi * (x + phase)) 
     return y
 
 if __name__ == "__main__":  
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 	rvAnalExists = False
 	if os.path.exists(filename):
 		rvAnalExists = True
-		print "Loading an rvanal periodgram at:", filename
+		print "Loading an rvanal periodogram at:", filename
 		rvAnalInput = open(filename, 'rt')
 		for line in rvAnalInput:
 			if line[0]=='#': continue
@@ -95,10 +95,11 @@ if __name__ == "__main__":
 			params = line.strip().split(' ')
 			freq.append(float(params[0]))
 			chisq.append(float(params[1]))
-			print "%f\t%f"%(freq[-1], chisq[-1])
+			# print "%f\t%f"%(freq[-1], chisq[-1])
 		rvAnalInput.close()
 		rvAnal['freq'] = freq
 		rvAnal['chisq'] = chisq
+		print "Loaded %d data points"%len(rvAnal['freq']) 
 	
 	# Look for a local copy of the rv data for this object
 	filename = "/tmp/" + arg.objectname + "_rv.dat"
@@ -149,7 +150,7 @@ if __name__ == "__main__":
 	# Plot the periodogram	
 	from astropy.stats import LombScargle
 	# frequency, power = LombScargle(dates, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak=5, normalization='model', method='chi2')
-	frequency, power = LombScargle(dates, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak=20)
+	frequency, power = LombScargle(dates, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = minimumFrequency, maximum_frequency = maximumFrequency, samples_per_peak=30)
 	print len(frequency), "points in the periodogram"
 	
 	# Dump periodogram to a text file
@@ -185,23 +186,32 @@ if __name__ == "__main__":
 		matplotlib.pyplot.plot(rvAnal['freq'], rvAnal['chisq'], linewidth=1.0, color='r')
 		matplotlib.pyplot.figure(LombScarglePlot.number)
 		matplotlib.pyplot.plot(rvAnal['freq'], normalised, linewidth=1.0, color='r', alpha=0.5)
+		print "rvanal determined best frequency is: ", rvAnal['freq'][numpy.argmin(rvAnal['chisq'])]
 		
 	matplotlib.pyplot.show(block = False)
 	
 	x_values = numpy.array(dates)
 	y_values = numpy.array(velocities)
 	y_errors = numpy.array(velErrors)
+	
+	# Calculate phases
+	t0 = dates[0]
+	phases = []
+	for d in dates:
+		phase = ((d - t0) % bestPeriod)/bestPeriod 
+		phases.append(phase)
+	x_values = phases
 		
 	k2 = (max(y_values) - min(y_values)) / 2.0
 	gamma = numpy.mean(y_values)
 	phase = 0.0
-	guess = [gamma, k2, bestFrequency, phase]
+	guess = [gamma, k2, phase]
 	print "Guess:", guess
-	upperBounds = [300, 400, maximumFrequency, 1.0 ]
-	lowerBounds = [-300, 0 , minimumFrequency, 0.0 ]
-	bounds = (lowerBounds, upperBounds)
+	#upperBounds = [300, 400, maximumFrequency, 1.0 ]
+	#lowerBounds = [-300, 0 , minimumFrequency, 0.0 ]
+	#bounds = (lowerBounds, upperBounds)
 	
-	results, covariance = scipy.optimize.curve_fit(sineFit, x_values, y_values, p0 = guess, sigma = y_errors, bounds=bounds)
+	results, covariance = scipy.optimize.curve_fit(sinePhase, x_values, y_values, p0 = guess, sigma = y_errors)
 	errors = numpy.sqrt(numpy.diag(covariance))
 	print "Result:", results
 	print "Errors:", errors
@@ -209,25 +219,21 @@ if __name__ == "__main__":
 	gammaError = errors[0]
 	k2Fit = results[1]
 	k2Error = errors[1]
-	frequencyFit = results[2]
-	frequencyError = errors[2]
-	phaseFit = results[3]
-	phaseError = errors[3]
-	periodFit = 1.0/frequencyFit
-	periodError = frequencyError/frequencyFit/frequencyFit
-	t0 = - phaseFit / (frequencyFit) 
+	phaseFit = results[2]
+	phaseError = errors[2]
+	t0 = - 1.0 * phaseFit 
 	print "Result of curve fit: "
 	print "\tgamma velocity: \t%s[%s] km/s"%generalUtils.formatValueError(gammaFit, gammaError)
 	print "\tk2 amplitude: \t%s[%s] km/s"%generalUtils.formatValueError(k2Fit, k2Error)
-	print "\tfrequency: \t%s[%s] /d"%generalUtils.formatValueError(frequencyFit, frequencyError)
-	print "\tperiod: \t%s[%s] days"%generalUtils.formatValueError(periodFit, periodError)
 	print "\tphase: \t\t\t%s[%s]"%generalUtils.formatValueError(phaseFit, phaseError)
 	print "T0:", t0
 	
-	# Calculate phases
+	# Re-calculate phases with the new T0
 	phases = []
 	for d in dates:
-		phase = ((d - t0) % periodFit)/periodFit 
+		phase = ((d - dates[0]) % bestPeriod)/bestPeriod + phaseFit
+		if phase > 1: phase -= 1
+		if phase < 0: phase += 1
 		phases.append(phase)
 	addphases = []
 	for p in phases:
@@ -240,7 +246,7 @@ if __name__ == "__main__":
 	matplotlib.pyplot.errorbar(phases, velocities, color='k', yerr=velErrors, fmt='.', ecolor='0.75', capsize=0)
 
 	curve = numpy.arange(0, 2, 0.01)
-	curveFit = gammaFit + k2Fit * numpy.sin(2*math.pi*curve)
+	curveFit = gammaFit + k2Fit * numpy.sin(2*math.pi*(curve))
 	matplotlib.pyplot.plot(curve, curveFit, color='k', linewidth=1.0)
 	matplotlib.pyplot.plot([0,2], [gammaFit, gammaFit], linewidth=1.0, linestyle='--', color='k', alpha=0.75)
 	matplotlib.pyplot.show(block = False)
