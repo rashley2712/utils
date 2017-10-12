@@ -224,22 +224,24 @@ class object:
 	def setHJD(self, HJD):
 		self.HJD = HJD
 		
+	def addPgram(self, freq, chisq):
+		self.pgram = {}
+		self.pgram['freq'] = freq
+		self.pgram['chisq'] = chisq
+		chiMax = numpy.max(chisq)
+		self.pgram['power'] = [1.0 - y/chiMax for y in chisq]
 	    
+	def getPgram(self):
+		return self.pgram['freq'], self.pgram['power']
 
 if __name__ == "__main__":  
-	parser = argparse.ArgumentParser(description='Loads a CSV file containing HJDs and RVs and tries to fit a period and sinusoid to the data.')
-    # parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
+	parser = argparse.ArgumentParser(description='Loads all of the data produced in ''rvanal'' package and plots them.')
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
-	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .CSV file.')
-	parser.add_argument('--flo', type=float, default= 0.01, help='Frequency (days^-1) for the Lomb-Scargle plot Default is 0.01 days^-1.') 
-	parser.add_argument('--fhi', type=float, default= 20.0, help='Frequency (days^-1) to the Lomb-Scargle plot. Default is 20 days^-1.') 
 	parser.add_argument('objects', type=str, help='Object name list')
 	parser.add_argument('--output', type=str, default='none', help='Output final plot to a .pdf file, specify the name. Default is ''none''')
 	arg = parser.parse_args()
 	# print arg
-	flo = arg.flo
-	fhi = arg.fhi
-  
+	
   	# Set up the matplotlib environment
   	generalUtils.setMatplotlibDefaults()
   	params = {	'axes.labelsize': 'large',
@@ -252,37 +254,38 @@ if __name__ == "__main__":
 	objects = []
 	objectFile = open(arg.objects, 'rt')
 	for f in objectFile:
+		if len(f) < 2: continue
 		o = object(f.strip())
 		objects.append(o)
     
-	
-	# Load the fitted wavelength data from the Google Doc
-	docInstance = gSheets.gSheetObject()
-	docInstance.initCredentials()
-	docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
-	
 	for o in objects:
-		docInstance.setObjectName(o.id)
-		docInstance.loadAllReadings()
-    
-		data = docInstance.readings
-		print "Loaded data for %s from the Google Doc."%o.id
-		print "%d data points loaded."%len(data)
+		filename = str(o.id) + ".tsv"
+		try:
+			rvFile = open(filename, 'rt')
+		except:
+			print "Could not find radial velocities data:", filename
+			continue
+			
 		dates = []
 		velocities = []
 		velErrors = []
-		good = []
+	
 		print "HJD\t\tVelocity (km/s)\tVel error"
-		for index, d in enumerate(data):
-			good = d['good']
-			if good==0: 
-				print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
-			else: 
-				print "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error'])
-				dates.append(d['HJD'])
-				velocities.append(d['RV'])
-				velErrors.append(d['RV error'])
-    
+		for index, f in enumerate(rvFile):
+			params = f.strip().split('\t')
+			try:
+				date = float(params[0])
+				velocity = float(params[1])
+				velError = float(params[2])
+			except:
+				print "Error parsing data:", f
+				continue 
+			dates.append(date)
+			velocities.append(velocity)
+			velErrors.append(velError)
+			print "%f\t%f\t%f"%(date, velocity, velError)
+		rvFile.close()
+    	
 		o.HJD = dates
 		o.velocities = velocities
 		o.velErrors = velErrors
@@ -294,6 +297,20 @@ if __name__ == "__main__":
 			print "Warning. No ephemeris for id: ", o.id
 			sys.exit()
 			
+		filename = o.id + "_pgram.dat"
+		rvAnalInput = open(filename, 'rt')
+		freq = []
+		chisq = []
+		for line in rvAnalInput:
+			if line[0]=='#': continue
+			if len(line) < 3: continue
+			params = line.strip().split(' ')
+			freq.append(float(params[0]))
+			chisq.append(float(params[1]))
+		rvAnalInput.close()
+		o.addPgram(freq, chisq)
+		print "Loaded %d data points in the periodogram."%len(freq) 
+	
 	phasedFoldedLightCurves = matplotlib.pyplot.figure(figsize=(8, 11))
 	# fig, axes = matplotlib.pyplot.subplots(nrows=len(objects), ncols=2, figsize=(8, 11))
 	# fig.tight_layout()
@@ -312,6 +329,8 @@ if __name__ == "__main__":
 		phases = [o.ephemeris.getPhase(h) for h in o.HJD]
 		velocities = o.velocities
 		velErrors = o.velErrors
+		gamma = o.ephemeris.gamma
+		K2 = o.ephemeris.K2
 		extendedPhases = copy.deepcopy(phases)
 		extendedVelocities = copy.deepcopy(velocities)
 		extendedVelErrors = copy.deepcopy(velErrors)
@@ -324,49 +343,21 @@ if __name__ == "__main__":
 		minVel = min(velocities)	
 		velRange = (maxVel - minVel)/2.0
     
-	  	# Fit an amplitude to this data
-		x_values = numpy.array(phases)
-		y_values = numpy.array(velocities)
-		y_errors = numpy.array(velErrors)
-   	 
-		#print "x:", x_values
-		#print "y:", y_values
-   	 
-		guess = [0, maxVel]
-		upperBounds = [100, 200]
-		lowerBounds = [-100, 0]
-		bounds = (lowerBounds, upperBounds)
-		#print "%s ... guess for amplitude and gamma fit: %f, %f"%(o.id, guess[0], guess[1])
-		results, covariance = scipy.optimize.curve_fit(sineGammaAmplitude, x_values, y_values, p0 = guess, sigma = y_errors)
-		errors = numpy.sqrt(numpy.diag(covariance))
-    
-		#print results
-		gammaFit = results[0]
-		gammaError = errors[0]
-		amplitudeFit = results[1]
-		amplitudeError = errors[1]
-		print "Object: ", o.id
-		print "Result of curve fit: "
-		print "\tgamma velocity: \t%s[%s] km/s"%generalUtils.formatValueError(gammaFit, gammaError)
-		print "\tv sin i amplitude: \t%s[%s] km/s"%generalUtils.formatValueError(amplitudeFit, amplitudeError)
-		
-		yMin = gammaFit - 1.2* amplitudeFit
-		yMax = gammaFit + 1.2* amplitudeFit
+		yMin = gamma - 1.2*K2
+		yMax = gamma + 1.2*K2
 		xFit = numpy.arange(0, 2, 0.02)
-		yFit = gammaFit + amplitudeFit * numpy.sin(2*numpy.pi*(xFit))
+		yFit = gamma + K2 * numpy.sin(2*numpy.pi*(xFit))
 			
 		matplotlib.pyplot.errorbar(extendedPhases, extendedVelocities, color='k', yerr=extendedVelErrors, fmt='.', capsize=0)
 		matplotlib.pyplot.plot(xFit, yFit, color='k', linewidth=1.0)
-		matplotlib.pyplot.plot([0, 2], [gammaFit, gammaFit], color='k', linestyle='--')
+		matplotlib.pyplot.plot([0, 2], [gamma, gamma], color='k', linestyle='--')
 		if plotIndex%2==0: matplotlib.pyplot.ylabel('$K_{sec}$ velocity (km/s)')
 		matplotlib.pyplot.xlabel('Phase')
 		yPosition = ax1.get_ylim()[1] * 0.8
 		matplotlib.pyplot.text(0.22, .85, o.id, fontsize='x-large', transform = ax1.transAxes)
 		matplotlib.pyplot.text(0.8, 0.85, "%2.2fd"%o.ephemeris.Period, fontsize='x-large', transform = ax1.transAxes)
 
-		# Plot the periodograms	
-		from astropy.stats import LombScargle
-		frequency, power = LombScargle(o.HJD, velocities, velErrors, fit_mean = True).autopower(minimum_frequency = flo, maximum_frequency = fhi, samples_per_peak=25, normalization='model', method='chi2')
+		frequency, power = o.getPgram()
 		print len(frequency), "points in the periodogram"
 		LSFrequency = frequency[numpy.argmax(power)]
 		print LSFrequency, ' period:', 1.0/LSFrequency
@@ -413,6 +404,10 @@ if __name__ == "__main__":
 			phasedFoldedLightCurves = matplotlib.pyplot.figure(figsize=(8, 11))
 			# matplotlib.pyplot.gcf().clear()
 			
+	
+	print "End of page"
+	matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
+	matplotlib.pyplot.show(block=False)
 			
 	generalUtils.query_yes_no("Continue?")
 		

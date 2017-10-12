@@ -103,8 +103,12 @@ class ephemerisObject:
 				if tokens[0] == 'J2000': 
 					coords = tokens[1:]
 					self.ra, self.dec = self.parseCoords(coords)
+				if tokens[0] == "Gamma": self.gamma = float(tokens[1])	
+				if tokens[0] == "Gamma_error": self.gamma_error = float(tokens[1])	
+				if tokens[0] == "K2": self.K2 = float(tokens[1])	
+				if tokens[0] == "K2_error": self.K2_error = float(tokens[1])	
+				
 					
-			
 	def parseCoords(self, coords):
 		print "Given coords:", coords
 		raHours = int(coords[0])
