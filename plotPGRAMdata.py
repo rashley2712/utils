@@ -7,6 +7,7 @@ import spectrumClasses, timeClasses
 import scipy.optimize
 import copy
 import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.pyplot
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
@@ -263,8 +264,9 @@ if __name__ == "__main__":
 			rvFile = open(filename, 'rt')
 		except:
 			print "Could not find radial velocities data:", filename
-			continue
+			sys.exit()
 			
+		
 		dates = []
 		velocities = []
 		velErrors = []
@@ -295,9 +297,14 @@ if __name__ == "__main__":
 		else:
 			print "Warning. No ephemeris for id: ", o.id
 			sys.exit()
-			
-		filename = o.id + "_pgram.dat"
-		rvAnalInput = open(filename, 'rt')
+		
+		filename = o.id + "_pgram.dat"	
+		try:
+			rvAnalInput = open(filename, 'rt')
+		except:
+			print "Could not find pgram data:", filename
+			sys.exit()
+				
 		freq = []
 		chisq = []
 		for line in rvAnalInput:
@@ -320,6 +327,7 @@ if __name__ == "__main__":
 	plotIndex = 0	
 	pageNumber = 1
 	for o in objects:	
+		plotsPending = True
 		if plotIndex%2==0:
 			ax1 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2) + 1)
 		else:
@@ -359,6 +367,7 @@ if __name__ == "__main__":
 		frequency, power = o.getPgram()
 		print len(frequency), "points in the periodogram"
 		LSFrequency = frequency[numpy.argmax(power)]
+		print "Max freq in pgram:", LSFrequency, " ephem frequency:", 1/o.ephemeris.Period
 		print LSFrequency, ' period:', 1.0/LSFrequency
 		if plotIndex%2==0:
 			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 3))
@@ -402,11 +411,13 @@ if __name__ == "__main__":
 			plotIndex = 0
 			phasedFoldedLightCurves = matplotlib.pyplot.figure(figsize=(8, 11))
 			# matplotlib.pyplot.gcf().clear()
+			plotsPending = False
 			
 	
-	print "End of page"
-	matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
-	matplotlib.pyplot.show(block=False)
+	if plotsPending:
+		print "End of page"
+		matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
+		matplotlib.pyplot.show(block=False)
 			
 	generalUtils.query_yes_no("Continue?")
 		
