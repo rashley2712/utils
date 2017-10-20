@@ -233,6 +233,17 @@ class object:
 	    
 	def getPgram(self):
 		return self.pgram['freq'], self.pgram['power']
+		
+	def getSampledPgram(self, n=10):
+		sampledFreq = []
+		sampledPower = []
+		for index in numpy.arange(0, len(self.pgram['power'])-n-1, n):
+			# print index, self.pgram['freq'][int(index + n/2)], self.pgram['power'][index:index+n]
+			sampledFreq.append(self.pgram['freq'][int(index + n/2)])
+			sampledPower.append(numpy.mean(self.pgram['power'][index:index+n]))
+		print "New length", len(self.pgram['power']), len(sampledPower)
+		return sampledFreq, sampledPower
+			 
 
 if __name__ == "__main__":  
 	parser = argparse.ArgumentParser(description='Loads all of the data produced in ''rvanal'' package and plots them.')
@@ -374,10 +385,11 @@ if __name__ == "__main__":
 		else:
 			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 2))
 		
-		matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k', alpha=0.75)
+		sampledFrequency, sampledPower = o.getSampledPgram(n=20)
+		matplotlib.pyplot.plot(sampledFrequency, sampledPower, linewidth=1.0, color='k', alpha=0.75)
 		matplotlib.pyplot.ylim([0, 1.2 * max(power)])
-		matplotlib.pyplot.plot([1/o.ephemeris.Period, 1/o.ephemeris.Period], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='r', alpha=1)
 		matplotlib.pyplot.plot([LSFrequency, LSFrequency], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='b', alpha=1)
+		matplotlib.pyplot.plot([1/o.ephemeris.Period, 1/o.ephemeris.Period], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='r', alpha=1)
 		
 		if plotIndex%2==0: matplotlib.pyplot.ylabel('Power')
 		matplotlib.pyplot.xlabel('Frequency [cycles/day]')
@@ -394,7 +406,7 @@ if __name__ == "__main__":
 			
 		ax3.plot(zoomedFrequency, zoomedPower, linewidth=1.0, color='k', alpha=1.0)
 		ax3.plot([bestFrequency, bestFrequency], [0, max(power)], color='r', linewidth=1.5, linestyle='--')
-		ax3.plot([LSFrequency, LSFrequency], [0, max(power)], color='b', linewidth=1.5, linestyle='--')
+		# ax3.plot([LSFrequency, LSFrequency], [0, max(power)], color='b', linewidth=1.5, linestyle='--')
 		matplotlib.pyplot.yticks(visible=False)
 		matplotlib.pyplot.xticks(visible=False)
 
@@ -418,7 +430,9 @@ if __name__ == "__main__":
 		print "End of page"
 		matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
 		matplotlib.pyplot.show(block=False)
-			
+		if arg.output!='none': 
+			matplotlib.pyplot.savefig(arg.output + "_page_%d"%pageNumber + ".pdf")
+				
 	generalUtils.query_yes_no("Continue?")
 		
 	sys.exit()
