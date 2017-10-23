@@ -386,6 +386,7 @@ if __name__ == "__main__":
 			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 2))
 		
 		sampledFrequency, sampledPower = o.getSampledPgram(n=20)
+		# matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k', alpha=0.75)
 		matplotlib.pyplot.plot(sampledFrequency, sampledPower, linewidth=1.0, color='k', alpha=0.75)
 		matplotlib.pyplot.ylim([0, 1.2 * max(power)])
 		matplotlib.pyplot.plot([LSFrequency, LSFrequency], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='b', alpha=1)
@@ -418,8 +419,10 @@ if __name__ == "__main__":
 			matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
 			matplotlib.pyplot.show(block=False)
 			if arg.output!='none': 
+				plotFilename = arg.output + "_page_%d"%pageNumber + ".pdf"
+				print "Dumping plot to: ", plotFilename
 				matplotlib.pyplot.savefig(arg.output + "_page_%d"%pageNumber + ".pdf")
-				pageNumber+= 1
+			pageNumber+= 1
 			plotIndex = 0
 			phasedFoldedLightCurves = matplotlib.pyplot.figure(figsize=(8, 11))
 			# matplotlib.pyplot.gcf().clear()
@@ -431,9 +434,21 @@ if __name__ == "__main__":
 		matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
 		matplotlib.pyplot.show(block=False)
 		if arg.output!='none': 
+			plotFilename = arg.output + "_page_%d"%pageNumber + ".pdf"
+			print "Dumping plot to: ", plotFilename
 			matplotlib.pyplot.savefig(arg.output + "_page_%d"%pageNumber + ".pdf")
 				
 	generalUtils.query_yes_no("Continue?")
+	
+	# Write RV table
+	rvFilename = "rvdata.tsv"
+	rvFile = open(rvFilename, "wt")
+	for o in objects:
+		name = o.id
+		for mjd, rv, rvErr in zip(o.HJD, o.velocities, o.velErrors):
+			rvFile.write("%s\t%f\t%f\t%f\n"%(name, mjd, rv, rvErr))
+	rvFile.close()
+			 
 		
 	sys.exit()
 	
