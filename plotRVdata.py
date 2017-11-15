@@ -295,10 +295,15 @@ if __name__ == "__main__":
 		phasePGPlotWindow = ppgplot.pgopen("/xs")
 		ppgplot.pgask(True)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	ppgplot.pgpap(5, 1.618 )
-	# ppgplot.pglab("x axis", "y axis", "heading")
+	# ppgplot.pgpap(5, 1.618 )
+	ppgplot.pgsubp(2, 1)
+	ppgplot.pgenv(0, 1, 0, 1, 0, -2 )
+	ppgplot.pgsch(8)
+	#ppgplot.pgptxt(-1.2, 2.8, 90, 0, "Radial velocity (km/s)")
+	ppgplot.pgptxt(0, 0, 90, 0, "Radial velocity (km/s)")
+	
 	ppgplot.pgsubp(3, 8)
-	# ppgplot.pgsch(4)
+	ppgplot.pgswin(-1, 1, 0, 1)
 		
 	for o in objects:	
 		phases = [o.ephemeris.getPhase(h) for h in o.HJD]
@@ -343,7 +348,7 @@ if __name__ == "__main__":
 		
 		yMin = gammaFit - 1.2* amplitudeFit
 		yMax = gammaFit + 1.2* amplitudeFit
-		ppgplot.pgslct(phasePGPlotWindow)   
+		#ppgplot.pgslct(phasePGPlotWindow)   
 		ppgplot.pgenv(0, 2, yMin, yMax, 0, -2 )
 		ppgplot.pgsvp(.15, 1.0, 0, 1)
 		ppgplot.pgsch(2.8)
@@ -373,8 +378,6 @@ if __name__ == "__main__":
 		ppgplot.pgline([0, 2], [gammaFit, gammaFit])
 		ppgplot.pgsci(lc)
 		ppgplot.pgsls(ls)
-		
-	
 	ppgplot.pgclos()
 	sys.exit()
 	
