@@ -24,14 +24,23 @@ class spectrumObject:
 			return None
 		  
 		
-	def setData(self, wavelengths, flux):
+	def setData(self, wavelengths, flux, errors = None):
 		if len(wavelengths) != len(flux):
 			return -1
 		self.wavelengths = []
 		self.flux = []
-		for w, f in zip(wavelengths, flux):
-			self.wavelengths.append(w)
-			self.flux.append(f)
+		self.fluxErrors = []
+		
+		if errors == None:
+			for w, f in zip(wavelengths, flux):
+				self.wavelengths.append(w)
+				self.flux.append(f)
+		else:
+			for w, f, e in zip(wavelengths, flux, errors):
+				self.wavelengths.append(w)
+				self.flux.append(f)
+				self.fluxErrors.append(e)
+		
 		self.length = len(wavelengths)
 		self.wavelengthRange = (min(wavelengths), max(wavelengths))
 		

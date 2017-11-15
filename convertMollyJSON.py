@@ -31,27 +31,35 @@ if __name__ == "__main__":
 		hasEphemeris = False
 
 
-	spectra = []
+	spectra = [] 
 	
 	mollyFilename = arg.mollyfile
 	mollyFile = trm.dnl.molly.rmolly(mollyFilename)
 		
 	for index, r in enumerate(mollyFile):
 		data = r.toHDU()
+		data.dump('test.dat', clobber=True) 
+		tempFile = open('test.dat', 'rt')	
+		wavelengths = []
+		flux = []
+		fluxErrors = []	
+		for t in tempFile:
+			fields = t.replace('"','').split()
+			wavelengths.append(float(fields[0]))
+			flux.append(float(fields[1]))
+			fluxErrors.append(float(fields[2]))
+ 
 		print r.oneLine()
-		wavelengths = r.x.data
-		counts = r.y.data
 		head = r.head
 		if r.has_mask: print "Mask found"
 		spectrum = spectrumClasses.spectrumObject()
-		npoints = spectrum.setData(wavelengths, counts)
+		npoints = spectrum.setData(wavelengths, flux, fluxErrors)
 		targetName = spectrum.parseHeaderInfo(head)
 		spectrum.wavelengthUnits = r.x.units
 		spectrum.fluxUnits = r.y.units
 		# spectrum.fluxUnits = "relative counts"
 		
 		print "Parsed headers of", targetName
-		print r.oneLine()
 		spectra.append(spectrum)
 		
 	numSpectra = len(spectra)

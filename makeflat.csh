@@ -32,7 +32,7 @@ polfit mflatylog mflatylogfit $npoly -3 3 50
 exp10 mflatylogfit mflatyfit
 isydiv mflat mflatyfit mflatfit
 
-istat mflatfit min max min max > zzz_istat.tmp
+istat mflatfit 1600 2000 70 250 > zzz_istat.tmp
 set mean = `grep Mean zzz_istat.tmp`
 set mean = $mean[3]
 
