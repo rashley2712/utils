@@ -214,9 +214,9 @@ class spectrumObject:
 		
 	def parseHeaderInfo(self, headers):
 		self.objectName = headers['Object']
-		self.telescope = headers['telescope']
-		self.ra = headers['ra']
-		self.dec = headers['dec']
+		self.telescope = headers['Telescope']
+		self.ra = headers['RA']
+		self.dec = headers['Dec']
 		self.UTC = headers['UTC']
 		self.RJD = headers['RJD']
 		self.equinox = headers['Equinox']
@@ -226,16 +226,16 @@ class spectrumObject:
 		self.latitude = headers['Latitude']
 		self.siderial = headers['Sidereal time']
 		self.site = headers['Site']
-		self.day = headers['day']
-		self.month = headers['month']
-		self.year = headers['year']
-		self.dwell = headers['dwell']
-		self.HJD = headers['hjd']
+		self.day = headers['Day']
+		self.month = headers['Month']
+		self.year = headers['Year']
+		self.dwell = headers['Dwell']
+		self.HJD = headers['HJD']
 		self.airmass = headers['Airmass']
 		self.galLatitude = headers['Gal latitude']
 		self.galLongitude = headers['Gal longitude']
 		self.extractPosition = headers['Extract position']
-		self.comment = str(headers['COMMENT'])
+		# self.comment = str(headers['COMMENT'])
 		
 		return self.objectName
 

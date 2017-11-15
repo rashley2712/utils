@@ -7,8 +7,8 @@ except (ValueError):
 import numpy, math
 import argparse
 import loadingSavingUtils, statsUtils
-import trm.dnl.molly
-import spectrumClasses, timeClasses
+import trm.molly
+import spectrumClasses
 
 if __name__ == "__main__":
 
@@ -34,32 +34,28 @@ if __name__ == "__main__":
 	spectra = [] 
 	
 	mollyFilename = arg.mollyfile
-	mollyFile = trm.dnl.molly.rmolly(mollyFilename)
+	mollyFile = trm.molly.rmolly(mollyFilename)
 		
 	for index, r in enumerate(mollyFile):
-		data = r.toHDU()
-		data.dump('test.dat', clobber=True) 
-		tempFile = open('test.dat', 'rt')	
 		wavelengths = []
 		flux = []
 		fluxErrors = []	
-		for t in tempFile:
-			fields = t.replace('"','').split()
-			wavelengths.append(float(fields[0]))
-			flux.append(float(fields[1]))
-			fluxErrors.append(float(fields[2]))
+		for f, fe, w in zip(r.f, r.fe, r.wave):
+			print w, f, fe
+			wavelengths.append(w)
+			flux.append(f)
+			fluxErrors.append(fe)
  
-		print r.oneLine()
 		head = r.head
-		if r.has_mask: print "Mask found"
 		spectrum = spectrumClasses.spectrumObject()
 		npoints = spectrum.setData(wavelengths, flux, fluxErrors)
 		targetName = spectrum.parseHeaderInfo(head)
-		spectrum.wavelengthUnits = r.x.units
-		spectrum.fluxUnits = r.y.units
+		spectrum.wavelengthUnits = "\\A"
+		spectrum.fluxLabel = r.label
+		spectrum.fluxUnits = r.units
 		# spectrum.fluxUnits = "relative counts"
 		
-		print "Parsed headers of", targetName
+		print "Parsed headers of %s for HJD: %f"%(targetName, spectrum.HJD)
 		spectra.append(spectrum)
 		
 	numSpectra = len(spectra)
