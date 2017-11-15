@@ -7,12 +7,14 @@ class spectrumObject:
 	def __init__(self):
 		self.wavelengths = []
 		self.flux = []
+		self.fluxErrors = []
 		self.length = 0 
 		self.wavelengthRange = (0, 0)
 		self.name = 'unknown'
 		self.loadedFromFilename = 'unknown'
 		self.wavelengthUnits = 'unknown'
 		self.fluxUnits = 'unknown'
+		self.objectName = 'unknown'
 		
 	def getProperty(self, property):
 		try:
@@ -22,14 +24,23 @@ class spectrumObject:
 			return None
 		  
 		
-	def setData(self, wavelengths, flux):
+	def setData(self, wavelengths, flux, errors = None):
 		if len(wavelengths) != len(flux):
 			return -1
 		self.wavelengths = []
 		self.flux = []
-		for w, f in zip(wavelengths, flux):
-			self.wavelengths.append(w)
-			self.flux.append(f)
+		self.fluxErrors = []
+		
+		if errors == None:
+			for w, f in zip(wavelengths, flux):
+				self.wavelengths.append(w)
+				self.flux.append(f)
+		else:
+			for w, f, e in zip(wavelengths, flux, errors):
+				self.wavelengths.append(w)
+				self.flux.append(f)
+				self.fluxErrors.append(e)
+		
 		self.length = len(wavelengths)
 		self.wavelengthRange = (min(wavelengths), max(wavelengths))
 		
@@ -185,6 +196,20 @@ class spectrumObject:
 			setattr(self, key, value)
 		inputfile.close()
 		self.loadedFromFilename = filename
+		
+	def loadFromSLOAN(self, filename):
+		inputfile = open(filename, "rt")
+		print "SDSS filename is:", filename
+		self.objectName = filename[:23]
+		print "Target name is:", self.objectName
+		
+		for line in inputfile:
+			fields = line.strip().split()
+			self.wavelengths.append(float(fields[0]))
+			self.flux.append(float(fields[1]))
+			self.fluxErrors.append(float(fields[2]))
+			
+		inputfile.close() 
 		
 		
 	def parseHeaderInfo(self, headers):

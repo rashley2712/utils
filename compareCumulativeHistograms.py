@@ -106,6 +106,7 @@ if __name__ == "__main__":
 	binwidth=0.2
 	data = populations[0].getLogPeriods()
 	bins=numpy.arange(min(data), max(data) + binwidth, binwidth)
+	bins=numpy.arange(-1.5, 1.0, binwidth)
 	for p in populations:
 		print p
 		data = p.getLogPeriods()
@@ -116,7 +117,7 @@ if __name__ == "__main__":
 		print "Total in bins:", sum(n)
 	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize= labelSize)
 	matplotlib.pyplot.ylabel('N',fontsize= labelSize)
-	matplotlib.pyplot.title('Normalised period distribution',fontsize=labelSize)
+	# matplotlib.pyplot.title('Normalised period distribution',fontsize=labelSize)
 	matplotlib.pyplot.grid(True)
 	matplotlib.pyplot.legend()
 	axes = matplotlib.pyplot.gca()
@@ -145,7 +146,7 @@ if __name__ == "__main__":
 	
 	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=labelSize)
 	matplotlib.pyplot.ylabel('$N_{>log_{10}(P_{orb})} / N_{total}$',fontsize=labelSize)
-	matplotlib.pyplot.title('Cumulative period distribution',fontsize=labelSize)
+	# matplotlib.pyplot.title('Cumulative period distribution',fontsize=labelSize)
 	# legend = figure2.legend( (line1), 'Nebot',  loc='upper left', shadow=True)
 	axes = matplotlib.pyplot.gca()
 	for label in (axes.get_xticklabels() + axes.get_yticklabels()):

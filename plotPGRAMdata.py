@@ -6,9 +6,12 @@ import loadingSavingUtils, generalUtils
 import spectrumClasses, timeClasses
 import scipy.optimize
 import copy
-import ppgplot
-import gSheets
 import matplotlib
+# matplotlib.use('Agg')
+import matplotlib.pyplot
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
 class bcolors:
     HEADER = '\033[95m'
@@ -221,63 +224,80 @@ class object:
 	def setHJD(self, HJD):
 		self.HJD = HJD
 		
+	def addPgram(self, freq, chisq):
+		self.pgram = {}
+		self.pgram['freq'] = freq
+		self.pgram['chisq'] = chisq
+		chiMax = numpy.max(chisq)
+		self.pgram['power'] = [1.0 - y/chiMax for y in chisq]
 	    
+	def getPgram(self):
+		return self.pgram['freq'], self.pgram['power']
+		
+	def getSampledPgram(self, n=10):
+		sampledFreq = []
+		sampledPower = []
+		for index in numpy.arange(0, len(self.pgram['power'])-n-1, n):
+			# print index, self.pgram['freq'][int(index + n/2)], self.pgram['power'][index:index+n]
+			sampledFreq.append(self.pgram['freq'][int(index + n/2)])
+			sampledPower.append(numpy.mean(self.pgram['power'][index:index+n]))
+		print "New length", len(self.pgram['power']), len(sampledPower)
+		return sampledFreq, sampledPower
+			 
 
 if __name__ == "__main__":  
-	parser = argparse.ArgumentParser(description='Loads a CSV file containing HJDs and RVs and tries to fit a period and sinusoid to the data.')
-    # parser.add_argument('inputfile', type=str, help='Filename of the CSV file containing the RVs.')
+	parser = argparse.ArgumentParser(description='Loads all of the data produced in ''rvanal'' package and plots them.')
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
-	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .CSV file.')
-	parser.add_argument('--plo', type=float, default= 0.01, help='Period (days) to start the search. Default is 0.01 days.') 
-	parser.add_argument('--phi', type=float, default= 10.0, help='Period (days) to stop the search. Default is 10 days.') 
 	parser.add_argument('objects', type=str, help='Object name list')
-	parser.add_argument('--ps', type=str, default='none', help='Output final plot to a .ps file, specify the name. Default is ''none''')
+	parser.add_argument('--output', type=str, default='none', help='Output final plot to a .pdf file, specify the name. Default is ''none''')
 	arg = parser.parse_args()
 	# print arg
-	plo = arg.plo
-	phi = arg.phi
-	if arg.ps!='none':
-		outputPS = True
-		psFilename = arg.ps
-		print "Outputting plot to:", psFilename
-	else:
-		outputPS = False
-    
+	
+  	# Set up the matplotlib environment
+  	generalUtils.setMatplotlibDefaults()
+  	params = {	'axes.labelsize': 'large',
+				'xtick.labelsize': 'large',
+				'ytick.labelsize': 'large',
+			}
+	matplotlib.rcParams.update(params)
+
 	# Load the list objects we are going to plot
 	objects = []
 	objectFile = open(arg.objects, 'rt')
 	for f in objectFile:
+		if len(f) < 2: continue
 		o = object(f.strip())
 		objects.append(o)
     
-	
-	# Load the fitted wavelength data from the Google Doc
-	docInstance = gSheets.gSheetObject()
-	docInstance.initCredentials()
-	docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
-	
 	for o in objects:
-		docInstance.setObjectName(o.id)
-		docInstance.loadAllReadings()
-    
-		data = docInstance.readings
-		print "Loaded data for %s from the Google Doc."%o.id
-		print "%d data points loaded."%len(data)
+		filename = str(o.id) + ".tsv"
+		try:
+			rvFile = open(filename, 'rt')
+		except:
+			print "Could not find radial velocities data:", filename
+			sys.exit()
+			
+		
 		dates = []
 		velocities = []
 		velErrors = []
-		good = []
+	
 		print "HJD\t\tVelocity (km/s)\tVel error"
-		for index, d in enumerate(data):
-			good = d['good']
-			if good==0: 
-				print bcolors.WARNING + "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error']) + bcolors.ENDC 
-			else: 
-				print "%f\t%f\t%f"%(d['HJD'], d['RV'], d['RV error'])
-				dates.append(d['HJD'])
-				velocities.append(d['RV'])
-				velErrors.append(d['RV error'])
-    
+		for index, f in enumerate(rvFile):
+			params = f.strip().split('\t')
+			try:
+				date = float(params[0])
+				velocity = float(params[1])
+				velError = float(params[2])
+			except:
+				print "Error parsing data:", f
+				continue 
+			dates.append(date)
+			velocities.append(velocity)
+			velErrors.append(velError)
+			print "%f\t%f\t%f"%(date, velocity, velError)
+		rvFile.close()
+    	
 		o.HJD = dates
 		o.velocities = velocities
 		o.velErrors = velErrors
@@ -288,27 +308,47 @@ if __name__ == "__main__":
 		else:
 			print "Warning. No ephemeris for id: ", o.id
 			sys.exit()
-			
-	if outputPS:
-		phasePGPlotWindow = ppgplot.pgopen(psFilename)
-	else:
-		phasePGPlotWindow = ppgplot.pgopen("/xs")
-		ppgplot.pgask(True)
-	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	# ppgplot.pgpap(5, 1.618 )
-	ppgplot.pgsubp(2, 1)
-	ppgplot.pgenv(0, 1, 0, 1, 0, -2 )
-	ppgplot.pgsch(8)
-	#ppgplot.pgptxt(-1.2, 2.8, 90, 0, "Radial velocity (km/s)")
-	ppgplot.pgptxt(0, 0, 90, 0, "Radial velocity (km/s)")
-	
-	ppgplot.pgsubp(3, 8)
-	ppgplot.pgswin(-1, 1, 0, 1)
 		
+		filename = o.id + "_pgram.dat"	
+		try:
+			rvAnalInput = open(filename, 'rt')
+		except:
+			print "Could not find pgram data:", filename
+			sys.exit()
+				
+		freq = []
+		chisq = []
+		for line in rvAnalInput:
+			if line[0]=='#': continue
+			if len(line) < 3: continue
+			params = line.strip().split(' ')
+			freq.append(float(params[0]))
+			chisq.append(float(params[1]))
+		rvAnalInput.close()
+		o.addPgram(freq, chisq)
+		print "Loaded %d data points in the periodogram."%len(freq) 
+	
+	phasedFoldedLightCurves = matplotlib.pyplot.figure(figsize=(8, 11))
+	# fig, axes = matplotlib.pyplot.subplots(nrows=len(objects), ncols=2, figsize=(8, 11))
+	# fig.tight_layout()
+	
+	
+	plotsPerPage = 4
+	
+	plotIndex = 0	
+	pageNumber = 1
 	for o in objects:	
+		plotsPending = True
+		if plotIndex%2==0:
+			ax1 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2) + 1)
+		else:
+			ax1 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2))
+
 		phases = [o.ephemeris.getPhase(h) for h in o.HJD]
 		velocities = o.velocities
 		velErrors = o.velErrors
+		gamma = o.ephemeris.gamma
+		K2 = o.ephemeris.K2
 		extendedPhases = copy.deepcopy(phases)
 		extendedVelocities = copy.deepcopy(velocities)
 		extendedVelErrors = copy.deepcopy(velErrors)
@@ -321,64 +361,95 @@ if __name__ == "__main__":
 		minVel = min(velocities)	
 		velRange = (maxVel - minVel)/2.0
     
-	  	# Fit an amplitude to this data
-		x_values = numpy.array(phases)
-		y_values = numpy.array(velocities)
-		y_errors = numpy.array(velErrors)
-   	 
-		print "x:", x_values
-		print "y:", y_values
-   	 
-		guess = [0, maxVel]
-		upperBounds = [100, 200]
-		lowerBounds = [-100, 0]
-		bounds = (lowerBounds, upperBounds)
-		print "%s ... guess for amplitude and gamma fit: %f, %f"%(o.id, guess[0], guess[1])
-		results, covariance = scipy.optimize.curve_fit(sineGammaAmplitude, x_values, y_values, p0 = guess, sigma = y_errors)
-		errors = numpy.sqrt(numpy.diag(covariance))
-    
-		print results
-		gammaFit = results[0]
-		gammaError = errors[0]
-		amplitudeFit = results[1]
-		amplitudeError = errors[1]
-		print "Result of curve fit: "
-		print "\tgamma velocity: \t%s[%s] km/s"%generalUtils.formatValueError(gammaFit, gammaError)
-		print "\tv sin i amplitude: \t%s[%s] km/s"%generalUtils.formatValueError(amplitudeFit, amplitudeError)
-		
-		yMin = gammaFit - 1.2* amplitudeFit
-		yMax = gammaFit + 1.2* amplitudeFit
-		#ppgplot.pgslct(phasePGPlotWindow)   
-		ppgplot.pgenv(0, 2, yMin, yMax, 0, -2 )
-		ppgplot.pgsvp(.15, 1.0, 0, 1)
-		ppgplot.pgsch(2.8)
-		ppgplot.pgbox("BCTS", 0, 0, "BCNVTS", 0, 0)
-		ppgplot.pgsch(1.0)
-		ppgplot.pgsci(1)
-		ppgplot.pgpt(extendedPhases, extendedVelocities)
-		ppgplot.pgerrb(2, extendedPhases, extendedVelocities, extendedVelErrors, 0)
-		ppgplot.pgerrb(4, extendedPhases, extendedVelocities, extendedVelErrors, 0)
-		
-		ppgplot.pgsch(1)
-		#ppgplot.pglab("Phase", "Radial velocity km/s", "")
-		# o.id + " period: %f days"%o.ephemeris.Period
-		ppgplot.pgsch(3.4)
-		ppgplot.pgtext(0.4, gammaFit+0.8*amplitudeFit, o.id)
-		ppgplot.pgtext(1.6, gammaFit+0.8*amplitudeFit, "%2.2fd"%o.ephemeris.Period)
-		ppgplot.pgsch(1)
+		yMin = gamma - 1.2*K2
+		yMax = gamma + 1.2*K2
 		xFit = numpy.arange(0, 2, 0.02)
-		yFit = gammaFit + amplitudeFit * numpy.sin(2*numpy.pi*(xFit))
-		lc = ppgplot.pgqci()
-		ls = ppgplot.pgqls()
-        
-		ppgplot.pgsci(2)
-		ppgplot.pgline(xFit, yFit)
-		ppgplot.pgsci(3)
-		ppgplot.pgsls(4)
-		ppgplot.pgline([0, 2], [gammaFit, gammaFit])
-		ppgplot.pgsci(lc)
-		ppgplot.pgsls(ls)
-	ppgplot.pgclos()
+		yFit = gamma + K2 * numpy.sin(2*numpy.pi*(xFit))
+			
+		matplotlib.pyplot.errorbar(extendedPhases, extendedVelocities, color='k', yerr=extendedVelErrors, fmt='.', capsize=0)
+		matplotlib.pyplot.plot(xFit, yFit, color='k', linewidth=1.0)
+		matplotlib.pyplot.plot([0, 2], [gamma, gamma], color='k', linestyle='--')
+		if plotIndex%2==0: matplotlib.pyplot.ylabel('$K_{sec}$ velocity (km/s)')
+		matplotlib.pyplot.xlabel('Phase')
+		yPosition = ax1.get_ylim()[1] * 0.8
+		matplotlib.pyplot.text(0.22, .85, o.id, fontsize='x-large', transform = ax1.transAxes)
+		matplotlib.pyplot.text(0.8, 0.85, "%2.2fd"%o.ephemeris.Period, fontsize='x-large', transform = ax1.transAxes)
+
+		frequency, power = o.getPgram()
+		print len(frequency), "points in the periodogram"
+		LSFrequency = frequency[numpy.argmax(power)]
+		print "Max freq in pgram:", LSFrequency, " ephem frequency:", 1/o.ephemeris.Period
+		print LSFrequency, ' period:', 1.0/LSFrequency
+		if plotIndex%2==0:
+			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 3))
+		else:
+			ax2 = matplotlib.pyplot.subplot(plotsPerPage, 2, (plotIndex*2 + 2))
+		
+		sampledFrequency, sampledPower = o.getSampledPgram(n=20)
+		# matplotlib.pyplot.plot(frequency, power, linewidth=1.0, color='k', alpha=0.75)
+		matplotlib.pyplot.plot(sampledFrequency, sampledPower, linewidth=1.0, color='k', alpha=0.75)
+		matplotlib.pyplot.ylim([0, 1.2 * max(power)])
+		matplotlib.pyplot.plot([LSFrequency, LSFrequency], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='b', alpha=1)
+		matplotlib.pyplot.plot([1/o.ephemeris.Period, 1/o.ephemeris.Period], [0,  1.2 * max(power)], linewidth=1.5, linestyle='--',  color='r', alpha=1)
+		
+		if plotIndex%2==0: matplotlib.pyplot.ylabel('Power')
+		matplotlib.pyplot.xlabel('Frequency [cycles/day]')
+		
+		zoomFraction = 0.1
+		ax3 = inset_axes(ax2, width="30%", height="50%", loc=1)
+		zoomedFrequency = []
+		zoomedPower = []
+		bestFrequency = 1.0/o.ephemeris.Period
+		for index, f in enumerate(frequency):
+			if (f > bestFrequency*(1-zoomFraction)) and (f < bestFrequency*(1+zoomFraction)):
+				zoomedFrequency.append(f)
+				zoomedPower.append(power[index])
+			
+		ax3.plot(zoomedFrequency, zoomedPower, linewidth=1.0, color='k', alpha=1.0)
+		ax3.plot([bestFrequency, bestFrequency], [0, max(power)], color='r', linewidth=1.5, linestyle='--')
+		# ax3.plot([LSFrequency, LSFrequency], [0, max(power)], color='b', linewidth=1.5, linestyle='--')
+		matplotlib.pyplot.yticks(visible=False)
+		matplotlib.pyplot.xticks(visible=False)
+
+		
+		plotIndex+= 1
+		
+		if plotIndex%plotsPerPage == 0:
+			print "End of page"
+			matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
+			matplotlib.pyplot.show(block=False)
+			if arg.output!='none': 
+				plotFilename = arg.output + "_page_%d"%pageNumber + ".pdf"
+				print "Dumping plot to: ", plotFilename
+				matplotlib.pyplot.savefig(arg.output + "_page_%d"%pageNumber + ".pdf")
+			pageNumber+= 1
+			plotIndex = 0
+			phasedFoldedLightCurves = matplotlib.pyplot.figure(figsize=(8, 11))
+			# matplotlib.pyplot.gcf().clear()
+			plotsPending = False
+			
+	
+	if plotsPending:
+		print "End of page"
+		matplotlib.pyplot.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=.45)
+		matplotlib.pyplot.show(block=False)
+		if arg.output!='none': 
+			plotFilename = arg.output + "_page_%d"%pageNumber + ".pdf"
+			print "Dumping plot to: ", plotFilename
+			matplotlib.pyplot.savefig(arg.output + "_page_%d"%pageNumber + ".pdf")
+				
+	generalUtils.query_yes_no("Continue?")
+	
+	# Write RV table
+	rvFilename = "rvdata.tsv"
+	rvFile = open(rvFilename, "wt")
+	for o in objects:
+		name = o.id
+		for mjd, rv, rvErr in zip(o.HJD, o.velocities, o.velErrors):
+			rvFile.write("%s\t%f\t%f\t%f\n"%(name, mjd, rv, rvErr))
+	rvFile.close()
+			 
+		
 	sys.exit()
 	
     
