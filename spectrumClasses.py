@@ -77,15 +77,18 @@ class spectrumObject:
 		""" Removes a section from the spectrum """
 		newWavelengths = []
 		newFlux = []
+		newFluxErrors = []
 		if lower>=upper: return self.length
 			
-		for w, f in zip(self.wavelengths, self.flux):
+		for w, f, fe in zip(self.wavelengths, self.flux, self.fluxErrors):
 			if (w<lower) or (w>upper):
 				newWavelengths.append(w)
 				newFlux.append(f)
+				newFluxErrors.append(fe)
 		self.length = len(newWavelengths)
 		self.wavelengths = newWavelengths
 		self.flux = newFlux
+		self.fluxErrors = newFluxErrors
 		self.wavelengthRange = (min(self.wavelengths), max(self.wavelengths))
 			
 		return self.length		
@@ -124,16 +127,19 @@ class spectrumObject:
 		""" Trims out the lower and upper portions of the spectrum """ 
 		newWavelengths = []
 		newFlux = []
+		newFluxErrors = []
 	
 		if lower>=upper: return self.length
 		
-		for w, f in zip(self.wavelengths, self.flux):
+		for w, f, fe in zip(self.wavelengths, self.flux, self.fluxErrors):
 			if (w>lower) and (w<upper):
 				newWavelengths.append(w)
 				newFlux.append(f)
+				newFluxErrors.append(fe)
 		self.length = len(newWavelengths)
 		self.wavelengths = newWavelengths
 		self.flux = newFlux
+		self.fluxErrors = newFluxErrors
 		self.wavelengthRange = (min(self.wavelengths), max(self.wavelengths))
 			
 		return self.length		

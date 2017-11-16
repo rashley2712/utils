@@ -267,14 +267,16 @@ if __name__ == "__main__":
 		upperWavelength = max(spectrum.wavelengths)
 		lowerFlux = min(spectrum.flux)
 		upperFlux = max(spectrum.flux)
-		ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
+		lowerLimit = min(spectrum.fluxErrors)
+		ppgplot.pgenv(lowerWavelength, upperWavelength, 0, upperFlux, 0, 0)
 		ppgplot.pgbin(spectrum.wavelengths, spectrum.flux)
+		ppgplot.pgbin(spectrum.wavelengths, spectrum.fluxErrors)
 		ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "flux [%s]"%spectrum.fluxUnits, "%s [%s]"%(spectrum.objectName, spectrum.loadedFromFilename))
 		
 		# Grab the continuum from either side of the spectrum
 		
-		lowerCut = 8170
-		upperCut = 8210
+		lowerCut = 8175
+		upperCut = 8205
 		continuumSpectrum = copy.deepcopy(spectrum)
 		continuumSpectrum.snipWavelengthRange(lowerCut, upperCut)
 		ppgplot.pgsci(2)
@@ -288,7 +290,7 @@ if __name__ == "__main__":
 		guess = numpy.array([a0, a1, a2])
 		x_values = continuumSpectrum.wavelengths
 		y_values = continuumSpectrum.flux
-		y_errors = numpy.ones(len(continuumSpectrum.flux))
+		y_errors = continuumSpectrum.fluxErrors
 		results, covariance = scipy.optimize.curve_fit(quad, x_values, y_values, guess, )
 		errors = numpy.sqrt(numpy.diag(covariance))
 		# print "quadratic result:", results
@@ -306,6 +308,7 @@ if __name__ == "__main__":
 		for index, w in enumerate(spectrum.wavelengths):			
 			# print w, spectrum.flux[index], yFit[index], spectrum.flux[index]/yFit[index]
 			normalisedSpectrum.flux[index] = spectrum.flux[index]/yFit[index]
+			normalisedSpectrum.fluxErrors[index] = spectrum.fluxErrors[index]/yFit[index]
 		
 		lowerWavelength = min(normalisedSpectrum.wavelengths)
 		upperWavelength = max(normalisedSpectrum.wavelengths)
@@ -315,11 +318,17 @@ if __name__ == "__main__":
 		ppgplot.pgslct(fitPGPlotWindow)
 		ppgplot.pgenv(lowerWavelength, upperWavelength, lowerFlux, upperFlux, 0, 0)
 		ppgplot.pgsci(1)
+		ppgplot.pgsls(3)
 		ppgplot.pgbin(normalisedSpectrum.wavelengths, normalisedSpectrum.flux)
-		ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "flux [%s]"%spectrum.fluxUnits, "%s [%s]"%(spectrum.objectName, spectrum.loadedFromFilename))
+		ppgplot.pgsls(1)
+		ppgplot.pgsci(2)
+		ppgplot.pgbin(normalisedSpectrum.wavelengths, normalisedSpectrum.fluxErrors + lowerFlux)
+		ppgplot.pgsci(1)
+		ppgplot.pglab("wavelength [%s]"%spectrum.wavelengthUnits, "flux [normalised]", "%s [%s]"%(spectrum.objectName, spectrum.loadedFromFilename))
 		
 		featureSpectrum = copy.deepcopy(normalisedSpectrum)
 		featureSpectrum.trimWavelengthRange(lowerCut, upperCut)
+		ppgplot.pgbin(featureSpectrum.wavelengths, featureSpectrum.flux)
 		
 		"""# Check if there is a guess value to use for the wavelength and the width of the fit
 		wavelength, fwhm = recordedData.getSavedValues(spectrum.HJD)
@@ -357,20 +366,20 @@ if __name__ == "__main__":
 			a3 = defaultWidth		# Width of the line
 		
 		
-		guess = numpy.array([a0, a1, a2, a3])
-		x_values = featureSpectrum.wavelengths
-		y_values = featureSpectrum.flux
-		y_errors = numpy.ones(len(featureSpectrum.flux))
-		results, covariance = scipy.optimize.curve_fit(gaussian, x_values, y_values, guess, y_errors)
-		errors = numpy.sqrt(numpy.diag(covariance))
-		a0 = results[0]
-		a1 = results[1]
-		a2 = results[2]
-		a3 = results[3]
-		print "Centroid wavelength %f [%f]"%(a2, errors[2])
-		print "Width %f [%f]"%(a3, errors[3])
-		xFit = spectrum.wavelengths
-		yFit = gaussian(numpy.array(xFit), a0, a1, a2, a3)
+			guess = numpy.array([a0, a1, a2, a3])
+			x_values = featureSpectrum.wavelengths
+			y_values = featureSpectrum.flux
+			y_errors = featureSpectrum.fluxErrors
+			results, covariance = scipy.optimize.curve_fit(gaussian, x_values, y_values, guess, y_errors, absolute_sigma = True)
+			errors = numpy.sqrt(numpy.diag(covariance))
+			a0 = results[0]
+			a1 = results[1]
+			a2 = results[2]
+			a3 = results[3]
+			print "Centroid wavelength %f [%f]"%(a2, errors[2])
+			print "Width %f [%f]"%(a3, errors[3])
+			xFit = spectrum.wavelengths
+			yFit = gaussian(numpy.array(xFit), a0, a1, a2, a3)
 		
 		width = a3
 		if arg.fixwidth:
@@ -380,10 +389,11 @@ if __name__ == "__main__":
 		depth = a1
 		constant = a0
 
-		currentColour = ppgplot.pgqci()
-		ppgplot.pgsci(3)
-		ppgplot.pgline(xFit, yFit)
-		ppgplot.pgsci(currentColour)
+		# Draw the first single Gaussian fit
+		#currentColour = ppgplot.pgqci()
+		#ppgplot.pgsci(3)
+		#ppgplot.pgline(xFit, yFit)
+		#ppgplot.pgsci(currentColour)
 
 		# Now fit the double gaussian with a fixed width and separation
 		a0 = constant    			# Constant term  
@@ -392,8 +402,10 @@ if __name__ == "__main__":
 		guess = numpy.array([a0, a1, a2])
 		x_values = featureSpectrum.wavelengths
 		y_values = featureSpectrum.flux
-		y_errors = numpy.ones(len(featureSpectrum.flux))
-		results, covariance = scipy.optimize.curve_fit(doubleGaussian, x_values, y_values, guess, y_errors)
+		y_errors = [e for e in featureSpectrum.fluxErrors]
+		#print "Fluxes:", y_values
+		#print "Flux errors:", y_errors
+		results, covariance = scipy.optimize.curve_fit(doubleGaussian, x_values, y_values, guess, y_errors, absolute_sigma = True)
 		errors = numpy.sqrt(numpy.diag(covariance))
 		# print "double gaussian result:", results
 		# print "double gaussian errors:", errors
@@ -409,14 +421,76 @@ if __name__ == "__main__":
 
 		xFit = spectrum.wavelengths
 		yFit = doubleGaussian(numpy.array(xFit), a0, a1, a2)
-		ppgplot.pgsci(4)
+		ppgplot.pgsci(3)
 		ppgplot.pgline(xFit, yFit)
+
+		# Compute ChiSquared of the fit
+		chiSq = 0
+		sigma = 0
+		for x, flux, fluxError in zip(x_values, y_values, y_errors):
+			fittedFlux = doubleGaussian(x, a0, a1, a2) 			
+			# print wavelength, flux, fittedFlux, fluxError
+			chiSq+= ((flux - fittedFlux)/fluxError)**2
+			sigma+= (flux - fittedFlux)**2
+		print "Chi squared", chiSq
+		sigma = numpy.sqrt(  sigma/(len(x_values) - 1)    )
+		reducedChiSq = chiSq / (len(x_values) - 3)
+		print "sigma:", sigma
+		print "Reduced Chi squared", reducedChiSq
+
+		threeSigmaPlus = [f + 3*sigma for f in yFit]
+		threeSigmaMinus = [f - 3*sigma for f in yFit]
+
+		newX = []
+		newY = []
+		newYE = []
+		redo = False
+		for w, f, fe in zip(x_values, y_values, y_errors):
+			fittedFlux = doubleGaussian(w, a0, a1, a2)
+			if abs(f - fittedFlux) > 3*sigma: 
+				print w, f, 'is more than 3 sigma from the fit', fittedFlux, 'rejecting it'
+				continue
+			else:
+				newX.append(w)
+				newY.append(f)
+				newYE.append(fe)
+				redo = True 
+
+		print len(x_values)
+		x_values = newX
+		print len(x_values)
+		y_values = newY
+		y_errors = newYE
+		if redo:
+			print "Redoing the fit with the leftover points"
+			guess = numpy.array([a0, a1, a2])
+			results, covariance = scipy.optimize.curve_fit(doubleGaussian, x_values, y_values, guess, y_errors, absolute_sigma = True)	
+			errors = numpy.sqrt(numpy.diag(covariance))
+			a0 = results[0]
+			a1 = results[1]
+			a2 = results[2]
+			wavelength = a2
+			wavelengthError = errors[2]
+			print "Centroid blueward wavelength %f [%f]"%(wavelength, wavelengthError)
+			velocity = (wavelength - NA_labwavelength)/NA_labwavelength * 3E5 
+			velocityError = 3E5 /NA_labwavelength * wavelengthError
+			print "Velocity %f [%f]"%(velocity, velocityError)
+	
+		
+		ppgplot.pgsls(2)
+		ppgplot.pgline(xFit, threeSigmaPlus)
+		ppgplot.pgline(xFit, threeSigmaMinus)
 
 		ppgplot.pgsci(5)
 		ppgplot.pgsls(2)
 		ppgplot.pgline([NA_labwavelength, NA_labwavelength], [lowerFlux, upperFlux])
+		ppgplot.pgsci(6)
+		ppgplot.pgline([lowerCut, lowerCut], [lowerFlux, upperFlux])
+		ppgplot.pgline([upperCut, upperCut], [lowerFlux, upperFlux])
 		ppgplot.pgsls(1)
+		ppgplot.pgsci(1)
 		
+		if numpy.isinf(velocityError): velocityError = 9E9
 		if not query_yes_no("Are you happy with the fit?"):
 			print "Saving the value with the flag raised."
 			docInstance.addNewMeasurement(spectrum.HJD, velocity, velocityError, width, wavelength, False)
@@ -435,6 +509,7 @@ if __name__ == "__main__":
 	outputLog.write("HJD, Velocity, VelErr, Width, Wavelength, Good\n")
 	for d in data:
 		print d
-		outputLog.write("%f, %f, %f, %f, %f, %f\n"%(d['HJD'], d['RV'], d['RV error'], d['width'], d['wavelength'], d['good']))
+		if d['good'] == 1:
+			outputLog.write("%f, %f, %f, %f, %f, %f\n"%(d['HJD'], d['RV'], d['RV error'], d['width'], d['wavelength'], d['good']))
 	outputLog.close()
 		
