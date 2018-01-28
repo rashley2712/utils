@@ -131,17 +131,16 @@ if __name__ == "__main__":
 	parser.add_argument('inputFiles', type=str, nargs='+', help='JSON files containing the spectra')
 	parser.add_argument('-e', type=str, help='Optional ephemeris file')
 	parser.add_argument('--list', action='store_true', help='Specify this option if the input file is actually a list of input files.')
-	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
+	parser.add_argument('--device', type=str, default = "/xs", help='PGPLOT device. Defaults to "/xs".')
 	parser.add_argument('--stacked', action='store_true', help='Specify this option to perform a stacked plot.')
 	parser.add_argument('--title', type=str, help='Title for the plot. Otherwise title will be generated from data in the .JSON file.')
 	parser.add_argument('--lower', type=float, help='[optional] lower wavelength of the plot.')
 	parser.add_argument('--upper', type=float, help='[optional] upper wavelength of the plot.')
-	parser.add_argument('-n', '--normalise', action='store_true', help='Perform a normalise on the spectra. Mean value will be taken from the first spectrum between the ''-nu'' ''-nl'' wavelengths.')
-	parser.add_argument('-nu', type=float, help='Upper wavelength of the spectrum for the normalisation average. Required if ''-n'' is specified.')
-	parser.add_argument('-nl', type=float, help='Lower wavelength of the spectrum for the normalisation average. Required if ''-n'' is specified.')
+	parser.add_argument('-fu', type=float, default = 8205, help='Upper wavelength of the spectrum used during the fit of the double gaussian.')
+	parser.add_argument('-fl', type=float, default = 8175, help='Lower wavelength of the spectrum used during the fit of the double gaussian.')
 	parser.add_argument('--fixwidth', action='store_true', help='Use the width value that is stored in the Google sheet. ')
 	parser.add_argument('--skipgood', action='store_true', help='Don''t try to fit spectra that are marked as ''good'' in the sheet.')
-	parser.add_argument('-o', '--objectname', type=str, help='[Optional] Object name for the output log file.')
+	parser.add_argument('-o', '--objectname', type=str, help='Object name for the output log file.')
 	arg = parser.parse_args()
 	
 	# docsCredentials = gSheets.get_credentials()
@@ -152,20 +151,12 @@ if __name__ == "__main__":
 	docInstance.setDocID('11fsbzSII1u1-O6qQUB8P0RzvJ8MzC5VHIASsZTYplXc')
 	docInstance.setObjectName(arg.objectname)
 	docInstance.loadAllReadings()
-	# docInstance.createSheet("testname")
-	
 	
 	# print arg
 	defaultWidth = 1.0 # Default width of line in Angstrom
 	defaultWavelength = NA_labwavelength # Blueward doublet line in Angstrom
 	defaultVelocity = 0.0
 	defaultVelocityError = 0.0 
-	
-	
-	if arg.normalise:
-		if arg.nu is None or arg.nl is None:
-			print "We require a '-nu' value to perform the normalise function."
-			sys.exit()
 	
 	if arg.e!=None:
 		# Load the ephemeris file
@@ -175,7 +166,6 @@ if __name__ == "__main__":
 		print ephemeris
 	else:
 		hasEphemeris = False
-
 	
 	filenames = []
 	if arg.list:
@@ -210,46 +200,14 @@ if __name__ == "__main__":
 	numSpectra = len(spectra)
 	if numSpectra>1:
 		print "%d spectra have been loaded."%numSpectra
-		
-		
-	if (arg.upper != None) and (arg.lower != None):
-		for s in spectra:
-			s.trimWavelengthRange(arg.lower, arg.upper)	
-
+				
 	trimLower = 8150
 	trimUpper = 8240
-	print "Trimming out the region around 8190AA. [%d, %d]"%(trimLower, trimUpper)
+	print "Discarding all info outside of the range %f to %f Angstroms."%(trimLower, trimUpper)
 	for s in spectra:
-		s.trimWavelengthRange(trimLower, trimUpper)	
-
-	
-	if arg.normalise:
-		# Perform the normalisation across all spectra
-		referenceSpectrum = spectra[0]
-		normalConstant = referenceSpectrum.integrate((arg.nl, arg.nu))
-		print "Normalisation constant:", normalConstant
-	
-		for index in range(1, len(spectra)):
-			s = spectra[index]
-			normalVal = s.integrate((arg.nl, arg.nu))
-			print "Normalisation value:", normalVal, normalConstant
-			spectra[index].divide(normalVal/normalConstant)
-			normalVal = s.integrate((arg.nl, arg.nu))
-			print "New Normalisation value:", normalVal, normalConstant
-	
-	
+		s.trimWavelengthRange(trimLower, trimUpper)		
 	
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-		
-	"""# Load any existing data from the dataLog file
-	recordedData = dataLog()
-	if arg.objectname is not None:
-		logFilename = arg.objectname + '.csv'
-		recordedData.loadFromFile(logFilename)
-		
-	recordedData.sortByHJD()
-	# print recordedData
-	"""
 	mainPGPlotWindow = ppgplot.pgopen(arg.device)	
 	ppgplot.pgask(False)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
@@ -275,8 +233,8 @@ if __name__ == "__main__":
 		
 		# Grab the continuum from either side of the spectrum
 		
-		lowerCut = 8175
-		upperCut = 8205
+		lowerCut = arg.fl
+		upperCut = arg.fu
 		continuumSpectrum = copy.deepcopy(spectrum)
 		continuumSpectrum.snipWavelengthRange(lowerCut, upperCut)
 		ppgplot.pgsci(2)

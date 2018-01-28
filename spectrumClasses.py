@@ -128,7 +128,6 @@ class spectrumObject:
 		newWavelengths = []
 		newFlux = []
 		newFluxErrors = []
-	
 		if lower>=upper: return self.length
 		
 		for w, f, fe in zip(self.wavelengths, self.flux, self.fluxErrors):
