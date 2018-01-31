@@ -250,6 +250,8 @@ if __name__ == "__main__":
 	parser.add_argument('--device', type=str, default = "/xs", help='[Optional] PGPLOT device. Defaults to "/xs".')
 	parser.add_argument('objects', type=str, help='Object name list')
 	parser.add_argument('--output', type=str, default='none', help='Output final plot to a .pdf file, specify the name. Default is ''none''')
+	parser.add_argument('--error', type=float, default=0.0, help='Error to add in quadrature to all of the RV measurements.')
+
 	arg = parser.parse_args()
 	# print arg
 
@@ -347,6 +349,9 @@ if __name__ == "__main__":
 		phases = [o.ephemeris.getPhase(h) for h in o.HJD]
 		velocities = o.velocities
 		velErrors = o.velErrors
+		# Add the additional quadrature error
+		velErrors = [ numpy.sqrt( ve**2 + arg.error**2 ) for ve in velErrors]
+
 		gamma = o.ephemeris.gamma
 		K2 = o.ephemeris.K2
 		extendedPhases = copy.deepcopy(phases)

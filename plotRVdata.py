@@ -105,6 +105,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Loads all of the data produced in ''rvanal'' package and plots them.')
 	parser.add_argument('objects', type=str, help='Object name list')
 	parser.add_argument('--output', type=str, default='none', help='Output final plot to a .pdf file, specify the name. Default is ''none''')
+	parser.add_argument('--error', type=float, default=0.0, help='Error to add in quadrature to all of the RV measurements.')
 	arg = parser.parse_args()
 	# print arg
 
@@ -202,6 +203,9 @@ if __name__ == "__main__":
 		phases = numpy.array([o.ephemeris.getPhase(h) for h in o.HJD])
 		velocities = numpy.array(o.velocities)
 		velErrors = numpy.array(o.velErrors)
+		# Add the additional quadrature error
+		velErrors = numpy.sqrt( velErrors**2 + arg.error**2 )
+		
 		gamma = o.ephemeris.gamma
 		K2 = o.ephemeris.K2
 		extendedPhases = copy.deepcopy(phases)
@@ -239,7 +243,7 @@ if __name__ == "__main__":
 			chisq+= (r/e)**2
 
 		stddev = numpy.sqrt(chisq/len(residuals))
-		#print "Stddev: ", stddev, " from numpy:", sigma
+		print "Stddev: ", stddev, " from numpy:", sigma
 		rejected = numpy.array(numpy.abs(residuals)> 4*sigma)
 		extendedRejected = numpy.array(numpy.abs(extendedResiduals)> 4*sigma)
 		#print "Rejected:", rejected
@@ -255,7 +259,7 @@ if __name__ == "__main__":
 		matplotlib.pyplot.plot([0, 2], [sigma, sigma], color='grey', linestyle=':')
 		matplotlib.pyplot.plot([0, 2], [0, 0], color='grey', linestyle='--')
 		matplotlib.pyplot.plot([0, 2], [-sigma, -sigma], color='grey', linestyle=':')
-		print residuals, rejected
+		# print residuals, rejected
 		matplotlib.pyplot.errorbar(phases[rejected], residuals[rejected], color='k', yerr=velErrors[rejected], fmt='o', capsize=0, markerfacecolor='white')
 
 		if plotIndex%2==0: matplotlib.pyplot.ylabel('km/s')
