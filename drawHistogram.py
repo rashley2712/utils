@@ -26,16 +26,16 @@ class object:
 		self.ephemeris = None
 		self.data = []
 		self.hasEphemeris = False
-		
+
 	def appendData(self, dataDict):
 		# self.MJD.append(data['MJD'])
 		# self.mag.append(data['mag'])
 		# self.err.append(data['err'])
 		self.data.append(dataDict)
-	
+
 	def getColumn(self, columnName):
-		return [d[columnName] for d in self.data]	
-		
+		return [d[columnName] for d in self.data]
+
 	def loadEphemeris(self):
 		# Look in the local directory for a file called 'id'-ephem.dat and load it
 		filename = self.id + "-ephem.dat"
@@ -44,52 +44,52 @@ class object:
 			self.ephemeris.loadFromFile(filename)
 			self.hasEphemeris = True
 			return True
-		
+
 		return False
-		
+
 	def setHJDs(self, MJD, HJD):
 		keys = [d['MJD'] for d in self.data]
 		dates = zip(MJD, HJD)
 		for index, d in enumerate(dates):
 			self.data[index]['HJD'] = d[1]
-			
-		
+
+
 	def computeHJDs(self):
 		if self.hasEphemeris:
 			print o.id, o.ephemeris
 			MJD = o.getColumn('MJD')
 			correctHelio = timeClasses.heliocentric()
-			correctHelio.setTelescope('CSS') 
+			correctHelio.setTelescope('CSS')
 			correctHelio.setTarget(o.ephemeris.ra, o.ephemeris.dec)
 			BMJD = correctHelio.convertMJD(MJD)
 			HJD = [b + 2400000.5 for b in BMJD]
 			self.setHJDs(MJD, HJD)
-		
-		
+
+
 class population:
 	def __init__(self, name):
 		self.periods = []
 		self.objectNames = []
 		self.studyname = name
 		self.plotColour = 'g'
-		
+
 	def addPeriod(self, objectName, period):
 		self.periods.append(period)
 		self.objectNames.append(objectName)
-		
+
 	def getLogPeriods(self):
 		return [numpy.log10(p) for p in self.periods]
-		
-	
+
+
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='Loads CSV file and plots histogram.')
-	parser.add_argument('filename', type=str, nargs='+', help='Filename of CSV file..')	
+	parser.add_argument('filename', type=str, nargs='+', help='Filename of CSV file..')
 	parser.add_argument('--save', type=str, help = "Dump the plot to file. Specify the filename with an extension.")
-	
-	
+
+
 	arg = parser.parse_args()
-	
+
 	files = arg.filename
 	names = []
 	periods = []
@@ -115,12 +115,12 @@ if __name__ == "__main__":
 	print zip(names, periods, study)
 	logPeriods = [numpy.log10(p) for p in periods]
 	# print zip(names, logPeriods)
-	
-	populations[1].plotColour = 'r'
-	
+
+	#populations[1].plotColour = 'r'
+
 	for p in populations:
 		print p.studyname, p.getLogPeriods()
-	
+
 	print "%d targets loaded"%len(names)
 
 	# Draw the histogram of the input data
@@ -142,9 +142,9 @@ if __name__ == "__main__":
 
 	"""if arg.ps: device = "histogram.ps/ps"
 	else: device = "/xs"
-	PGPlotWindow = ppgplot.pgopen(device) 
+	PGPlotWindow = ppgplot.pgopen(device)
 	pgPlotTransform = [0, 1, 0, 0, 0, 1]
-	ppgplot.pgslct(PGPlotWindow)   
+	ppgplot.pgslct(PGPlotWindow)
 	ppgplot.pgsci(1)
 	ppgplot.pgask(False)
 	ppgplot.pgsch(1.6)
@@ -153,9 +153,7 @@ if __name__ == "__main__":
 	ppgplot.pgsch(1.0)
 	# ppgplot.pgsvp(0.1, 0.9, 0.1, 0.9)
 	ppgplot.pghist(logPeriods, -1.5, 1.5, 9, 5)
-	
-	ppgplot.pgclos()	
+
+	ppgplot.pgclos()
 	"""
 	sys.exit()
-	
-	
