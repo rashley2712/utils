@@ -54,7 +54,7 @@ class Time(time.Time):
             try:
                 iers_a_file = download_file(IERS_A_URL, cache=True)
                 iers_a = IERS_A.open(iers_a_file)
-                print "Trying to download...", iers_a_file
+                print("Trying to download...", iers_a_file)
                 self.delta_ut1_utc = self.get_delta_ut1_utc(iers_a)
                 ut1 = self.ut1
             except:
@@ -178,7 +178,7 @@ class Time(time.Time):
 
         # heliocentric light travel time, s
         # tcor_hel = const.au.value * np.array([np.dot(spos,hpos) for hpos in h_pos]) / const.c.value
-        print 'Correction to add to get time at heliocentre = %.7f s' % tcor_hel
+        print('Correction to add to get time at heliocentre = %.7f s' % tcor_hel)
         dt = time.TimeDelta(tcor_hel, format='sec', scale='tdb')
         return self.utc + dt
 
@@ -189,7 +189,7 @@ class Time(time.Time):
 
         # barycentric light travel time, s
         tcor_bar = const.au.value *  np.array([np.dot(spos,bpos) for bpos in b_pos]) / const.c.value
-        # print 'Correction to add to get time at barycentre  = %.7f s' % tcor_bar
+        # print('Correction to add to get time at barycentre  = %.7f s' % tcor_bar)
         dt = time.TimeDelta(tcor_bar, format='sec', scale='tdb')
         return tcor_bar, self.tdb + dt
 		
