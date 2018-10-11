@@ -169,7 +169,7 @@ if __name__ == "__main__":
 	
 	figure = plt.figure()
 	plt.plot(logps, probabilities)
-	plt.xlabel('$log_{10}(P_{orb})$ [d]')
+	plt.xlabel('$log_{10}[P_{orb} (d)]$')
 	plt.ylabel('Probability of detection')
 	axes = plt.gca()
 	axes.set_xlim(logpStart, logpStop)

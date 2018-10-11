@@ -374,7 +374,7 @@ if __name__ == "__main__":
 		matplotlib.pyplot.errorbar(extendedPhases, extendedVelocities, color='k', yerr=extendedVelErrors, fmt='.', capsize=0)
 		matplotlib.pyplot.plot(xFit, yFit, color='k', linewidth=1.0)
 		matplotlib.pyplot.plot([0, 2], [gamma, gamma], color='k', linestyle='--')
-		if plotIndex%2==0: matplotlib.pyplot.ylabel('$K_{sec}$ velocity (km/s)')
+		if plotIndex%2==0: matplotlib.pyplot.ylabel('$K_{sec}$ velocity (km\,s$^{-1}$)')
 		matplotlib.pyplot.xlabel('Phase')
 		yPosition = ax1.get_ylim()[1] * 0.8
 		matplotlib.pyplot.text(0.22, .85, o.id, fontsize='x-large', transform = ax1.transAxes)

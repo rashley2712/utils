@@ -115,7 +115,7 @@ if __name__ == "__main__":
 		print n, bins, patches
 	
 		print "Total in bins:", sum(n)
-	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize= labelSize)
+	matplotlib.pyplot.xlabel('$log_{10}[P_{orb} (d)]$',fontsize= labelSize)
 	matplotlib.pyplot.ylabel('N',fontsize= labelSize)
 	# matplotlib.pyplot.title('Normalised period distribution',fontsize=labelSize)
 	matplotlib.pyplot.grid(True)
@@ -144,7 +144,7 @@ if __name__ == "__main__":
 		matplotlib.pyplot.step(xvalues, yvalues, color=p.plotColour, label=p.studyname)
 	
 	
-	matplotlib.pyplot.xlabel('$log_{10}(P_{orb})$ [d]',fontsize=labelSize)
+	matplotlib.pyplot.xlabel('$log_{10}[P_{orb} (d)]$',fontsize=labelSize)
 	matplotlib.pyplot.ylabel('$N_{>log_{10}(P_{orb})} / N_{total}$',fontsize=labelSize)
 	# matplotlib.pyplot.title('Cumulative period distribution',fontsize=labelSize)
 	# legend = figure2.legend( (line1), 'Nebot',  loc='upper left', shadow=True)
@@ -156,7 +156,7 @@ if __name__ == "__main__":
 	if arg.save is not None:
 		matplotlib.pyplot.savefig('cumulative_' + arg.save, bbox_inches='tight')
 
-	testPopulation = sorted(populations[0].getLogPeriods())
+	testPopulation = (populations[0].getLogPeriods())
 	modelPopulation = sorted(populations[1].getLogPeriods())
 	print "Test population:", testPopulation
 	print "Model population:", modelPopulation
@@ -172,6 +172,8 @@ if __name__ == "__main__":
 		
 		
 	from scipy import stats
+	print(testPopulation)
+	print(modelPopulation)
 	print stats.ks_2samp(testPopulation, modelPopulation)
 	print stats.anderson_ksamp( (testPopulation, modelPopulation) )
 	

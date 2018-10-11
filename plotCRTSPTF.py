@@ -337,12 +337,13 @@ if __name__ == "__main__":
 			#label.set_fontname('Arial')
 				label.set_fontsize(tickSize)
 			
+			print("Phase folded according to the following ephemeris: %s"%o.ephemeris)
 			matplotlib.pyplot.legend()
 			matplotlib.pyplot.gca().invert_yaxis()
 			fig = matplotlib.pyplot.gcf()
 			matplotlib.pyplot.show()
 			fig.savefig('lightcurve.pdf',dpi=100, format='pdf')
-
+			print("Phase folded according to the following ephemeris: %s"%o.ephemeris)
 	ppgplot.pgclos()
 	sys.exit()
 	
