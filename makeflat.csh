@@ -7,7 +7,6 @@ starlink >& /dev/null
 kappa >& /dev/null
 figaro >& /dev/null
 pamela >& /dev/null
-
 if ( -e flat.lis ) rm flat.lis
 set npoly = $argv[1]
 shift
@@ -17,6 +16,7 @@ shift
 foreach file (`cat $argv`)
   echo $file:r >> flat.lis
 end
+
 medsky flat.lis mflat scaled=TRUE
 
 ystract mflat min max mflaty

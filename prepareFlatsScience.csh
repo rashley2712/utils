@@ -19,7 +19,7 @@ set bias = $argv[1]
 shift
 
 foreach file ($argv)
-  debias $bias:r bias.reg $file
+  $STARLINK_DIR/bin/pamela/debias.pl $bias:r bias.reg $file
 
   fitskeys $file:r > zzz_keys.tmp
   set obstype = `grep OBSTYPE zzz_keys.tmp`
@@ -48,4 +48,3 @@ foreach file ($argv)
   echo "File $file has OBSTYPE=$obstype and OBJECT=$object and has been moved to $dir"
 end
 rm zzz_keys.tmp zzz_debias zzz_debias.log
-
